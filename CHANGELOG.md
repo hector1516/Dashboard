@@ -49,6 +49,20 @@ para la TV de la oficina (1920×1080, red interna, sin Cloudflare).
   generarse el thumb**: era CPU y disco para nada. Las fotos de los **reportes**
   sí se muestran (esa pantalla es el carrusel).
 
+### Ajustes tras la revisión (2026-09-28)
+- **Cumpleaños: la edad faltaba.** El backend la calculaba bien desde el
+  RFC/CURP (posiciones 5-6 año, 7-8 mes, 9-10 día) — 25, 59 y 30 años—, pero
+  la vista pedía el campo `anos` en vez de `edad` y las tarjetas del mes
+  mostraban "— años". Además se separaron los tipos `Cumpleanero` (lleva
+  `edad`) y `Aniversariero` (lleva `anos`), que es justo lo que se confundió.
+- **Avatares también en las tarjetas del mes** de cumpleaños/aniversarios, no
+  sólo en las de hoy: a 3 metros una inicial no dice nada.
+- **Tarjetas del Legends más grandes** (avatar de hasta 104 px, tipografía y
+ paddings escalados) y el podio puede ocupar dos filas. El ganador NO
+  cambió de tamaño: es el que tiene que seguir dominando la pantalla.
+- Se limita el ancho de las tarjetas de cumpleaños/aniversarios: con 3 personas
+  se estiraban a 600 px y quedaban vacías.
+
 ### Datos (no son cambios de código)
 - **2026-09-28 — avatar de "Ocelote Cuántico"** (Alejandro Mata, `HUB_Users.Id`
   3): insertado en `HUB_UserAvatars.AvatarBase64` desde

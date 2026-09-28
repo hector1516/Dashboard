@@ -152,12 +152,14 @@ def ciclo() -> dict:
 
     rutas_avatar = _firmar_avatares(D.avatares())
 
-    # Avatares: en el ranking de Legends y en los cumpleaños/aniversarios de HOY
-    # (los que se destacan). El resto del mes solo necesita nombre y día.
+    # Avatares: en el ranking de Legends y en TODOS los cumpleaños/aniversarios
+    # (los de hoy y los del mes). Antes sólo se pegaban a los de hoy y las
+    # tarjetas del mes salían con la inicial, que a 3 metros no dice nada.
     bloques["legends"]["ranking"] = _con_avatares(bloques["legends"]["ranking"], rutas_avatar)
     for clave in ("cumpleanos", "aniversarios"):
-        bloques["celebraciones"][clave]["hoy"] = _con_avatares(
-            bloques["celebraciones"][clave]["hoy"], rutas_avatar)
+        for grupo in ("hoy", "del_mes"):
+            bloques["celebraciones"][clave][grupo] = _con_avatares(
+                bloques["celebraciones"][clave][grupo], rutas_avatar)
 
     # 5) Eventos (deltas contra state.json) ---------------------------------
     state = _leer_json(C.STATE, {})

@@ -1,9 +1,11 @@
 <!--
 	🏆 ECCSA Legends — carrera semanal.
 
-	El 1er lugar ocupa la mitad de arriba (con corona, rayos y partículas), el
+	El 1er lugar ocupa la mitad de arriba (con corona, rayos y partículas) y el
 	resto son tarjetas con escala decreciente: a 3 metros se lee quién ganó sin
-	need leer el número.
+	leer el número. Las tarjetas son grandes (avatar de hasta 104 px) y el
+	podio puede ocupar dos filas si ya no caben en una: lo que NO se toca es el
+	tamaño del ganador, que es el que tiene que dominar la pantalla.
 
 	Novedades: flecha ↑↓ cuando alguien sube o baja de puesto (el backend
 	compara con el ranking anterior) y cuenta regresiva al reinicio semanal.
@@ -99,7 +101,7 @@
 	.reset { font-size: 15px; font-weight: 700; color: var(--color-text-muted); letter-spacing: 0; }
 
 	.escenario {
-		position: relative; flex: 1 1 auto; min-height: 340px; max-height: 560px;
+		position: relative; flex: 1 1 auto; min-height: 300px; max-height: 520px;
 		display: flex; align-items: center; justify-content: center; gap: 56px;
 		border-radius: 26px;
 		background: linear-gradient(160deg, rgba(255,215,0,0.10), rgba(255,107,0,0.03) 55%, transparent);
@@ -124,7 +126,7 @@
 	}
 	.avatar-grande {
 		position: relative; z-index: 3;
-		width: 300px; height: 300px; border-radius: 50%; flex-shrink: 0;
+		width: 330px; height: 330px; border-radius: 50%; flex-shrink: 0;
 		animation: latirGrande 2.4s ease-in-out infinite;
 	}
 	.img-grande { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 7px solid #FFD700; box-shadow: 0 0 80px rgba(255,215,0,0.5), 0 0 160px rgba(255,107,0,0.22); }
@@ -141,25 +143,25 @@
 	.nivel-grande { font-size: 22px; font-weight: 700; color: var(--color-primary-light); margin-top: 4px; }
 	.subio { font-size: 26px; color: #4ADE80; }
 
-	.podio { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center; gap: 10px; flex-shrink: 0; max-height: 260px; overflow: hidden; padding-bottom: 2px; }
+	.podio { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px; flex-shrink: 0; max-height: 340px; overflow: hidden; padding-bottom: 2px; }
 	.tarjeta {
-		display: flex; align-items: center; gap: 12px;
-		padding: calc(10px * var(--rs)) calc(16px * var(--rs));
-		border-radius: calc(16px * var(--rs) + 4px);
+		display: flex; align-items: center; gap: calc(14px * var(--rs));
+		padding: calc(13px * var(--rs)) calc(20px * var(--rs));
+		border-radius: calc(18px * var(--rs) + 4px);
 		background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
 		animation: entrarTarjeta 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 	}
 	.tarjeta.oro    { background: linear-gradient(135deg, rgba(192,132,252,0.17), rgba(168,85,247,0.05)); border-color: rgba(192,132,252,0.38); }
 	.tarjeta.plata  { background: linear-gradient(135deg, rgba(203,213,225,0.15), rgba(148,163,184,0.05)); border-color: rgba(203,213,225,0.32); }
 	.tarjeta.bronce { background: linear-gradient(135deg, rgba(217,119,6,0.15), rgba(180,83,9,0.05)); border-color: rgba(217,119,6,0.32); }
-	.pos { font-weight: 800; font-size: calc(19px * var(--rs)); color: var(--color-text-muted); min-width: calc(34px * var(--rs)); text-align: center; }
-	.avatar-med { border-radius: 50%; overflow: hidden; flex-shrink: 0; border: calc(2px * var(--rs)) solid rgba(255,255,255,0.2); }
+	.pos { font-weight: 800; font-size: calc(28px * var(--rs)); color: var(--color-text-muted); min-width: calc(46px * var(--rs)); text-align: center; }
+	.avatar-med { border-radius: 50%; overflow: hidden; flex-shrink: 0; border: calc(3px * var(--rs)) solid rgba(255,255,255,0.22); }
 	.img-med { width: 100%; height: 100%; object-fit: cover; }
-	.ph-med { width: 100%; height: 100%; background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: calc(22px * var(--rs)); color: #0F172A; }
+	.ph-med { width: 100%; height: 100%; background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: calc(38px * var(--rs)); color: #0F172A; }
 	.meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-	.nombre { font-weight: 700; font-size: calc(18px * var(--rs)); color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(180px * var(--rs)); }
-	.pts { font-size: calc(14px * var(--rs)); font-weight: 800; color: var(--color-primary-light); background: rgba(255,174,0,0.14); padding: 2px 8px; border-radius: 8px; align-self: flex-start; white-space: nowrap; }
-	.delta { font-size: calc(15px * var(--rs)); font-weight: 900; color: #64748B; }
+	.nombre { font-weight: 700; font-size: calc(27px * var(--rs)); color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(330px * var(--rs)); }
+	.pts { font-size: calc(21px * var(--rs)); font-weight: 800; color: var(--color-primary-light); background: rgba(255,174,0,0.14); padding: calc(3px * var(--rs)) calc(10px * var(--rs)); border-radius: 10px; align-self: flex-start; white-space: nowrap; }
+	.delta { font-size: calc(22px * var(--rs)); font-weight: 900; color: #64748B; }
 	.delta.subio { color: #4ADE80; }
 	.delta.bajo { color: #F87171; }
 

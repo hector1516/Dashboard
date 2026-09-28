@@ -71,10 +71,22 @@ export interface Nota {
 	fecha_modificado: string;
 }
 
-export interface Persona {
+/**
+ * Cumpleañero: la EDAD sale del RFC/CURP (posiciones 5-6 año, 7-8 mes, 9-10
+ * día) o de `FechaNacimiento` si existe. El backend ya la calcula.
+ */
+export interface Cumpleanero {
 	Nombre: string;
-	dia: number;
+	dia: number | null;
 	mes: number | null;
+	edad: number | null;
+	avatar: string | null;
+}
+
+/** Aniversario: años de antigüedad en ECCSA, desde `FechaIngreso`. */
+export interface Aniversariero {
+	Nombre: string;
+	dia: number | null;
 	anos: number | null;
 	avatar: string | null;
 }
@@ -134,8 +146,8 @@ export interface Snapshot {
 
 	notas: Nota[];
 
-	cumpleanos: { hoy: Persona[]; del_mes: Persona[] };
-	aniversarios: { hoy: Persona[]; del_mes: Persona[] };
+	cumpleanos: { hoy: Cumpleanero[]; del_mes: Cumpleanero[] };
+	aniversarios: { hoy: Aniversariero[]; del_mes: Aniversariero[] };
 
 	metricas: {
 		top_cliente: { Cliente: string; total: number } | null;

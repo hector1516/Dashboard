@@ -6,20 +6,25 @@
 	tarjetas se adapta al número de personas: 2 personas pueden ocupar media
 	pantalla cada una; 12 personas necesitan tarjetas compactas o no caben.
 
+	La EDAD de los cumpleañeros la calcula el backend desde el RFC/CURP (año en
+	las posiciones 5-6, mes 7-8, día 9-10) o desde `FechaNacimiento` si existe.
+	Ojo: es el campo `edad`; los aniversarios usan `anos` (antigüedad). Se
+	confundir los dos hacía que las tarjetas del mes mostraran "— años".
+
 	El confeti lo dispara el orquestador cuando detectan un cumpleaños HOY.
 -->
 <script lang="ts">
 	import { avatarSrc } from '$lib/kiosk/api';
 	import { nombreMes } from '$lib/kiosk/format';
-	import type { Persona, Snapshot } from '$lib/kiosk/types';
+	import type { Aniversariero, Cumpleanero, Snapshot } from '$lib/kiosk/types';
 
 	interface Props { datos: Snapshot }
 	let { datos }: Props = $props();
 
-	const cumples = $derived(datos.cumpleanos?.del_mes ?? []);
-	const anivers = $derived(datos.aniversarios?.del_mes ?? []);
-	const hoyCumples = $derived(datos.cumpleanos?.hoy ?? []);
-	const hoyAnivers = $derived(datos.aniversarios?.hoy ?? []);
+	const cumples = $derived<Cumpleanero[]>(datos.cumpleanos?.del_mes ?? []);
+	const anivers = $derived<Aniversariero[]>(datos.aniversarios?.del_mes ?? []);
+	const hoyCumples = $derived<Cumpleanero[]>(datos.cumpleanos?.hoy ?? []);
+	const hoyAnivers = $derived<Aniversariero[]>(datos.aniversarios?.hoy ?? []);
 
 	const total = $derived(cumples.length + anivers.length);
 	const tam = $derived(total <= 2 ? 'xl' : total <= 4 ? 'lg' : total <= 8 ? 'md' : 'sm');
@@ -44,7 +49,7 @@
 							{#if c.avatar}<img class="avatar-g" src={avatarSrc(c.avatar)} alt={c.Nombre} />{:else}<div class="avatar-g ph">{(c.Nombre || '?')[0]}</div>{/if}
 							<div class="nombre">{c.Nombre}</div>
 							<div class="detalle">cumpleaños hoy</div>
-							<div class="edad">{c.anos ?? '—'} años</div>
+							<div class="edad">{c.edad ?? '—'} años</div>
 							<div class="flotante">🎂</div>
 						</div>
 					{/each}
@@ -70,7 +75,7 @@
 							{#if c.avatar}<img class="avatar-g" src={avatarSrc(c.avatar)} alt={c.Nombre} />{:else}<div class="avatar-g ph">{(c.Nombre || '?')[0]}</div>{/if}
 							<div class="nombre">{c.Nombre}</div>
 							<div class="detalle">{c.dia} de {mes}</div>
-							<div class="edad">{c.anos ?? '—'} años</div>
+							<div class="edad">{c.edad ?? '—'} años</div>
 						</div>
 					{/each}
 				</div>
@@ -126,19 +131,19 @@
 	.flotante { position: absolute; top: 10px; right: 16px; font-size: 28px; opacity: 0.6; animation: flotar 3s ease-in-out infinite; }
 
 	/* Tamaño según cuántas hay: ≤2 enorme · ≤4 grande · ≤8 media · más compacta */
-	.r-xl .tarjeta { padding: 26px 30px; min-height: 300px; }
+	.r-xl .tarjeta { padding: 26px 30px; min-height: 300px; max-width: 620px; }
 	.r-xl .avatar-g { width: 190px; height: 190px; }
 	.r-xl .nombre { font-size: 34px; }
 	.r-xl .detalle { font-size: 21px; }
 	.r-xl .edad { font-size: 26px; }
 
-	.r-lg .tarjeta { padding: 18px 22px; min-height: 235px; }
+	.r-lg .tarjeta { padding: 20px 24px; min-height: 240px; max-width: 430px; }
 	.r-lg .avatar-g { width: 145px; height: 145px; }
 	.r-lg .nombre { font-size: 26px; }
 	.r-lg .detalle { font-size: 17px; }
 	.r-lg .edad { font-size: 21px; }
 
-	.r-md .tarjeta { padding: 12px 16px; min-height: 180px; max-width: calc(50% - 7px); }
+	.r-md .tarjeta { padding: 12px 16px; min-height: 180px; max-width: min(calc(50% - 7px), 340px); }
 	.r-md .avatar-g { width: 105px; height: 105px; }
 	.r-md .nombre { font-size: 21px; }
 	.r-md .detalle { font-size: 15px; }
