@@ -325,7 +325,11 @@ function leerParams() {
 		// `null` = la pantalla queda fija donde esté (para capturar o revisar).
 		fija: congelar ? PANTALLAS.findIndex((p) => p.id === id) : null,
 		sinAnim: q.get('sinanim') === '1',
-		debug: q.get('debug') === '1'
+		debug: q.get('debug') === '1',
+		// OJO: sin esta línea `?replay=1` no hacía nada (el campo estaba
+		// declarado en el tipo pero nunca se llenaba) y las capturas salían
+		// sin aviso, lo que parecía un fallo del snapshot.
+		replay: q.get('replay') === '1'
 	};
 	// `?sinrotacion=1` o `?sinanim=1` sin `pantalla=`: congela en la primera.
 	if (!congelar && (q.get('sinrotacion') === '1' || q.get('sinanim') === '1')) {
