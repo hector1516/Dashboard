@@ -59,7 +59,8 @@ para la TV de la oficina (1920×1080, red interna, sin Cloudflare).
   bug del sync offline de Field) **se recuperan** en vez de no mostrarse.
 
 ### ECCSA-Shell
-- Registrada como **cuarta app** del shell (variante `t4`).
+- Registrada como **cuarta app** del shell (variante `t4`), y subida al shell
+  1.10.0 para quedar al día con Field, Admon y el panel.
 - `sync_shell.py`: se arregló `--target X --variant t4`, que estaba roto
   (nunca encontraba la ruta del CSS), y `APP_ID_DE_VARIANTE` pasó a derivarse
   del nombre de la carpeta, porque con dos apps `t4` se pisaban entre sí.
