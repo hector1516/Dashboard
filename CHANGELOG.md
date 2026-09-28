@@ -49,6 +49,16 @@ para la TV de la oficina (1920×1080, red interna, sin Cloudflare).
   generarse el thumb**: era CPU y disco para nada. Las fotos de los **reportes**
   sí se muestran (esa pantalla es el carrusel).
 
+### Datos (no son cambios de código)
+- **2026-09-28 — avatar de "Ocelote Cuántico"** (Alejandro Mata, `HUB_Users.Id`
+  3): insertado en `HUB_UserAvatars.AvatarBase64` desde
+  `HUB/avatares/ocelote cuantico.png` (PNG 578×432 con alfa, 220 KB), con las
+  mismas convenciones que las filas que ya estaban (`Nickname`,
+  `PromptUsado` y `AvatarUrl` en NULL). Como el avatar vive en la base
+  compartida, aparece en el Legends del kiosco **y** en las otras apps sin que
+  haya que hacer nada más. El `snapshotter` lo bajó como thumb de 256 px en el
+  siguiente ciclo.
+
 ### Mejoras sobre el dashboard de Field
 - El carrusel de fotos **sí avanza** (en Field `photoIdx` nunca se incrementaba:
   la foto se quedaba 20 segundos congelada).
