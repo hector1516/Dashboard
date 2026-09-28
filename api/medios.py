@@ -108,33 +108,6 @@ def thumbs_de_fotos(fotos: list) -> tuple[list, bool]:
     return rutas, ok
 
 
-def thumbs_de_tickets(tickets: list) -> tuple[list, bool]:
-    rutas = []
-    ok = True
-    conn = None
-    try:
-        from db import get_connection
-        conn = get_connection()
-        with conn.cursor(as_dict=True) as cur:
-            for t in tickets:
-                if not t.get("tiene_foto"):
-                    continue
-                destino = os.path.join(C.THUMBS_DIR, f"tk_{t['id_ticket']}_w{C.THUMB_TICKETS_ANCHO}.jpg")
-                if not _es_fresco(destino):
-                    cur.execute("SELECT ImagenTicket FROM HUB_OxxoGasTickets WHERE Id = %s", (t["id_ticket"],))
-                    fila = cur.fetchone()
-                    if not fila or not fila.get("ImagenTicket"):
-                        continue
-                    thumb = _thumb(fila["ImagenTicket"], C.THUMB_TICKETS_ANCHO)
-                    if thumb:
-                        _escribir(destino, thumb)
-                if os.path.isfile(destino):
-                    rutas.append(f"/media/thumbs/{os.path.basename(destino)}")
-    except Exception:
-        ok = False
-    return rutas, ok
-
-
 def guardar_avatares(avs: dict) -> bool:
     """
     Los avatares de HUB_UserAvatars vienen como base64. Se escriben una vez como

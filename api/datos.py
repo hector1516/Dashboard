@@ -232,8 +232,7 @@ def tickets(sunday: str) -> dict:
                 u.Nombre AS usuario,
                 CONVERT(VARCHAR(16), t.FechaRegistro, 120) AS fecha,
                 ISNULL(c.Cliente, t.IdCliente) AS cliente,
-                ISNULL(t.Descripcion, '') AS descripcion,
-                CASE WHEN t.ImagenTicket IS NOT NULL THEN 1 ELSE 0 END AS tiene_foto
+                ISNULL(t.Descripcion, '') AS descripcion
             FROM HUB_OxxoGasTickets t
             LEFT JOIN HUB_Automoviles a ON t.IdVehiculo = a.Id
             JOIN HUB_Users u ON t.IdUsuario = u.Id
@@ -603,8 +602,7 @@ def detalles_de(nuevos: dict) -> dict:
             cur.execute("""
                 SELECT TOP 6 t.Id, t.FolioTicket, a.MarcaModelo, u.Nombre,
                     ISNULL(c.Cliente, t.IdCliente) AS cliente, t.Descripcion,
-                    CONVERT(VARCHAR(16), t.FechaRegistro, 120) AS fecha,
-                    CASE WHEN t.ImagenTicket IS NOT NULL THEN 1 ELSE 0 END AS tiene_foto
+                    CONVERT(VARCHAR(16), t.FechaRegistro, 120) AS fecha
                 FROM HUB_OxxoGasTickets t
                 LEFT JOIN HUB_Automoviles a ON t.IdVehiculo = a.Id
                 JOIN HUB_Users u ON t.IdUsuario = u.Id

@@ -41,6 +41,14 @@ para la TV de la oficina (1920×1080, red interna, sin Cloudflare).
 - `deploy/capturar.ps1`: capturas de las 10 pantallas con el Edge del servidor
   (el mismo que corre en la TV).
 
+### Cambio de alcance (2026-09-28, tras la primera revisión)
+- **Los tickets van SIN foto.** La imagen de `HUB_OxxoGasTickets.ImagenTicket`
+  no sirve en varios registros (viene con 15 bytes basura antes del JPEG) y a
+  3 metros el folio, el vehículo y el cliente se leen mejor que una foto
+  chica. Se quitó la foto de la tarjeta, del aviso en vivo, y **dejó de
+  generarse el thumb**: era CPU y disco para nada. Las fotos de los **reportes**
+  sí se muestran (esa pantalla es el carrusel).
+
 ### Mejoras sobre el dashboard de Field
 - El carrusel de fotos **sí avanza** (en Field `photoIdx` nunca se incrementaba:
   la foto se quedaba 20 segundos congelada).

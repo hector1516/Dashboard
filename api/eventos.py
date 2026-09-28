@@ -93,12 +93,7 @@ def detectar(cursores_nuevos: dict, cursores_previos: dict, detalles: dict, hoy_
             "meta": t.get("fecha") or "",
             "ts": _iso(t.get("fecha")),
         }
-        if t.get("tiene_foto"):
-            # El ancho sale de la MISMA constante que usa el snapshotter: si se
-            # escribía 480 fijo y el backend genera otra cosa, el evento salía
-            # con una imagen rota.
-            import config as _C
-            ev["imagen"] = f"/media/thumbs/tk_{t['Id']}_w{_C.THUMB_TICKETS_ANCHO}.jpg"
+        # Sin imagen: los tickets se muestran sin foto (2026-09-28).
         eventos.append(ev)
 
     # ── Reportes nuevos ─────────────────────────────────────────────────────

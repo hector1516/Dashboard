@@ -101,16 +101,8 @@ export function anchoFotos(snap?: { media?: { fotos_w: number } }): number {
 	return snap?.media?.fotos_w ?? 960;
 }
 
-export function anchoTickets(snap?: { media?: { tickets_w: number } }): number {
-	return snap?.media?.tickets_w ?? 480;
-}
-
 export function thumbFoto(idReporte: number, orden: number, w: number): string {
 	return `/media/thumbs/rep_${idReporte}_${orden}_w${w}.jpg`;
-}
-
-export function thumbTicket(idTicket: number, w: number): string {
-	return `/media/thumbs/tk_${idTicket}_w${w}.jpg`;
 }
 
 /**

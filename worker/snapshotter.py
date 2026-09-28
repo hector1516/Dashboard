@@ -140,7 +140,9 @@ def ciclo() -> dict:
     # 4) Medios ------------------------------------------------------------
     fotos = D.fotos(C.FOTOS_CARRUSEL)
     thumbs_fotos, fotos_ok = M.thumbs_de_fotos(fotos["ids"])
-    thumbs_tickets, _ = M.thumbs_de_tickets(bloques["tickets"]["ultimos"])
+    # Los tickets van SIN foto (2026-09-28): no se generan sus thumbs. Antes sí,
+    # y además había que rescatarlos de los 15 bytes basura con los que vienen
+    # algunos blobs de ImagenTicket: trabajo de CPU y disco para nada.
     try:
         M.guardar_avatares(D.avatares())
     except Exception as exc:
@@ -233,9 +235,8 @@ def ciclo() -> dict:
         # Anchos de los thumbs ya generados. El front los lee de acá en vez de
         # tener el número magical duplicado: pedir 1280 cuando el backend
         # genera 960 es un 404 y se ve una foto negra a pantalla completa.
-        "media": {"fotos_w": C.THUMB_FOTOS_ANCHO, "tickets_w": C.THUMB_TICKETS_ANCHO},
+        "media": {"fotos_w": C.THUMB_FOTOS_ANCHO},
         "eventos": _leer_json(C.EVENTOS, []),
-        "thumbs_tickets": thumbs_tickets,
     }
     _escribir_json(C.SNAPSHOT, snapshot)
     _escribir_json(C.SALUD, {

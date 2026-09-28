@@ -47,7 +47,7 @@ BING_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " \
 
 # ── Medios ──────────────────────────────────────────────────────────────────
 THUMB_FOTOS_ANCHO = 960       # fotos de reportes a pantalla completa
-THUMB_TICKETS_ANCHO = 480
+# (los tickets van SIN foto: no hay ancho de thumb que generar)
 FOTOS_CARRUSEL = 30           # cuántas hay en el carrusel
 TICKETS_PANTALLA = 12
 MAX_EVENTOS = 100             # historial de avisos que ve la pantalla

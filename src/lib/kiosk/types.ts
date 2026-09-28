@@ -51,7 +51,6 @@ export interface Reporte {
 }
 
 export interface Ticket {
-	id_ticket: number;
 	folio: string;
 	vehiculo: string;
 	Placas: string;
@@ -59,7 +58,6 @@ export interface Ticket {
 	fecha: string;
 	cliente: string;
 	descripcion: string;
-	tiene_foto: number;
 }
 
 export interface Nota {
@@ -167,8 +165,8 @@ export interface Snapshot {
 	/** Rutas locales de fondos. Nunca URLs de internet (ver AGENTS.md §Offline). */
 	fondos: string[];
 
-	/** Anchos con los que el backend generó los thumbs. */
-	media?: { fotos_w: number; tickets_w: number };
+	/** Ancho con el que el backend generó los thumbs de fotos. */
+	media?: { fotos_w: number };
 
 	eventos: EventoKiosko[];
 }
