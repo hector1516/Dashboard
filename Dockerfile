@@ -37,6 +37,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=build /app/build /app/build
 COPY api/    /app/api/
 COPY worker/ /app/worker/
+# Las versiones que anuncia /api/shell/state (contrato del ECCSA-Shell):
+# app.version sale de package.json y shell.version del ECCSA_SHELL_VERSION que
+# estampa `sync_shell.py`. Sin estos dos archivos el endpoint respondía "?" y la
+# pantalla no podía decir qué build tenía arriba.
+COPY package.json          /app/package.json
+COPY ECCSA_SHELL_VERSION   /app/ECCSA_SHELL_VERSION
 COPY docker/nginx.conf /etc/nginx/sites-available/default
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY docker/supervisor/ /app/docker/supervisor/
