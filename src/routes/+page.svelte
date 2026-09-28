@@ -31,6 +31,7 @@ import Fondo from '$lib/components/Fondo.svelte';
 import HdrKiosco from '$lib/components/HdrKiosco.svelte';
 import CapaAlertas from '$lib/components/CapaAlertas.svelte';
 import CapaSalida from '$lib/components/CapaSalida.svelte';
+import MarcoRotacion from '$lib/components/MarcoRotacion.svelte';
 import Combustible from '$lib/components/pantallas/Combustible.svelte';
 import Legends from '$lib/components/pantallas/Legends.svelte';
 import Reportes from '$lib/components/pantallas/Reportes.svelte';
@@ -106,6 +107,11 @@ let salidaModo = $state<'cuenta' | 'ya' | null>(null);
 let salidaSegundos = $state(0);
 let salidaSonado = $state<'cuenta' | 'ya' | null>(null);  // para no repetir el bocinazo
 let salidaReloj = 0;   // sólo para `?salida=cuenta`: fin de la cuenta forzada
+
+/* Marco de rotación: la línea del contorno que se consume con el tiempo que
+   le queda a la pantalla actual. */
+let restanteRotacion = $state(ROTACION_MS / 1000);
+let t0Rotacion = Date.now();
 const HORA_SALIDA = `${String(SALIDA_HORA).padStart(2, '0')}:${String(SALIDA_MIN).padStart(2, '0')}`;
 
 let banda = $state<EventoKiosko[]>([]);
@@ -167,6 +173,11 @@ function tickReloj() {
 	apagado = debeApagarse();
 	modoNoche = h >= NOCHE_DESDE || h < 6;
 	tickSalida(now);
+
+	// Lo que le queda a esta pantalla. Se recalcula contra el reloj y no con
+	// un contador que baja, para que si la laptop se duerme o la pestaña queda
+	// en segundo plano, al volver muestre el tiempo real que queda.
+	restanteRotacion = Math.max(0, (ROTACION_MS - (Date.now() - t0Rotacion)) / 1000);
 }
 
 /**
@@ -347,6 +358,8 @@ function avanzar() {
 	saliendo = true;
 	setTimeout(() => {
 		pos = (pos + 1) % orden.length;
+		// El marco y el número arrancan con la pantalla nueva, no con el giro.
+		t0Rotacion = Date.now();
 		if (pos === 0) orden = barajar();   // vuelta nueva, orden nuevo
 		saliendo = false;
 		// Fondo nuevo en cada giro (aleatorio de los locales).
@@ -410,6 +423,8 @@ interface ParamsUrl {
 	fija: number | null;
 	sinAnim: boolean;
 	debug: boolean;
+	/** Fuerza el marco de rotación aunque la pantalla esté fija. */
+	marco?: boolean;
 	replay?: boolean;
 	salida?: 'cuenta' | 'ya' | 'fuera';
 }
@@ -428,6 +443,10 @@ function leerParams(): ParamsUrl | null {
 		fija: congelar ? PANTALLAS.findIndex((p) => p.id === id) : null,
 		sinAnim: q.get('sinanim') === '1',
 		debug: q.get('debug') === '1',
+		// `?marco=1`: muestra el marco aunque la pantalla esté fija. El marco se
+		// esconde justamente cuando no hay rotación (pantalla anclada por URL),
+		// así que sin este atajo no hay forma de revisarlo ni de capturarlo.
+		marco: q.get('marco') === '1',
 		// OJO: sin esta línea `?replay=1` no hacía nada (el campo estaba
 		// declarado en el tipo pero nunca se llenaba) y las capturas salían
 		// sin aviso, lo que parecía un fallo del snapshot.
@@ -467,6 +486,7 @@ onMount(() => {
 	window.addEventListener('keydown', alTeclar);
 	window.addEventListener('pointerdown', alTocar);
 
+	t0Rotacion = Date.now();
 	tickReloj();
 	refrescar();
 	leerShell();
@@ -674,6 +694,16 @@ function cambiarVolumen(v: number) {
 			<canvas class="confeti" bind:this={canvasRef} aria-hidden="true"></canvas>
 
 			<CapaAlertas {banda} {toast} {toma} onCerrarToma={() => (toma = null)} />
+
+			<!--
+				Marco de rotación. Se oculta cuando la pantalla está fija por URL
+				(no hay cambio que anunciar), cuando hay una toma de pantalla o la
+				marca de salida (mandan ellas, no el reloj), y con `?sinanim=1` para
+				que las capturas salgan sin cromo.
+			-->
+			{#if !sinAnim && !toma && !salidaModo && (params?.marco || params?.fija === null)}
+				<MarcoRotacion duracionMs={ROTACION_MS} restante={restanteRotacion} token={pos} />
+			{/if}
 
 			<footer class="pie">
 				<span>ECCSA · Centro de Operaciones · v{APP_VERSION} · shell {SHELL_VERSION}</span>
