@@ -81,11 +81,18 @@ nuevo:
 | **Reporte firmado** | `destaque` | **toma de pantalla** 8 s + arpegio + confeti |
 | **Cumpleaños hoy / aniversario** | `destaque` | toma de pantalla 9 s |
 | Aviso del admin (`HUB_Notificaciones`) | `alerta` | banda ámbar, 3 notas graves |
+| **Entrada / salida de la oficina** | `info` | banda con su propio tono: 👋 *Hola, {nombre}* (tres notas que suben) · 🚪 *Adiós, {nombre}* (dos que bajan). Vienen de `HUB_NetworkPresence`, que escribe el `network_scanner_worker`; el kiosco sólo lee |
 | Sin movimiento 6 h | `info` | banda informativa |
 
 Antispam: dedup por `id`, máximo 1 `destaque` cada 3 min, tope de 3 bandas, y en
 el primer arranque no se reproduce el historial (si no, la TV saluda a la
-oficina con 100 avisos de golpe).
+oficina con 100 avisos de golpe). Las entradas/salidas además tienen un
+**cooldown de 20 min por persona y tipo**: sin él, un celular que pierde el
+WiFi un momento produce SALIDA+ENTRADA cada 3 minutos y la pantalla se llena
+del mismo nombre.
+
+Y NO toman la pantalla: alguien entra 8 veces al día, y si cada entrada fuera
+un takeover, el pasillo sería insoportable. Son saludos, no alarmas.
 
 ### El audio
 Sintetizado con **WebAudio**, sin archivos: 0 KB, 0 peticiones, imposible que se
@@ -113,6 +120,7 @@ Efectos caros (confeti, ken-burns) se apagan solos si los fps caen de 40
 | `?sinrotacion=1` | quita la rotación, se queda en la primera |
 | `?sinanim=1` | sin animaciones de entrada (para capturas) |
 | `?debug=1` | vuelca la geometría de la pantalla (`.kpis`, `.veh`… con medidas) |
+| `?replay=1` | vuelve a sacar los últimos avisos (uno cada 3.5 s): para ver y **oír** cómo se ve una alerta sin esperar a que alguien entre |
 
 Las capturas de las 10 pantallas se sacan solas con el Edge del ServerVM (el
 mismo que corre en la TV): `deploy/capturar.ps1`.

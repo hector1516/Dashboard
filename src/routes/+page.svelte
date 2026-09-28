@@ -196,7 +196,9 @@ function procesarEventos(eventos: EventoKiosko[]) {
 }
 
 function anunciar(e: EventoKiosko) {
-	tocar(e.nivel);
+	// El evento puede traer su propio tono (p. ej. 'hola'/'adios' de las
+	// entradas y salidas); si no, suena el del nivel.
+	tocar(e.tono ?? e.nivel);
 
 	if (e.nivel === 'destaque' && e.segundos) {
 		const ahora = Date.now();
@@ -319,7 +321,7 @@ function leerParams() {
 	// animaciones de entrada, lo que hacía parecer que faltaban tarjetas.
 	const id = q.get('pantalla');
 	const congelar = !!(id && PANTALLAS.some((p) => p.id === id));
-	const out: { fija: number | null; sinAnim: boolean; debug: boolean } = {
+	const out: { fija: number | null; sinAnim: boolean; debug: boolean; replay?: boolean } = {
 		// `null` = la pantalla queda fija donde esté (para capturar o revisar).
 		fija: congelar ? PANTALLAS.findIndex((p) => p.id === id) : null,
 		sinAnim: q.get('sinanim') === '1',
@@ -360,6 +362,7 @@ onMount(() => {
 	// ?sinanim=1: sin animaciones de entrada (capturas y revisión de diseño).
 	sinAnim = params?.sinAnim === true;
 	if (params?.debug) setTimeout(dibujarDebug, 1500);
+	if (params?.replay) setTimeout(replayEventos, 2500);
 
 	const tReloj = setInterval(tickReloj, 1000);
 	const tDatos = setInterval(refrescar, REFRESCO_MS);
@@ -400,6 +403,20 @@ onDestroy(() => {
  * esto el `docker exec ... --dump-dom` deja los números en el HTML y se
  * revisan sin adivinar.
  */
+/**
+ * ?replay=1 — vuelve a sacar los últimos avisos uno por uno.
+ * Sirve para ver y ESCUCHAR cómo se ven las alertas (una entrada, una salida,
+ * un cumpleaños) sin tener que provocarlas. Los marca como vistos para que no
+ * se repitan en el ciclo normal.
+ */
+function replayEventos() {
+	const ultimos = (datos.eventos ?? []).slice(0, 4).reverse();
+	if (!ultimos.length) return;
+	// Se marcan como vistos para que el ciclo normal no los vuelva a sacar.
+	ultimos.forEach((e) => vistos.add(e.id));
+	ultimos.forEach((e, i) => setTimeout(() => anunciar(e), i * 3500));
+}
+
 function dibujarDebug() {
 	const area = document.querySelector('.area');
 	const out: string[] = [];

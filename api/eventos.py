@@ -23,6 +23,12 @@ import datetime as _dt
 
 MAX_PENDIENTES_POR_VUELTA = 4   # no se anuncian 30 km de golpe
 
+# Una persona no genera más de un aviso de presencia cada N minutos. Sin esto,
+# un celular que pierde el WiFi un momento produce SALIDA+ENTRADA cada 3
+# minutos y la pantalla se llena del mismo nombre (el detector usa 5 min de
+# tolerancia, pero con la red intermitente se pasan).
+COOLDOWN_PRESENCIA_MIN = 20
+
 
 def _log_debug(msg: str) -> None:
     """Salida por stdout; el snapshotter la tee-a a /data/sync.log."""
@@ -41,7 +47,8 @@ def _corta(texto, n=90):
     return t if len(t) <= n else t[: n - 1] + "…"
 
 
-def detectar(cursores_nuevos: dict, cursores_previos: dict, detalles: dict, hoy_cumple: list) -> list:
+def detectar(cursores_nuevos: dict, cursores_previos: dict, detalles: dict, hoy_cumple: list,
+             presencia_previa: dict | None = None) -> list:
     """
     Devuelve la lista de eventos NUEVOS de este ciclo (ya con su `id` estable).
     `cursores_previos` viene de state.json; si está vacío (primer arranque) se
@@ -63,7 +70,7 @@ def detectar(cursores_nuevos: dict, cursores_previos: dict, detalles: dict, hoy_
         if primero:
             return 0
         try:
-            return max(0, cursores_nuevos[clave]["id"] - cursores_previos.get(clave, {}).get("id", 0))
+            return max(0, int(cursores_nuevos[clave]["id"]) - int(cursores_previos.get(clave, 0)))
         except Exception:
             return 0
 
@@ -122,6 +129,38 @@ def detectar(cursores_nuevos: dict, cursores_previos: dict, detalles: dict, hoy_
             "ts": _iso(),
             "segundos": 8,
         })
+
+    # ── Entradas y salidas de la oficina (por MAC) ─────────────────────────
+    # Son saludos, no alarmas: van como banda abajo con su propio tono, y NO
+    # toman la pantalla. Alguien entra 8 veces al día; si cada entrada fuera un
+    # takeover, la pantalla del pasillo sería insoportable.
+    vistos = dict(presencia_previa or {})
+    for p in (detalles.get("presencia") or [])[:nuevo("presencia")][:4]:
+        id_usuario = p.get("IdUsuario") or 0
+        clave = f"{id_usuario}:{p['TipoEvento']}"
+        ultima = vistos.get(clave)
+        if ultima:
+            try:
+                if (_dt.datetime.now() - _dt.datetime.fromisoformat(ultima)).total_seconds() < \
+                        COOLDOWN_PRESENCIA_MIN * 60:
+                    continue
+            except Exception:
+                pass
+        vistos[clave] = _iso()
+        entrada = p["TipoEvento"] == "ENTRADA"
+        nombre = p.get("Nombre") or "(sin usuario)"
+        eventos.append({
+            "id": f"presencia:{p['Id']}",
+            "nivel": "info",
+            "tono": "hola" if entrada else "adios",
+            "icono": "👋" if entrada else "🚪",
+            "titulo": f"{'Hola' if entrada else 'Adiós'}, {nombre}",
+            "texto": p.get("NombreDispositivo") or "dispositivo",
+            "meta": "entró a la oficina" if entrada else "salió de la oficina",
+            "ts": _iso(str(p.get("FechaHora"))[:19]),
+        })
+    if presencia_previa is not None:
+        presencia_previa.update(vistos)
 
     # ── Cumpleaños de HOY: el destaque del día ──────────────────────────────
     for p in (hoy_cumple or []):

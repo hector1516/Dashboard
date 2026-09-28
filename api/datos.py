@@ -574,20 +574,36 @@ def cursores_para_eventos() -> dict:
         except Exception as exc:
             out["ganadores"] = {"id": 0, "fecha": "", "error": str(exc)[:120]}
 
+        try:
+            cur.execute("SELECT ISNULL(MAX(Id),0) AS m FROM HUB_NetworkPresence")
+            out["presencia"] = {"id": cur.fetchone()["m"], "fecha": ""}
+        except Exception as exc:
+            out["presencia"] = {"id": 0, "fecha": "", "error": str(exc)[:120]}
+
     return out
 
 
-def detalles_de(nuevos: dict) -> dict:
+def detalles_de(desde: dict) -> dict:
     """
-    Trae el detalle (folio, cliente, foto…) de los registros nuevos que se van
-    a anunciar. `nuevos` son los Id ya detectados por cursores_para_eventos.
+    Trae el detalle (folio, cliente, foto…) de los registros a partir de un Id.
+
+    OJO con el nombre y el valor: `desde[t]` es el **último Id ya procesado**
+    (el cursor previo), NO cuántos hay nuevos. Antes se pasaba la diferencia
+    ("cuántos nuevos") y se usaba como umbral del `WHERE Id >`, así que con
+    saltos grandes (primer arranque, worker caido un rato, o 40 km de golpe) el
+    `WHERE` no encontraba nada y los eventos se perdían en silencio.
+
+    El recorte fino (cuántos de los encontrados se anuncian) lo hace
+    `eventos.detectar`, que sí sabe cuántos son nuevos.
     """
-    salida = {"km": [], "tickets": [], "reportes": [], "firmados": [], "avisos": []}
-    if not any(nuevos.values()):
+    salida = {"km": [], "tickets": [], "reportes": [], "firmados": [], "avisos": [],
+              "presencia": []}
+    if not desde:
         return salida
+    nuevos = desde
     conn = get_connection()
     with conn.cursor(as_dict=True) as cur:
-        if nuevos.get("km"):
+        if "km" in nuevos:
             cur.execute("""
                 SELECT TOP 8 k.Id, a.MarcaModelo, u.Nombre, k.Kilometros,
                     CONVERT(VARCHAR(16), k.FechaHora, 120) AS fecha
@@ -598,7 +614,7 @@ def detalles_de(nuevos: dict) -> dict:
             """, (nuevos["km"],))
             salida["km"] = cur.fetchall()
 
-        if nuevos.get("tickets"):
+        if "tickets" in nuevos:
             cur.execute("""
                 SELECT TOP 6 t.Id, t.FolioTicket, a.MarcaModelo, u.Nombre,
                     ISNULL(c.Cliente, t.IdCliente) AS cliente, t.Descripcion,
@@ -611,7 +627,7 @@ def detalles_de(nuevos: dict) -> dict:
             """, (nuevos["tickets"],))
             salida["tickets"] = cur.fetchall()
 
-        if nuevos.get("reportes"):
+        if "reportes" in nuevos:
             cur.execute("""
                 SELECT TOP 6 IdReporte, Folio, Cliente, Tecnico,
                     CAST(Fecha AS VARCHAR(10)) AS fecha, Estatus
@@ -619,7 +635,7 @@ def detalles_de(nuevos: dict) -> dict:
             """, (nuevos["reportes"],))
             salida["reportes"] = cur.fetchall()
 
-        if nuevos.get("firmados"):
+        if "firmados" in nuevos:
             cur.execute("""
                 SELECT TOP 6 IdReporte, Folio, Cliente, Tecnico
                 FROM ReportesServicio
@@ -628,7 +644,21 @@ def detalles_de(nuevos: dict) -> dict:
             """, (nuevos["firmados"],))
             salida["firmados"] = cur.fetchall()
 
-        if nuevos.get("avisos"):
+        if "presencia" in nuevos:
+            # Entradas y salidas de la oficina detectadas por MAC. Es lo que
+            # escribe el network_scanner_worker; el kiosco sólo lo lee.
+            cur.execute("""
+                SELECT TOP 8 p.Id, p.TipoEvento, p.FechaHora, p.Confianza,
+                       d.IdUsuario, d.NombreDispositivo, d.Tipo,
+                       ISNULL(u.Nombre, '(sin usuario)') AS Nombre
+                FROM HUB_NetworkPresence p
+                JOIN HUB_NetworkDevices d ON d.Id = p.IdDispositivo
+                LEFT JOIN HUB_Users u ON u.Id = d.IdUsuario
+                WHERE p.Id > %s ORDER BY p.Id DESC
+            """, (nuevos["presencia"],))
+            salida["presencia"] = cur.fetchall()
+
+        if "avisos" in nuevos:
             cur.execute("""
                 SELECT TOP 4 Id, Titulo, Mensaje, Autor,
                     CONVERT(VARCHAR(16), FechaEnvio, 120) AS fecha

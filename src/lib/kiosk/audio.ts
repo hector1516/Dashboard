@@ -157,7 +157,7 @@ function nota(freq: number, dur: number, vol: number, atraso = 0, tipo: Oscillat
 	osc.stop(t0 + dur + 0.05);
 }
 
-export type Tono = 'info' | 'exito' | 'destaque' | 'alerta' | 'click';
+export type Tono = 'info' | 'exito' | 'destaque' | 'alerta' | 'click' | 'hola' | 'adios';
 
 /**
  * Tonos del kiosco. Cortos y de poca información: son un "algo pasó" para
@@ -185,6 +185,15 @@ export function tocar(tono: Tono) {
 			break;
 		case 'click':
 			nota(1200, 0.03, 0.07);
+			break;
+		case 'hola':
+			// Saludo: tres notas que suben. Amable, no estridente: es un "hola"
+			// a la oficina, no una alarma.
+			[523.25, 659.25, 783.99].forEach((f, i) => nota(f, 0.13, 0.13, i * 0.075));
+			break;
+		case 'adios':
+			// Despedida: dos notas que bajan, más suaves que el saludo.
+			[659.25, 440].forEach((f, i) => nota(f, 0.16, 0.11, i * 0.1, 'triangle'));
 			break;
 	}
 }

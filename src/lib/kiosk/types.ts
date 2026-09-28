@@ -10,11 +10,16 @@
 
 export type NivelEvento = 'info' | 'exito' | 'destaque' | 'alerta';
 
+/** Sonido del aviso. Por defecto es el del nivel; algunos lo pisan. */
+export type TonoEvento = NivelEvento | 'hola' | 'adios' | 'click';
+
 /** Evento en vivo para el ticker / toast / toma de pantalla. */
 export interface EventoKiosko {
 	/** Estable y único: "km:51231", "rep:4471". Es lo que deduplica. */
 	id: string;
 	nivel: NivelEvento;
+	/** Tono propio; si no viene, suena el del nivel. */
+	tono?: TonoEvento;
 	icono: string;
 	titulo: string;
 	texto: string;

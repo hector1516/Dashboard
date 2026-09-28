@@ -171,17 +171,23 @@ def ciclo() -> dict:
         degradado.append("cursores")
         _log(f"WARN cursores: {exc}")
 
+    # Cooldown de presencia: se lee del state y se actualiza en el mismo
+    # `detectar` (muta el dict que se le pasa), para no reprocesar en RAM.
+    presencia_previa = state.get("presencia_vistos") or {}
+
+    # Un solo shape para las dos funciones: {tabla: id} con el cursor previo.
+    _prev_ids = {t: cursores_previos.get(t, {}).get("id", 0)
+                 for t in ("km", "tickets", "reportes", "firmados", "avisos", "presencia")}
+
     nuevos = E.detectar(
         cursores,
-        cursores_previos,
-        D.detalles_de({
-            "km": cursores.get("km", {}).get("id", 0) - cursores_previos.get("km", {}).get("id", 0),
-            "tickets": cursores.get("tickets", {}).get("id", 0) - cursores_previos.get("tickets", {}).get("id", 0),
-            "reportes": cursores.get("reportes", {}).get("id", 0) - cursores_previos.get("reportes", {}).get("id", 0),
-            "firmados": cursores.get("firmados", {}).get("id", 0) - cursores_previos.get("firmados", {}).get("id", 0),
-            "avisos": cursores.get("avisos", {}).get("id", 0) - cursores_previos.get("avisos", {}).get("id", 0),
-        }) if cursores else {},
+        # OJO: a las dos funciones se les pasa el MISMO shape, {tabla: id} con
+        # el cursor PREVIO (el Id desde el que hay que leer), no la diferencia.
+        # `eventos.detectar` es quien recorta a los nuevos.
+        _prev_ids,
+        D.detalles_de(_prev_ids) if cursores else {},
         bloques["celebraciones"]["cumpleanos"]["hoy"],
+        presencia_previa,
     )
 
     # Sin movimiento por mucho tiempo → un aviso informativo, no un error.
@@ -195,10 +201,15 @@ def ciclo() -> dict:
 
     # Estado (cursores) — se avanza aunque no haya red, para no repetir avisos.
     if cursores:
+        # `presencia_vistos` guarda "IdUsuario:TIPO" → última hora anunciada, y
+        # se poda para que el state.json no crezca sin límite.
+        vistos = {k: v for k, v in presencia_previa.items()
+                  if v >= time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(time.time() - 7200))}
         state = {
             "cursores": cursores,
             "ultimo_evento": nuevos[0]["ts"] if nuevos else state.get("ultimo_evento"),
             "ranking_legends": [r["nombre"] for r in bloques["legends"]["ranking"]],
+            "presencia_vistos": vistos,
             "actualizado": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
         _escribir_json(C.STATE, state)
