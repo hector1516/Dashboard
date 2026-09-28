@@ -164,6 +164,30 @@ export interface Snapshot {
 		top_del_dia: { nombre: string; valor: number; unidad: string } | null;
 	};
 
+	/**
+	 * Asistencia del DÍA, calculada desde `HUB_NetworkPresence` (la red).
+	 * Sólo aparecen las personas que tengan al menos un evento hoy: nadie más.
+	 */
+	asistencia: {
+		personas: {
+			id_usuario: number;
+			nombre: string;
+			/** "YYYY-MM-DD HH:MM" de la primera ENTRADA del día (verde). */
+			entrada: string;
+			/** "YYYY-MM-DD HH:MM" de la última SALIDA (rojo); "" si sigue dentro. */
+			salida: string;
+			/** Cuántos eventos de red tuvo hoy (entra/sale varias veces). */
+			eventos: number;
+			/** Último evento del día = ENTRADA → sigue dentro de la oficina. */
+			en_sitio: boolean;
+			/** Ruta local del avatar; null si no tiene foto. */
+			avatar: string | null;
+		}[];
+		total: number;
+		dentro: number;
+		salieron: number;
+	};
+
 	clima: {
 		actual: {
 			temperatura: number | null;

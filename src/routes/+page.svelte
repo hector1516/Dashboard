@@ -41,6 +41,7 @@ import Fotos from '$lib/components/pantallas/Fotos.svelte';
 import Metricas from '$lib/components/pantallas/Metricas.svelte';
 import Clima from '$lib/components/pantallas/Clima.svelte';
 import Pulso from '$lib/components/pantallas/Pulso.svelte';
+import Asistencia from '$lib/components/pantallas/Asistencia.svelte';
 
 /* ── Configuración de la pantalla ─────────────────────────────── */
 const ROTACION_MS = 45_000;      // 45 s por pantalla
@@ -77,7 +78,8 @@ const PANTALLAS: PantallaDef[] = [
 	{ id: 'metricas', icono: '📈', label: 'Métricas' },
 	{ id: 'fotos', icono: '📸', label: 'Fotografías' },
 	{ id: 'clima', icono: '🌤️', label: 'Clima' },
-	{ id: 'notas', icono: '📌', label: 'Notas' }
+	{ id: 'notas', icono: '📌', label: 'Notas' },
+	{ id: 'asistencia', icono: '🕘', label: 'Asistencia de hoy' }
 ];
 
 /* ── Estado ───────────────────────────────────────────────────── */
@@ -661,6 +663,7 @@ function cambiarVolumen(v: number) {
 							{:else if pantalla.id === 'fotos'}<Fotos {datos} />
 							{:else if pantalla.id === 'clima'}<Clima {datos} />
 							{:else if pantalla.id === 'notas'}<Notas {datos} />
+							{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
 							{/if}
 						{/key}
 					{/if}

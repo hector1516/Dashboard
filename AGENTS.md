@@ -126,7 +126,7 @@ Efectos caros (confeti, ken-burns) se apagan solos si los fps caen de 40
 | `?salida=ya` | fuerza el cartel final con el 18:30 gigante |
 | `?salida=fuera` | desactiva la marca de salida aunque sea la hora (para capturar otra cosa a las 18:30) |
 
-Las capturas de las 10 pantallas se sacan solas con el Edge del ServerVM (el
+Las capturas de las 11 pantallas se sacan solas con el Edge del ServerVM (el
 mismo que corre en la TV): `deploy/capturar.ps1`.
 
 ## Despliegue

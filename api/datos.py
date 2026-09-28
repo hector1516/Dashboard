@@ -255,6 +255,72 @@ def tickets(sunday: str) -> dict:
     return {"total_semana": total, "ultimos": ultimos, "por_vehiculo": por_vehiculo}
 
 
+# ── ASISTENCIA DEL DÍA ─────────────────────────────────────────────────────
+def asistencia_hoy() -> dict:
+    """
+    Quién entró y salió HOY, desde `HUB_NetworkPresence`.
+
+    OJO con la fuente: existen otras dos tablas de asistencia en la base y
+    NINGUNA sirve para esto hoy —
+      · `ControlAsistencia` (la vieja, del checador): su último registro es de
+        enero de 2023, está abandonada.
+      · `HUB_AsistenciaDiaria`: la最后一次 vez que se calculó fue el 2026-09-11
+        y la mayoría de sus filas traen las horas en NULL; sólo la rellenó a
+        mano una vez.
+    La que se escribe sola todos los días es `HUB_NetworkPresence`, y la
+    escribe el `network_scanner_worker` del contenedor `workersadmon` cuando ve
+    aparecer o desaparecer una MAC conocida en la red.
+
+    Por persona se toma la PRIMERA entrada del día y la ÚLTIMA salida: un
+    celular que entra y sale 6 veces no debe verse como 6 llegadas distintas.
+    Quien sigue dentro (último evento = ENTRADA) va con `en_sitio` para no
+    mostrar una salida que no ha pasado.
+    """
+    conn = get_connection()
+    with conn.cursor(as_dict=True) as cur:
+        cur.execute("""
+            SELECT
+                d.IdUsuario AS id_usuario,
+                ISNULL(u.Nombre, '(sin usuario)') AS nombre,
+                MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END) AS entrada,
+                MAX(CASE WHEN p.TipoEvento = 'SALIDA'  THEN p.FechaHora END) AS salida,
+                COUNT(*) AS eventos
+            FROM HUB_NetworkPresence p
+            JOIN HUB_NetworkDevices d ON d.Id = p.IdDispositivo
+            LEFT JOIN HUB_Users u ON u.Id = d.IdUsuario
+            WHERE p.FechaHora >= CAST(CAST(GETDATE() AS date) AS datetime)
+              AND p.FechaHora < DATEADD(day, 1, CAST(CAST(GETDATE() AS date) AS datetime))
+              AND d.IdUsuario IS NOT NULL
+            GROUP BY d.IdUsuario, u.Nombre
+            ORDER BY entrada
+        """)
+        personas = cur.fetchall()
+
+        # Último evento de cada quien: define si sigue dentro de la oficina.
+        for p in personas:
+            cur.execute("""
+                SELECT TOP 1 p.TipoEvento AS tipo
+                FROM HUB_NetworkPresence p
+                JOIN HUB_NetworkDevices d ON d.Id = p.IdDispositivo
+                WHERE d.IdUsuario = %s
+                  AND p.FechaHora >= CAST(CAST(GETDATE() AS date) AS datetime)
+                ORDER BY p.Id DESC
+            """, (p["id_usuario"],))
+            ultimo = cur.fetchone()
+            p["en_sitio"] = bool(ultimo and ultimo["tipo"] == "ENTRADA")
+            p["entrada"] = _s(p["entrada"], hora=True)
+            p["salida"] = _s(p["salida"], hora=True)
+            p["eventos"] = int(p["eventos"] or 0)
+
+    dentro = sum(1 for p in personas if p["en_sitio"])
+    return {
+        "personas": personas,
+        "total": len(personas),
+        "dentro": dentro,
+        "salieron": len(personas) - dentro,
+    }
+
+
 # ── LEGENDS ─────────────────────────────────────────────────────────────────
 def legends() -> dict:
     """

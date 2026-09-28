@@ -64,7 +64,7 @@ para la TV de la oficina (1920×1080, red interna, sin Cloudflare).
   `/api/shell/state` (contrato del ECCSA-Shell, sin sesión) y `/healthz`.
 - **Instalador para la TV** (`deploy/tv/instalar-kiosco.ps1`): hosts, acceso
   directo de Edge en modo kiosco con sonido, autoinicio y apagado nocturno.
-- `deploy/capturar.ps1`: capturas de las 10 pantallas con el Edge del servidor
+- `deploy/capturar.ps1`: capturas de las 11 pantallas con el Edge del servidor
   (el mismo que corre en la TV).
 
 ### Cambio de alcance (2026-09-28, tras la primera revisión)

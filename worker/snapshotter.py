@@ -123,6 +123,7 @@ def ciclo() -> dict:
             "notas": D.notas(),
             "celebraciones": D.celebraciones(),
             "metricas": D.metricas(sunday),
+            "asistencia": D.asistencia_hoy(),
         }
     except Exception as exc:
         # La base no responde: se conserva el snapshot anterior.
@@ -156,6 +157,10 @@ def ciclo() -> dict:
     # (los de hoy y los del mes). Antes sólo se pegaban a los de hoy y las
     # tarjetas del mes salían con la inicial, que a 3 metros no dice nada.
     bloques["legends"]["ranking"] = _con_avatares(bloques["legends"]["ranking"], rutas_avatar)
+    # En asistencia NO se usa `_con_avatares` porque ése borra `id_usuario` y
+    # el front lo necesita como key de la lista.
+    for _p in bloques["asistencia"]["personas"]:
+        _p["avatar"] = rutas_avatar.get(_p.get("id_usuario"))
     for clave in ("cumpleanos", "aniversarios"):
         for grupo in ("hoy", "del_mes"):
             bloques["celebraciones"][clave][grupo] = _con_avatares(
@@ -243,6 +248,7 @@ def ciclo() -> dict:
         "cumpleanos": bloques["celebraciones"]["cumpleanos"],
         "aniversarios": bloques["celebraciones"]["aniversarios"],
         "metricas": bloques["metricas"],
+        "asistencia": bloques["asistencia"],
         "clima": clima,
         "fondos": fondos,
         # Anchos de los thumbs ya generados. El front los lee de acá en vez de

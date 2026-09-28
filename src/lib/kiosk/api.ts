@@ -41,6 +41,7 @@ export function snapshotVacio(build = 'dev'): Snapshot {
 			ultimo_evento: null,
 			top_del_dia: null
 		},
+		asistencia: { personas: [], total: 0, dentro: 0, salieron: 0 },
 		clima: {
 			actual: { temperatura: null, humedad: null, viento: null, codigo_clima: 0, descripcion: 'Sin datos', icono: '❓', es_dia: true },
 			hoy: { max: null, min: null, prob_lluvia: null },

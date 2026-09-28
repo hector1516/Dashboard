@@ -72,6 +72,7 @@ def _sin_datos() -> dict:
                   "hoy": {"max": None, "min": None, "prob_lluvia": None},
                   "manana": {"max": None, "min": None, "prob_lluvia": None},
                   "leido_en": None},
+        "asistencia": {"personas": [], "total": 0, "dentro": 0, "salieron": 0},
         "fondos": [],
         "eventos": [],
     }

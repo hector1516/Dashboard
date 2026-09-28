@@ -57,6 +57,14 @@ export function hhmm(iso: string | null | undefined): string {
 	return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+/** Iniciales para el círculo de avatar cuando la persona no tiene foto. */
+export function iniciales(nombre: string | null | undefined): string {
+	const partes = (nombre ?? '').trim().split(/\s+/).filter(Boolean);
+	if (!partes.length) return '?';
+	if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+	return (partes[0][0] + partes[1][0]).toUpperCase();
+}
+
 export function hhmmDiff(segundos: number): string {
 	if (segundos <= 0) return '00:00';
 	const h = Math.floor(segundos / 3600);
