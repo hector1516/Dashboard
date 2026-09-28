@@ -42,9 +42,9 @@
 		</div>
 
 		<div class="pie">
-			<div class="kpi orange" style="min-width:200px">
+			<div class="kpi orange" style="min-width:210px">
 				<span class="kpi-val">{num(t.total_semana)}</span>
-				<span class="kpi-lab">tickets esta semana</span>
+				<span class="kpi-lab">{t.total_semana === 1 ? 'ticket esta semana' : 'tickets esta semana'}</span>
 			</div>
 			<div class="barra-lateral">
 				{#each (t.por_vehiculo ?? []).slice(0, 5) as x, i}
@@ -66,10 +66,14 @@
 </div>
 
 <style>
-	/* Sin foto la tarjeta es sólo texto: se angosta y caben más por pantalla. */
+	/* Sin foto la tarjeta es sólo texto: se angosta y caben más por pantalla.
+	   `auto-fit` + `justify-content: center` para que con POCOS tickets (lunes a
+	   la mañana suele haber uno o dos) el bloque quede centrado y no perdido
+	   contra el borde izquierdo. */
 	.rejilla {
-		flex: 1; min-height: 0; display: grid; gap: 10px; align-content: start;
-		grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); overflow: hidden;
+		flex: 1; min-height: 0; display: grid; gap: 12px; align-content: center;
+		grid-template-columns: repeat(auto-fit, minmax(215px, 250px));
+		justify-content: center; overflow: hidden;
 	}
 	.tkt {
 		display: flex; flex-direction: column; justify-content: center; gap: 3px;
