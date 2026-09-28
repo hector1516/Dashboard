@@ -1,0 +1,8 @@
+# Versions alineadas al mandato del ECCSA-Shell (Field manda): el PDF que ve
+# un usuario y los datos que ve la pantalla tienen que salir igual en todas las
+# apps. Ver ECCSA-Shell/docs/VERSIONES.md.
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+pydantic==2.9.0
+pymssql==2.2.11
+Pillow==11.0.0

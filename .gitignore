@@ -1,0 +1,15 @@
+node_modules/
+build/
+.svelte-kit/
+.DS_Store
+*.log
+
+# Credenciales: NUNCA al repo (ver AGENTS.md §Credenciales)
+secretos_local.py
+deploy/env.local
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc

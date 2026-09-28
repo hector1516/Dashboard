@@ -1,0 +1,5 @@
+/* ECCSA-Shell · generado por tools/sync_shell.py — NO editar a mano.
+   Úsalo en el banner:  import { APP_VERSION, SHELL_VERSION } from '$lib/shell.js' */
+export const SHELL_VERSION = '1.9.1';
+export const APP_ID = 'dashboard';
+export const APP_VERSION = '1.0.0';

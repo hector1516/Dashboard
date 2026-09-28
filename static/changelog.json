@@ -1,0 +1,9 @@
+{
+	"app": "dashboard",
+	"version": "1.0.0",
+	"cambios": [
+		"🖥️ Centro de Operaciones ECCSA en pantalla completa: 10 pantallas que rotan cada 45 s.",
+		"🔔 Avisos en vivo con sonido: registro de km, tickets, reportes firmados y cumpleaños.",
+		"📴 Desconectado a propósito: si se cae la red o la base de datos, la pantalla sigue mostrando el último dato y lo dice."
+	]
+}

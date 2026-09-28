@@ -1,0 +1,10 @@
+node_modules
+.svelte-kit
+build
+.git
+.github
+__pycache__
+*.pyc
+api/secretos_local.py
+deploy/env.local
+*.log

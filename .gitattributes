@@ -1,0 +1,8 @@
+# El repo se edita en Windows (CRLF) y se despliega en Linux. Sin esto, los
+# .sh llegan al contenedor con ^M y no corren.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.woff2 binary
