@@ -81,6 +81,7 @@ nuevo:
 | **Reporte firmado** | `destaque` | **toma de pantalla** 8 s + arpegio + confeti |
 | **Cumpleaños hoy / aniversario** | `destaque` | toma de pantalla 9 s |
 | Aviso del admin (`HUB_Notificaciones`) | `alerta` | banda ámbar, 3 notas graves |
+| **Marca de salida (lun–vie 18:30)** | `salida` | NO es una alerta: es una capa propia (`CapaSalida.svelte`) que se come la pantalla. Cuenta regresiva de 10 s (número gigante sobre rojo latente + un "tic" por segundo) y al llegar el **18:30 en números de 520 px** con bocinazo, 45 s. Pausa la rotación mientras está. Atajo: `?salida=cuenta\|ya\|fuera` |
 | **Entrada / salida de la oficina** | `info` | banda con su propio tono: 👋 *Hola, {nombre}* (tres notas que suben) · 🚪 *Adiós, {nombre}* (dos que bajan). Vienen de `HUB_NetworkPresence`, que escribe el `network_scanner_worker`; el kiosco sólo lee |
 | Sin movimiento 6 h | `info` | banda informativa |
 
@@ -121,6 +122,9 @@ Efectos caros (confeti, ken-burns) se apagan solos si los fps caen de 40
 | `?sinanim=1` | sin animaciones de entrada (para capturas) |
 | `?debug=1` | vuelca la geometría de la pantalla (`.kpis`, `.veh`… con medidas) |
 | `?replay=1` | vuelve a sacar los últimos avisos (uno cada 3.5 s): para ver y **oír** cómo se ve una alerta sin esperar a que alguien entre |
+| `?salida=cuenta` | fuerza la cuenta regresiva de la salida (10→1 y salta sola al cartel) |
+| `?salida=ya` | fuerza el cartel final con el 18:30 gigante |
+| `?salida=fuera` | desactiva la marca de salida aunque sea la hora (para capturar otra cosa a las 18:30) |
 
 Las capturas de las 10 pantallas se sacan solas con el Edge del ServerVM (el
 mismo que corre en la TV): `deploy/capturar.ps1`.

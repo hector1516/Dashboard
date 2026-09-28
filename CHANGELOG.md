@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## Sin liberar (main)
+
+### Nuevo
+- **Marca de salida, lunes a viernes**: a las 18:29:50 la pantalla se pone roja
+  con una cuenta regresiva de 10 segundos (número de 620 px, fondo latente y un
+  "tic" por segundo) y al llegar muestra el **18:30 en números de 520 px**
+  ocupa toda la pantalla, con bocinazo de 5 notas. 45 s y vuelve a la
+  rotación normal. Pausa la rotación de pantallas mientras está.
+  `src/lib/components/CapaSalida.svelte`, `tickSalida()` en `+page.svelte`,
+  tonos `tic`/`salida` en `audio.ts`. Atajo de prueba: `?salida=cuenta|ya|fuera`.
+- **Saludos de entrada y salida** (`HUB_NetworkPresence`, la escribe el
+  `network_scanner_worker`): banda 👋 *Hola, {nombre}* con tres notas que suben y
+  🚪 *Adiós, {nombre}* con dos que bajan. Cooldown de 20 min por persona y tipo.
+  `?replay=1` los repite para verlos y oírlos.
+
+### Corregido
+- `datos.detalles_de()` recibía **cuántos** eventos había nuevos y lo usaba como
+  `WHERE Id > n`. Con saltos grandes (primer arranque, worker caído, 40 km de
+  golpe) no encontraba nada y los avisos se perdían en silencio. Ahora recibe el
+  cursor previo, que es lo que dice el `WHERE`.
+- `datos.detalles_de()` y `eventos.detectar()` recibían shapes distintos (ids vs
+  dicts), y esa diferencia hacía que `nuevo()` devolviera 0 sin avisar. Ahora las
+  dos reciben `{tabla: id}`.
+- `?replay=1` no hacía nada: el campo estaba declarado en el tipo de los
+  parámetros de URL pero nunca se llenaba.
+
 ## 2026-09-28 · v1.0.0 — Primera versión del kiosco
 
 App independiente con la información del dashboard que estaba dentro de Field,

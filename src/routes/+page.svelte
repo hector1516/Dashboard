@@ -30,6 +30,7 @@ import { APP_VERSION, SHELL_VERSION } from '$lib/shell.js';
 import Fondo from '$lib/components/Fondo.svelte';
 import HdrKiosco from '$lib/components/HdrKiosco.svelte';
 import CapaAlertas from '$lib/components/CapaAlertas.svelte';
+import CapaSalida from '$lib/components/CapaSalida.svelte';
 import Combustible from '$lib/components/pantallas/Combustible.svelte';
 import Legends from '$lib/components/pantallas/Legends.svelte';
 import Reportes from '$lib/components/pantallas/Reportes.svelte';
@@ -51,6 +52,16 @@ const APAGADO_DESDE = 0;         // 00:00
 const APAGADO_HASTA = 6;         // 06:00
 const NOCHE_DESDE = 23;          // modo noche (brillo) desde las 23
 const TICK_EVENTO_MS = 20_000;   // cuánto vive una banda
+
+/* ── Marca de salida (lun–vie) ─────────────────────────────────
+   A las 18:30 la gente se va. Los últimos 10 segundos salen a pantalla
+   completa con cuenta regresiva y, al llegar, el 18:30 en números gigantes.
+   Es deliberadamente lo más escandaloso del kiosco: en una pantalla de
+   pasillo, un aviso discreto no existe. */
+const SALIDA_HORA = 18;
+const SALIDA_MIN = 30;
+const SALIDA_AVISO_S = 10;       // cuenta regresiva de 10 s
+const SALIDA_POST_S = 45;        // el cartel de "18:30" dura 45 s
 
 /**
  * Las 10 pantallas. "pulso" entra dos veces por vuelta: es el latido de fondo
@@ -87,6 +98,13 @@ let bloqueado = $state(false);
 let shellEstado = $state<'idle' | 'syncing' | 'pending' | 'offline' | 'error'>('idle');
 let sinAnim = $state(false);
 let shellUsuario = $state<string | null>(null);
+
+/* Marca de salida: la cuenta regresiva y el cartel de las 18:30. */
+let salidaModo = $state<'cuenta' | 'ya' | null>(null);
+let salidaSegundos = $state(0);
+let salidaSonado = $state<'cuenta' | 'ya' | null>(null);  // para no repetir el bocinazo
+let salidaReloj = 0;   // sólo para `?salida=cuenta`: fin de la cuenta forzada
+const HORA_SALIDA = `${String(SALIDA_HORA).padStart(2, '0')}:${String(SALIDA_MIN).padStart(2, '0')}`;
 
 let banda = $state<EventoKiosko[]>([]);
 let toast = $state<EventoKiosko | null>(null);
@@ -146,6 +164,77 @@ function tickReloj() {
 	const h = now.getHours();
 	apagado = debeApagarse();
 	modoNoche = h >= NOCHE_DESDE || h < 6;
+	tickSalida(now);
+}
+
+/**
+ * Cuenta regresiva de la salida, de lunes a viernes.
+ *
+ * Se calcula con el reloj LOCAL del navegador, no con una zona horaria fija:
+ * la TV de la oficina es la que tiene que estar bien, y si el navegador no
+ * supiera la hora (o el reloj se atrasara), el cartel se vería en la hora
+ * incorrecta. Además el cálculo es relativo al momento, no a un temporizador
+ * acumulado: si la laptop pasa dormida 20 minutos o la pestaña estuvo en
+ * segundo plano, al volver se recalcula y no se queda Showing "3" para
+ * siempre.
+ */
+function tickSalida(now: Date) {
+	// `?salida=...`: atajo de pruebas. Tiene prioridad sobre el reloj real.
+	if (params?.salida) {
+		if (params.salida === 'fuera') {
+			salidaModo = null;
+			return;
+		}
+		if (params.salida === 'ya') {
+			salidaModo = 'ya';
+			salidaSegundos = 0;
+			return;
+		}
+		// 'cuenta': 10 segundos reales y luego salta a 'ya', para poder ver las
+		// dos fases en una sola captura.
+		if (salidaReloj === 0) salidaReloj = now.getTime() + SALIDA_AVISO_S * 1000;
+		const quedan = Math.ceil((salidaReloj - now.getTime()) / 1000);
+		if (quedan > 0) {
+			salidaModo = 'cuenta';
+			salidaSegundos = quedan;
+		} else {
+			salidaModo = 'ya';
+			salidaSegundos = 0;
+		}
+		return;
+	}
+
+	// Domingo (0) y sábado (6) no se sale a las 18:30.
+	const dia = now.getDay();
+	if (dia === 0 || dia === 6) {
+		salidaModo = null;
+		return;
+	}
+
+	const objetivo = new Date(now);
+	objetivo.setHours(SALIDA_HORA, SALIDA_MIN, 0, 0);
+	const dif = (objetivo.getTime() - now.getTime()) / 1000;
+
+	let modo: 'cuenta' | 'ya' | null = null;
+	let segundos = 0;
+	if (dif > 0 && dif <= SALIDA_AVISO_S) {
+		modo = 'cuenta';
+		segundos = Math.ceil(dif);
+	} else if (dif <= 0 && dif > -SALIDA_POST_S) {
+		modo = 'ya';
+	}
+
+	salidaModo = modo;
+	salidaSegundos = segundos;
+
+	// El tic de cada segundo y el bocinazo al llegar, sólo al cambiar de
+	// estado: si no, la pantalla wouldn't dejar de sonar cada segundo.
+	if (modo && modo !== salidaSonado) {
+		salidaSonado = modo;
+		tocar(modo === 'cuenta' ? 'tic' : 'salida');
+	} else if (!modo) {
+		salidaSonado = null;
+	}
 }
 
 /* ── Datos ────────────────────────────────────────────────────── */
@@ -251,7 +340,8 @@ function barajar(): number[] {
 
 function avanzar() {
 	// Una toma de pantalla en curso manda: no se cambia lo que se está leyendo.
-	if (toma) return;
+	// Y tampoco la marca de salida, que encima se come la pantalla entera.
+	if (toma || salidaModo) return;
 	saliendo = true;
 	setTimeout(() => {
 		pos = (pos + 1) % orden.length;
@@ -312,7 +402,17 @@ async function vigilarBuild() {
  *  `?pantalla=legends` deja esa pantalla fija; `?sinrotacion=1` quita el giro.
  *  Es el modo que usan las pruebas y el soporte en vivo: enseñar una pantalla
  *  concreta sin esperar a que le toque el turno. */
-function leerParams() {
+/** Parámetros de URL admitidos, ya validados. */
+interface ParamsUrl {
+	/** Índice de la pantalla fija, o null si sigue rotando. */
+	fija: number | null;
+	sinAnim: boolean;
+	debug: boolean;
+	replay?: boolean;
+	salida?: 'cuenta' | 'ya' | 'fuera';
+}
+
+function leerParams(): ParamsUrl | null {
 	if (typeof location === 'undefined') return null;
 	const q = new URLSearchParams(location.search);
 	// OJO: se leen TODOS los parámetros; no hay return temprano. Con
@@ -321,7 +421,7 @@ function leerParams() {
 	// animaciones de entrada, lo que hacía parecer que faltaban tarjetas.
 	const id = q.get('pantalla');
 	const congelar = !!(id && PANTALLAS.some((p) => p.id === id));
-	const out: { fija: number | null; sinAnim: boolean; debug: boolean; replay?: boolean } = {
+	const out: ParamsUrl = {
 		// `null` = la pantalla queda fija donde esté (para capturar o revisar).
 		fija: congelar ? PANTALLAS.findIndex((p) => p.id === id) : null,
 		sinAnim: q.get('sinanim') === '1',
@@ -329,7 +429,13 @@ function leerParams() {
 		// OJO: sin esta línea `?replay=1` no hacía nada (el campo estaba
 		// declarado en el tipo pero nunca se llenaba) y las capturas salían
 		// sin aviso, lo que parecía un fallo del snapshot.
-		replay: q.get('replay') === '1'
+		replay: q.get('replay') === '1',
+		// `?salida=cuenta` / `?salida=ya` / `?salida=fuera`: fuerza la marca de
+		// salida para revisarla y capturarla sin esperar a las 18:30 de un
+		// martes. Con 'cuenta' corre de 10 a 1 y se pasa sola a 'ya'.
+		salida: (['cuenta', 'ya', 'fuera'].includes(q.get('salida') ?? '')
+			? q.get('salida')
+			: undefined) as 'cuenta' | 'ya' | 'fuera' | undefined
 	};
 	// `?sinrotacion=1` o `?sinanim=1` sin `pantalla=`: congela en la primera.
 	if (!congelar && (q.get('sinrotacion') === '1' || q.get('sinanim') === '1')) {
@@ -491,6 +597,13 @@ function cambiarVolumen(v: number) {
 	contrato: `GET /api/shell/state` existe y responde, y la versión de app y de
 	shell se ven en el pie de la pantalla, que es donde sirven en un TV.
 -->
+
+<!--
+	Marca de salida. Va FUERA del `{#if apagado}` a propósito: el apagado es de
+	00:00 a 06:00 y la cuenta de las 18:30 nunca cae ahí, pero si algún día se
+	adelanta la ventana de apagado, la cuenta de salida debe verse igual.
+-->
+<CapaSalida modo={salidaModo} segundos={salidaSegundos} hora={HORA_SALIDA} sinAnim={sinAnim} />
 
 <!-- Apagado nocturno: negro absoluto, sin canvas ni animaciones -->
 {#if apagado}
