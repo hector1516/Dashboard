@@ -35,9 +35,6 @@
 		if (n > 14) return 142;
 		return 168;
 	});
-	const proporcionesOk = $derived(
-		img?.hay ? img.ancho === 1920 && img.alto === 1080 : false
-	);
 </script>
 
 <div class="screen">
@@ -55,14 +52,6 @@
 			<h1 class="titulo" style="--tam:{tamTitulo}px">{img.titulo}</h1>
 			{#if img.subida}
 				<span class="pie">subida el {img.subida}</span>
-			{/if}
-			{#if !proporcionesOk && img.ancho && img.alto}
-				<!--
-					Ojo en la vista, no un error en la TV: si la imagen no es
-					1920x1080 se ve estirada y quien la subió es quien puede
-					arreglarlo. Aquí se avisa y ya.
-				-->
-				<span class="aviso">⚠ la imagen mide {img.ancho}×{img.alto}, se ve estirada</span>
 			{/if}
 		</div>
 	{:else}
@@ -85,17 +74,18 @@
 		height: 100%;
 		object-fit: cover;
 		/* Sin `object-fit: contain`: si la imagen no es 16:9 se recorta, y una
-		   portada recortada se ve mejor que una portada estirada. El aviso de
-		   proporción le avisa a quien la subió. */
+		   portada recortada se ve mejor que una portada estirada. */
 		animation: entrarPantalla 0.6s ease both;
 	}
 
 	.velo {
 		position: absolute;
 		inset: 0;
-		/* Oscurece el centro (donde va el texto) y respeta los bordes. */
+		/* Oscurece la franja de arriba (donde va el texto) y respeta el resto:
+		   el centro de la foto es lo que se quiere ver, y antes se tapaba con
+		   una viñeta fuerte. */
 		background:
-			radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.18) 58%, rgba(0, 0, 0, 0.45) 100%);
+			linear-gradient(180deg, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.32) 34%, rgba(0, 0, 0, 0.06) 58%, rgba(0, 0, 0, 0.35) 100%);
 	}
 
 	.texto {
@@ -104,10 +94,13 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: center;
+		/* Arriba, en el tercio superior, no centrado: lo importante de una foto
+		   casi siempre está en el centro, y el título centrado lo tapaba. El
+		   11% son ~120 px en el escenario de 1080. */
+		justify-content: flex-start;
 		gap: 18px;
 		text-align: center;
-		padding: 0 90px;
+		padding: 11% 90px 0;
 	}
 
 	.titulo {
@@ -138,13 +131,4 @@
 		text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
 	}
 
-	.aviso {
-		font-size: 20px;
-		font-weight: 800;
-		color: #fca5a5;
-		background: rgba(0, 0, 0, 0.5);
-		padding: 7px 16px;
-		border-radius: 999px;
-		border: 1px solid rgba(248, 113, 113, 0.4);
-	}
 </style>

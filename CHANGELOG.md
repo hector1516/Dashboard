@@ -15,6 +15,14 @@
   pantalla completa con otro estilo) y ahora es el que trae el confeti.
 
 ### Corregido
+- Portada: el título ya no va centrado (tapaba el centro de la foto, que es
+  donde está lo importante) y se quitó el texto rojo de "la imagen mide
+  1920x1080". La viñeta también cambió: ahora oscurece la franja de arriba
+  donde va el texto y respeta el resto de la foto.
+- El panel remoto se saltaba la pantalla anclada por `?pantalla=…`: cambiaba
+  la pantalla mientras alguien la estaba revisando, y `seguir` arrancaba la
+  rotación en un modo donde por definición no hay rotación. Ahora manda el
+  anclaje.
 - El aviso a pantalla completa se veía translúcido con la pantalla de atrás
   durante su animación de entrada, y el texto salía pálido si la animación se
   quedaba a medio camino: se quitó toda animación de `opacity` (sólo

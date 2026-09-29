@@ -403,7 +403,10 @@ function seguirGiro() {
 	// Al reanudar, el contador arranca desde cero: si no, la pantalla
 	// cambiaría a los 3 segundos de volver.
 	t0Rotacion = Date.now();
-	arrancarGiro();
+	// Con `?pantalla=…` no hay rotación que reanudar: arrancarla sacaría la
+	// pantalla del anclaje sin que nadie lo pidiera.
+	const anclada = params?.fija !== null && params?.fija !== undefined;
+	if (!anclada) arrancarGiro();
 }
 
 function barajar(): number[] {
@@ -523,6 +526,10 @@ async function obeyecerPanel() {
 	}
 	const cmd = estado?.comando;
 	if (!cmd?.id) return;
+	// Con la pantalla anclada por URL (`?pantalla=…`) manda el anclaje: es
+	// alguien revisando una pantalla puntual, y que el panel la cambie por
+	// detrás deja la pantalla en otra cosa y la revisión sin sentido.
+	if (params?.fija !== null && params?.fija !== undefined) return;
 	let ultimo = 0;
 	try {
 		ultimo = Number(localStorage.getItem(CLAVE_PANEL) || 0);
