@@ -57,7 +57,7 @@
 	{:else}
 		<div class="rejilla" class:uno={personas.length === 1}>
 			{#each ordenados as p (p.id_usuario)}
-				<article class="tarjeta" class:en-sitio={p.en_sitio}>
+				<article class="tarjeta" class:en-sitio={p.en_sitio} class:fuera={!p.en_sitio}>
 					<div class="quien">
 						<div class="avatar">
 							{#if p.avatar}
@@ -68,10 +68,14 @@
 						</div>
 						<div class="nombres">
 							<span class="nombre">{p.nombre}</span>
-							{#if p.en_sitio}
-								<span class="pill">● en la oficina</span>
-							{/if}
 						</div>
+						<!--
+							El estado ya lo dice el color de toda la tarjeta. Aquí sólo
+							va la palabra, en gris, sin punto de color: el punto verde
+							encima de una tarjeta verde no se ve y el rojo sobre una
+							roja tampoco.
+						-->
+						<span class="estado">{p.en_sitio ? 'En la oficina' : 'Fuera'}</span>
 					</div>
 
 					<div class="horas">
@@ -83,6 +87,14 @@
 							<div class="hora salida">
 								<span class="rot">Se fue</span>
 								<span class="hhmm">{hhmm(p.salida)}</span>
+							</div>
+						{:else if p.reingreso}
+							<!-- Salió y volvió: la salida que se ve sería la de
+							     una visita anterior, así que se muestra cuándo
+							     entró en la que sigue. -->
+							<div class="hora salida">
+								<span class="rot">Volvió</span>
+								<span class="hhmm">{hhmm(p.reingreso)}</span>
 							</div>
 						{:else}
 							<div class="hora esperando">
@@ -133,23 +145,46 @@
 		gap: 16px;
 	}
 
+	/*
+		TODA la tarjeta va verde o roja, no una barrita de color en un canto: a 3
+		metros la barrita de 5 px es un detalle, y la pregunta de una pantalla de
+		asistencia es "¿quién sigue aquí?", que se contesta con el color entero.
+	*/
 	.tarjeta {
-		background: rgba(255, 255, 255, 0.045);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-left: 5px solid #334155;
+		background: rgba(148, 163, 184, 0.05);
+		border: 1px solid rgba(148, 163, 184, 0.14);
 		border-radius: 14px;
 		padding: 16px 20px 14px;
 		display: flex;
 		flex-direction: column;
 		gap: 11px;
-		min-height: 300px;
+		min-height: 250px;
 		backdrop-filter: blur(6px);
 		animation: entrarStagger 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 	}
-	/* Quien sigue dentro se nota desde lejos por el borde y el punto verde. */
-	.tarjeta.en-sitio { border-left-color: #22c55e; }
+	/* Verde = sigue dentro · rojo = ya salió. */
+	.tarjeta.en-sitio {
+		background: linear-gradient(160deg, rgba(34, 197, 94, 0.30) 0%, rgba(22, 163, 74, 0.16) 100%);
+		border: 1px solid rgba(74, 222, 128, 0.55);
+		box-shadow: inset 0 0 40px rgba(34, 197, 94, 0.14);
+	}
+	.tarjeta.fuera {
+		background: linear-gradient(160deg, rgba(239, 68, 68, 0.28) 0%, rgba(185, 28, 28, 0.14) 100%);
+		border: 1px solid rgba(248, 113, 113, 0.5);
+		box-shadow: inset 0 0 40px rgba(239, 68, 68, 0.12);
+	}
 
 	.quien { display: flex; align-items: center; gap: 11px; min-width: 0; }
+	.estado {
+		margin-left: auto;
+		align-self: flex-start;
+		flex-shrink: 0;
+		font-size: 12px;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.14em;
+		color: rgba(255, 255, 255, 0.72);
+	}
 	.avatar {
 		width: 64px;
 		height: 64px;
@@ -172,15 +207,6 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
-	.pill {
-		font-size: 13.5px;
-		font-weight: 800;
-		color: #4ade80;
-		letter-spacing: 0.02em;
-		animation: parpadeo 2.2s ease-in-out infinite;
-	}
-	@keyframes parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-
 	.horas { display: flex; flex-direction: column; gap: 7px; }
 	.hora {
 		display: flex;
@@ -191,33 +217,33 @@
 		border-radius: 10px;
 	}
 	.rot {
-		font-size: 15px;
+		font-size: 13px;
 		font-weight: 800;
 		text-transform: uppercase;
 		letter-spacing: 0.12em;
 		opacity: 0.9;
 	}
 	.hhmm {
-		font-size: 48px;
+		font-size: 36px;
 		font-weight: 900;
 		line-height: 1;
 		font-variant-numeric: tabular-nums;
 	}
 
 	/* Verde = llegó. */
-	.entrada { background: rgba(34, 197, 94, 0.14); border: 1px solid rgba(34, 197, 94, 0.3); }
-	.entrada .rot { color: #4ade80; }
-	.entrada .hhmm { color: #22c55e; text-shadow: 0 0 22px rgba(34, 197, 94, 0.35); }
+	.entrada { background: rgba(2, 6, 23, 0.34); border: 1px solid rgba(255, 255, 255, 0.1); }
+	.entrada .rot { color: rgba(255, 255, 255, 0.62); }
+	.entrada .hhmm { color: #fff; }
 
 	/* Rojo = se fue. */
-	.salida { background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.3); }
-	.salida .rot { color: #f87171; }
-	.salida .hhmm { color: #ef4444; text-shadow: 0 0 22px rgba(239, 68, 68, 0.35); }
+	.salida { background: rgba(2, 6, 23, 0.34); border: 1px solid rgba(255, 255, 255, 0.1); }
+	.salida .rot { color: rgba(255, 255, 255, 0.62); }
+	.salida .hhmm { color: #fff; }
 
 	/* Todavía no hay salida: rayitas, no una hora inventada. */
 	.esperando { background: rgba(148, 163, 184, 0.08); border: 1px solid rgba(148, 163, 184, 0.16); }
 	.esperando .rot { color: #64748b; }
-	.esperando .hhmm { color: #475569; font-size: 38px; }
+	.esperando .hhmm { color: #64748b; font-size: 30px; }
 
 	.eventos {
 		margin-top: auto;

@@ -124,6 +124,7 @@ def ciclo() -> dict:
             "celebraciones": D.celebraciones(),
             "metricas": D.metricas(sunday),
             "asistencia": D.asistencia_hoy(),
+            "imagen": D.imagen_pantalla("PORTADA"),
         }
     except Exception as exc:
         # La base no responde: se conserva el snapshot anterior.
@@ -137,6 +138,20 @@ def ciclo() -> dict:
         })
         _escribir_json(C.SALUD, salud)
         return _leer_json(C.SNAPSHOT, {})
+
+    # Imagen de portada: los bytes van a /data/media/panel/ y al snapshot sólo
+    # llega la ruta. Se hace aquí y no en `imagen_pantalla()` porque escribir un
+    # archivo es cosa del snapshotter (la API es sólo lectura, ver AGENTS.md).
+    try:
+        if bloques["imagen"].get("hay"):
+            crudos = D.bytes_imagen_pantalla("PORTADA")
+            if crudos:
+                bloques["imagen"]["ruta"] = M.guardar_imagen_panel(
+                    "PORTADA", crudos[0], crudos[1], bloques["imagen"].get("id")
+                )
+    except Exception as exc:
+        _log(f"WARN imagen portada: {exc}")
+        bloques["imagen"] = {"hay": False}
 
     # 4) Medios ------------------------------------------------------------
     fotos = D.fotos(C.FOTOS_CARRUSEL)
@@ -249,6 +264,7 @@ def ciclo() -> dict:
         "aniversarios": bloques["celebraciones"]["aniversarios"],
         "metricas": bloques["metricas"],
         "asistencia": bloques["asistencia"],
+        "imagen": bloques["imagen"],
         "clima": clima,
         "fondos": fondos,
         # Anchos de los thumbs ya generados. El front los lee de acá en vez de

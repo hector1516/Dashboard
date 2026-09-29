@@ -176,6 +176,12 @@ export interface Snapshot {
 			entrada: string;
 			/** "YYYY-MM-DD HH:MM" de la última SALIDA (rojo); "" si sigue dentro. */
 			salida: string;
+			/**
+			 * Si salió y volvió: cuándo entró en la visita en la que sigue. Vacío
+			 * si no hay reingreso. Sin esto la tarjeta decía "se fue 17:36" y
+			 * "en la oficina" a la vez, que es una contradicción.
+			 */
+			reingreso: string;
 			/** Cuántos eventos de red tuvo hoy (entra/sale varias veces). */
 			eventos: number;
 			/** Último evento del día = ENTRADA → sigue dentro de la oficina. */
@@ -186,6 +192,22 @@ export interface Snapshot {
 		total: number;
 		dentro: number;
 		salieron: number;
+	};
+
+	/**
+	 * Imagen a pantalla completa (la "portada"): la sube el módulo Notas de
+	 * Admon a `HUB_PantallaImagenes`. `ruta` es local (/media/panel/…), nunca
+	 * una URL de internet.
+	 */
+	imagen: {
+		hay: boolean;
+		clave?: string;
+		titulo?: string;
+		content_type?: string;
+		ancho?: number | null;
+		alto?: number | null;
+		subida?: string;
+		ruta?: string;
 	};
 
 	clima: {

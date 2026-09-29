@@ -3,6 +3,29 @@
 ## Sin liberar (main)
 
 ### Nuevo
+- **Pantalla de portada** (12ª): imagen a pantalla completa con el título
+  gigante en el centro encima. La sube una persona desde Notas (Admon) a
+  `HUB_PantallaImagenes`, clave PORTADA. Si nadie escribe título, el backend
+  arma "ECCSA en <mes>". La imagen se sirve desde /media/panel/ con el Id en el
+  nombre (con nombre fijo la TV nunca veía la nueva por caché del navegador).
+- **Panel remoto de la pantalla**: desde Notas se puede pedir una pantalla
+  concreta, avanzar, pausar y reanudar la rotación; pedir una pantalla
+  reinicia el contador a 45 s. Escribir exige el secreto `HUB_PANEL_TOKEN`;
+  leer no, porque lo lee la propia TV. La TV publica su lista de pantallas al
+  arrancar para que Admon dibuje los botones. `api/panel.py`,
+  `HUB_PANEL_TOKEN` en `deploy/env.local`.
+- **Asistencia**: la tarjeta entera va verde o roja (ya no una barrita en un
+  canto) y disappeared el punto pulsante; las horas bajaron de 48 a 36 px.
+  Cuando alguien salió y volvió, la segunda fila dice "volvió a las HH:MM" en
+  lugar de una hora de salida vieja que contradecía el "en la oficina".
+
+### Corregido
+- Asistencia: comparar un `datetime` con el string ya convertido reventaba
+  (`'>' not supported`), y como vive dentro del bloque de BD el snapshot
+  entero se quedaba viejo sin avisar en pantalla (sólo en el log). Las
+  comparaciones van antes de convertir a texto.
+- La imagen de portada con nombre de archivo fijo nunca se actualizaba en la
+  TV por la caché del navegador.
 - **Marca de salida, lunes a viernes**: a las 18:29:50 la pantalla se pone roja
   con una cuenta regresiva de 10 segundos (número de 620 px, fondo latente y un
   "tic" por segundo) y al llegar muestra el **18:30 en números de 520 px**

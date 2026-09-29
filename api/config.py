@@ -15,11 +15,17 @@ EVENTOS = os.path.join(DATA_DIR, "eventos.json")
 STATE = os.path.join(DATA_DIR, "state.json")
 WEATHER = os.path.join(DATA_DIR, "weather.json")
 SALUD = os.path.join(DATA_DIR, "salud.json")
+# Control remoto de la TV (ver panel.py). El estado vive en el volumen para que
+# sobreviva a reinicios; PANEL_PANTALLAS lo publica la propia TV al arrancar.
+PANEL = os.path.join(DATA_DIR, "panel.json")
+PANEL_PANTALLAS = os.path.join(DATA_DIR, "panel_pantallas.json")
 LOG_SINCRONO = os.path.join(DATA_DIR, "sync.log")
 MEDIA_DIR = os.path.join(DATA_DIR, "media")
 THUMBS_DIR = os.path.join(MEDIA_DIR, "thumbs")
 WALLPAPERS_DIR = os.path.join(MEDIA_DIR, "wallpapers")
 AVATARS_DIR = os.path.join(MEDIA_DIR, "avatars")
+# Imagen a pantalla completa de la pantalla de portada.
+PANEL_DIR = os.path.join(MEDIA_DIR, "panel")
 
 # El build de la imagen; lo escribe el Dockerfile y lo lee /api/dashboard/version
 # para que la pantalla se recargue sola tras un deploy.
@@ -61,7 +67,7 @@ SCHEMA_VERSION = 1
 
 def asegurar_directorios():
     """Crea el árbol de /data. Idempotente."""
-    for d in (DATA_DIR, MEDIA_DIR, THUMBS_DIR, WALLPAPERS_DIR, AVATARS_DIR):
+    for d in (DATA_DIR, MEDIA_DIR, THUMBS_DIR, WALLPAPERS_DIR, AVATARS_DIR, PANEL_DIR):
         os.makedirs(d, exist_ok=True)
 
 

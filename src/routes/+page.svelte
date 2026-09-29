@@ -43,6 +43,7 @@ import Metricas from '$lib/components/pantallas/Metricas.svelte';
 import Clima from '$lib/components/pantallas/Clima.svelte';
 import Pulso from '$lib/components/pantallas/Pulso.svelte';
 import Asistencia from '$lib/components/pantallas/Asistencia.svelte';
+import Portada from '$lib/components/pantallas/Portada.svelte';
 
 /* ── Configuración de la pantalla ─────────────────────────────── */
 const ROTACION_MS = 45_000;      // 45 s por pantalla
@@ -80,7 +81,8 @@ const PANTALLAS: PantallaDef[] = [
 	{ id: 'fotos', icono: '📸', label: 'Fotografías' },
 	{ id: 'clima', icono: '🌤️', label: 'Clima' },
 	{ id: 'notas', icono: '📌', label: 'Notas' },
-	{ id: 'asistencia', icono: '🕘', label: 'Asistencia de hoy' }
+	{ id: 'asistencia', icono: '🕘', label: 'Asistencia de hoy' },
+	{ id: 'portada', icono: '🖼️', label: 'Portada del mes' }
 ];
 
 /* ── Estado ───────────────────────────────────────────────────── */
@@ -341,6 +343,34 @@ function chequearCelebraciones(d: Snapshot) {
 }
 
 /* ── Rotación ─────────────────────────────────────────────────── */
+/**
+ * Arranca/pausa el giro. Va en funciones y no en un `setInterval` fijo porque
+ * el panel remoto lo detiene ("deja esta pantalla quieta") y lo vuelve a
+ * arrancar; con el intervalo ya capturado eso no se podía hacer.
+ */
+let tGiro: any = null;
+let pausado = $state(false);
+
+function arrancarGiro() {
+	if (tGiro) return;
+	tGiro = setInterval(avanzar, ROTACION_MS);
+}
+function pararGiro() {
+	if (tGiro) clearInterval(tGiro);
+	tGiro = null;
+}
+function pausarGiro() {
+	pausado = true;
+	pararGiro();
+}
+function seguirGiro() {
+	pausado = false;
+	// Al reanudar, el contador arranca desde cero: si no, la pantalla
+	// cambiaría a los 3 segundos de volver.
+	t0Rotacion = Date.now();
+	arrancarGiro();
+}
+
 function barajar(): number[] {
 	const a = PANTALLAS.map((_, i) => i);
 	for (let i = a.length - 1; i > 0; i--) {
@@ -368,6 +398,27 @@ function avanzar() {
 	}, 520);
 }
 
+/**
+ * Ir a una pantalla concreta y reiniciar el contador. Lo usa el panel remoto
+ * ("muéstrame Legends") y también `?pantalla=` al arrancar.
+ *
+ * El reinicio del contador es la mitad del asunto: sin él, pedir una pantalla
+ * a mitad de vuelta dejaría 3 segundos de esa pantalla, que es justo lo que uno
+ * NO quiere cuando la pidió para mostrar algo.
+ */
+function irAPantalla(id: string) {
+	const destino = PANTALLAS.findIndex((p) => p.id === id);
+	if (destino < 0) return false;
+	// La nueva pantalla va al frente de la lista y `pos` se queda en 0: así el
+	// resto sigue barajado y no se repite hasta que le toque por orden.
+	orden = [destino, ...orden.filter((i) => i !== destino)];
+	pos = 0;
+	t0Rotacion = Date.now();
+	restanteRotacion = ROTACION_MS / 1000;
+	saliendo = false;
+	return true;
+}
+
 /* ── Anti-quemado: la TV se presta el píxel ───────────────────── */
 let antiQuemado = 0;
 function moverAntiQuemado() {
@@ -384,6 +435,98 @@ function medirFps() {
 	if (nuevo !== modoLigero) {
 		modoLigero = nuevo;
 		degradar(nuevo);
+	}
+}
+
+/* ── Panel remoto: esta pantalla obedece ──────────────────────── */
+const CLAVE_PANEL = 'dashboard:panel:id';
+
+/**
+ * La TV se registra en el panel y escucha órdenes.
+ *
+ * - Al arrancar publica su lista de pantallas, para que el módulo Notas de
+ *   Admon pueda dibujar los botones sin duplicar la lista en dos repos.
+ * - Avisa que sigue viva (`/latido`) una vez por minuto: Admon lo usa para
+ *   decir "la TV está desconectada" en vez de mandar comandos al vacío.
+ * - Consulta el comando pendiente cada 3 s y lo aplica. Sin secreto: leer no
+ *   mueve nada, lo mueve `POST /api/panel/comando`, que sí lo exige.
+ *
+ * El `id` del último comando applied se guarda en localStorage para que un
+ * reinicio de la página no repita la orden (y para que la misma orden no se
+ * aplique dos veces si el poll se solapa).
+ */
+async function latirPanel() {
+	try {
+		await fetch('/api/panel/latido', { method: 'POST' });
+	} catch {
+		// La TV funciona igual sin panel: es una comodidad, no una dependencia.
+	}
+}
+
+async function publicarPantallas() {
+	try {
+		await fetch('/api/panel/pantallas', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				pantallas: PANTALLAS.map((p) => ({ id: p.id, label: p.label, icono: p.icono }))
+			})
+		});
+	} catch {
+		/* sin panel, sin problema */
+	}
+}
+
+async function obeyecerPanel() {
+	let estado: any;
+	try {
+		const r = await fetch('/api/panel/estado', { cache: 'no-store' });
+		if (!r.ok) return;
+		estado = await r.json();
+	} catch {
+		return;
+	}
+	const cmd = estado?.comando;
+	if (!cmd?.id) return;
+	let ultimo = 0;
+	try {
+		ultimo = Number(localStorage.getItem(CLAVE_PANEL) || 0);
+	} catch {
+		/* localStorage bloqueado: se aplica igual, sólo se repite */
+	}
+	if (Number(cmd.id) <= ultimo) return;
+
+	switch (cmd.accion) {
+		case 'ver':
+			irAPantalla(cmd.pantalla);
+			break;
+		case 'avanzar':
+			avanzar();
+			break;
+		case 'pausa':
+			pausarGiro();
+			break;
+		case 'seguir':
+			seguirGiro();
+			break;
+		default:
+			// 'salida' y lo que se agregue: se acepta sin hacer nada, para que
+			// un comando nuevo no se quede dando vueltas en el panel.
+			break;
+	}
+	try {
+		localStorage.setItem(CLAVE_PANEL, String(cmd.id));
+	} catch {
+		/* sin localStorage no se recuerda, no pasa nada */
+	}
+	try {
+		await fetch('/api/panel/confirmado', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ id: cmd.id })
+		});
+	} catch {
+		/* el acuse es cortesía */
 	}
 }
 
@@ -498,13 +641,24 @@ onMount(() => {
 	const tReloj = setInterval(tickReloj, 1000);
 	const tDatos = setInterval(refrescar, REFRESCO_MS);
 	// Con ?pantalla=... la pantalla queda fija (no gira): es el modo de prueba.
-	const tGiro = params?.fija !== null && params?.fija !== undefined ? null : setInterval(avanzar, ROTACION_MS);
+	// El giro es un interval manejable y no una constante: el panel remoto
+	// puede pausarlo y reanudarlo. Con la pantalla anclada por URL no hay giro.
+	const anclada = params?.fija !== null && params?.fija !== undefined;
+	if (!anclada) arrancarGiro();
+
+	// Panel remoto: registro, latido y escucha de órdenes.
+	latirPanel();
+	publicarPantallas();
+	const tPanel = setInterval(obeyecerPanel, 3_000);
+	timers.push(tPanel);
+	const tLatido = setInterval(latirPanel, 60_000);
+	timers.push(tLatido);
 	const tShell = setInterval(leerShell, 60_000);
 	const tBuild = setInterval(vigilarBuild, SHELL_MS);
 	const tAnti = setInterval(moverAntiQuemado, 4 * 60 * 1000);
 	const tFps = setInterval(medirFps, 1000);
 	timers.push(tReloj, tDatos, tShell, tBuild, tAnti, tFps);
-	if (tGiro) timers.push(tGiro);
+	if (tGiro) timers.push(() => clearInterval(tGiro));
 
 	const onVis = () => {
 		if (!document.hidden) {
@@ -683,6 +837,7 @@ function cambiarVolumen(v: number) {
 							{:else if pantalla.id === 'clima'}<Clima {datos} />
 							{:else if pantalla.id === 'notas'}<Notas {datos} />
 							{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
+							{:else if pantalla.id === 'portada'}<Portada {datos} />
 							{/if}
 						{/key}
 					{/if}

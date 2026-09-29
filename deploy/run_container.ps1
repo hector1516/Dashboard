@@ -43,6 +43,14 @@ if (Test-Path $EnvLocal) {
 
 if (-not $vars["HUB_DB_PASSWORD"]) { Write-Host "ERROR: contraseña de BD vacía"; exit 1 }
 
+# Secreto del panel remoto (api/panel.py). Sin esto nadie puede mover la
+# pantalla desde Admon, a propósito: escribir exige token y el token no se
+# inventa solo. Si falta, se avisa y se deja el panel deshabilitado en vez de
+# correr con un token en blanco que cualquiera podría mandar.
+if (-not $vars["HUB_PANEL_TOKEN"]) {
+  Write-Host "AVISO: no hay HUB_PANEL_TOKEN en env.local; el panel remoto de la TV quedará deshabilitado (403)."
+}
+
 # Env-file en UTF-8 SIN BOM: el BOM rompe la primera variable.
 $envFile = Join-Path $env:TEMP "dashboard.env"
 $lines = @(
@@ -50,6 +58,7 @@ $lines = @(
   "HUB_DB_USER=$($vars['HUB_DB_USER'])",
   "HUB_DB_PASSWORD=$($vars['HUB_DB_PASSWORD'])",
   "HUB_DB_DATABASE=$($vars['HUB_DB_DATABASE'])",
+  "HUB_PANEL_TOKEN=$($vars['HUB_PANEL_TOKEN'])",
   "TZ=America/Mexico_City"
 )
 [System.IO.File]::WriteAllLines($envFile, $lines, (New-Object System.Text.UTF8Encoding($false)))

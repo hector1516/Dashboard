@@ -130,6 +130,43 @@ def guardar_avatares(avs: dict) -> bool:
     return ok
 
 
+def guardar_imagen_panel(clave: str, crudo: bytes, content_type: str, id_img) -> str:
+    """
+    Escribe la imagen a pantalla completa (la de la portada) en
+    /data/media/panel/ y devuelve la ruta para el snapshot.
+
+    Por qué al disco y no en el snapshot: son 200-400 KB por imagen y la
+    pantalla pide el snapshot cada 30 s. Meter los bytes ahí serían ~10 MB/s de
+    red interna para bytes que no cambian. En el disco, nginx los sirve como
+    cualquier otra foto y el snapshot sólo lleva la ruta.
+
+    **El nombre lleva el Id de la fila a propósito.** Con un nombre fijo
+    (`portada.jpg`) la TV nunca veía la imagen nueva: el navegador la tenía
+    cacheada y, como la URL no cambiaba, se quedaba con la vieja para siempre.
+    Es un bug que en la TV no se nota (la imagen "de la oficina" parece la de
+    siempre) y sólo aparece cuando alguien sube la portada del mes nuevo.
+
+    Se borran las anteriores de esa misma clave para que la carpeta no crezca
+    400 KB por cada subida.
+    """
+    ext = {"image/png": ".png", "image/webp": ".webp", "image/jpeg": ".jpg"}.get(
+        (content_type or "").lower(), ".img"
+    )
+    base = f"{clave.lower()}-{id_img}{ext}"
+    destino = os.path.join(C.PANEL_DIR, base)
+    _escribir(destino, crudo)
+    # Limpieza de las versiones anteriores de ESTA clave.
+    try:
+        for viejo in os.listdir(C.PANEL_DIR):
+            if viejo.startswith(f"{clave.lower()}-") and viejo != base:
+                os.remove(os.path.join(C.PANEL_DIR, viejo))
+    except OSError:
+        # Que quede un archivo viejo de más no rompe nada; no vale la pena
+        # fallar la subida por limpiar una carpeta.
+        pass
+    return f"/media/panel/{base}"
+
+
 def _escribir(destino: str, datos: bytes) -> None:
     """Escritura atómica: tmp + replace, para que nginx nunca lea medio archivo."""
     tmp = destino + ".tmp"

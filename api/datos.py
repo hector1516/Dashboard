@@ -20,6 +20,13 @@ from db import get_connection
 DIAS_SEMANA = 7
 
 
+# Los meses en español, para el título de la pantalla de portada ("ECCSA en
+# Octubre"). Van aquí y no en el front porque el backend arma el título cuando
+# nadie lo escribe, y el front sólo lo muestra.
+_MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio",
+          "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+
+
 def domingo_de_hoy(hoy: _dt.date = None) -> _dt.date:
     """
     Domingo de la semana en curso. La semana de ECCSA arranca en domingo (lo
@@ -255,6 +262,66 @@ def tickets(sunday: str) -> dict:
     return {"total_semana": total, "ultimos": ultimos, "por_vehiculo": por_vehiculo}
 
 
+# ── IMAGEN DE PORTADA ───────────────────────────────────────────────────────
+def imagen_pantalla(clave: str = "PORTADA") -> dict:
+    """
+    La imagen a pantalla completa de una pantalla del kiosco (la de portada, con
+    "ECCSA en <mes>" encima).
+
+    Los bytes NO se mandan en el snapshot: se escriben una vez a
+    /data/media/panel/ y el snapshot lleva sólo la ruta (ver
+    `medios.guardar_imagen_panel`). Meter 300 KB de JPEG en cada respuesta que
+    la pantalla pide cada 30 s sería regalarle 10 MB/s a la red interna.
+
+    Viene de `HUB_PantallaImagenes`, que escribe el módulo Notas de Admon.
+    """
+    conn = get_connection()
+    with conn.cursor(as_dict=True) as cur:
+        cur.execute("""
+            SELECT TOP 1 Id, Clave, Titulo, ContentType, Ancho, Alto, FechaSubida
+            FROM HUB_PantallaImagenes
+            WHERE Clave = %s AND Activo = 1
+            ORDER BY Id DESC
+        """, (clave,))
+        fila = cur.fetchone()
+    if not fila:
+        return {"hay": False}
+
+    # Si no hay título guardado, el de cortesía lo arma el mes en curso: la
+    # pantalla tiene que decir algo aunque nadie haya escrito nada.
+    mes_actual = _MESES[_dt.date.today().month - 1]
+    titulo = (fila.get("Titulo") or "").strip() or f"ECCSA en {mes_actual}"
+    return {
+        "hay": True,
+        "id": fila["Id"],
+        "clave": fila["Clave"],
+        "titulo": titulo,
+        "content_type": fila.get("ContentType") or "image/jpeg",
+        "ancho": fila.get("Ancho"),
+        "alto": fila.get("Alto"),
+        "subida": _s(fila.get("FechaSubida"), hora=True),
+        # Lo rellena medios.guardar_imagen_panel() en el mismo ciclo.
+        "ruta": "",
+    }
+
+
+def bytes_imagen_pantalla(clave: str = "PORTADA") -> tuple[bytes, str] | None:
+    """Los bytes crudos de la imagen activa. Separate porque el snapshot no
+    puede cargarse 300 KB en memoria en cada vuelta sólo para no usarlos."""
+    conn = get_connection()
+    with conn.cursor(as_dict=True) as cur:
+        cur.execute("""
+            SELECT TOP 1 Archivo, ContentType
+            FROM HUB_PantallaImagenes
+            WHERE Clave = %s AND Activo = 1
+            ORDER BY Id DESC
+        """, (clave,))
+        fila = cur.fetchone()
+    if not fila:
+        return None
+    return fila["Archivo"], (fila.get("ContentType") or "image/jpeg")
+
+
 # ── ASISTENCIA DEL DÍA ─────────────────────────────────────────────────────
 def asistencia_hoy() -> dict:
     """
@@ -283,6 +350,7 @@ def asistencia_hoy() -> dict:
                 d.IdUsuario AS id_usuario,
                 ISNULL(u.Nombre, '(sin usuario)') AS nombre,
                 MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END) AS entrada,
+                MAX(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END) AS ultima_entrada,
                 MAX(CASE WHEN p.TipoEvento = 'SALIDA'  THEN p.FechaHora END) AS salida,
                 COUNT(*) AS eventos
             FROM HUB_NetworkPresence p
@@ -308,8 +376,33 @@ def asistencia_hoy() -> dict:
             """, (p["id_usuario"],))
             ultimo = cur.fetchone()
             p["en_sitio"] = bool(ultimo and ultimo["tipo"] == "ENTRADA")
-            p["entrada"] = _s(p["entrada"], hora=True)
-            p["salida"] = _s(p["salida"], hora=True)
+
+            # OJO: las comparaciones van ANTES de pasar los datetime a texto.
+            # Al revés (convertir y luego comparar) revienta con
+            # "'>' not supported between datetime.datetime and str" y, como
+            # esto vive dentro del bloque de la BD, el snapshot entero se
+            # queda en la versión anterior: la pantalla deja de refrescar
+            # asistencia sin decir nada, salvo el ERROR del log.
+            entrada = p.get("entrada")
+            ultima_entrada = p.get("ultima_entrada")
+            ultima_salida = p.get("salida")
+
+            # Si sigue dentro, la hora de SALIDA es la de una visita anterior y
+            # no la de hoy: mostrarla junto a "en la oficina" se contradice
+            # ("se fue 17:36" y está aquí a las 18:10, porque salió y volvió).
+            # La salida de HOY todavía no pasa, y lo que interesa es cuándo
+            # entró en la visita en la que sigue.
+            reingreso = ""
+            if p["en_sitio"]:
+                if ultima_entrada and ultima_salida and ultima_entrada > entrada:
+                    reingreso = _s(ultima_entrada, hora=True)
+                p["salida"] = ""
+            else:
+                p["salida"] = _s(ultima_salida, hora=True)
+
+            p["entrada"] = _s(entrada, hora=True)
+            p["reingreso"] = reingreso
+            p.pop("ultima_entrada", None)
             p["eventos"] = int(p["eventos"] or 0)
 
     dentro = sum(1 for p in personas if p["en_sitio"])

@@ -9,6 +9,13 @@ que necesita son cuatro GETs, y lo demás lo sirve nginx desde el volumen.
   GET /api/shell/state          → contrato del ECCSA-Shell (SIN sesión)
   GET /healthz                  → salud: ok | degradado + qué falta
 
+Y el panel remoto, que es lo ÚNICO que escribe (ver panel.py):
+  GET  /api/panel/estado        → el comando pendiente (sin token: lo lee la TV)
+  POST /api/panel/comando       → encola "muéstrame X" (exige HUB_PANEL_TOKEN)
+  POST /api/panel/confirmado    → la TV dice "ya lo hice"
+  POST /api/panel/latido        → la TV dice "sigo aquí"
+  POST /api/panel/pantallas     → la TV publica su lista de pantallas
+
 Sobre `/api/shell/state`: el contrato del shell dice que las apps lo exponen
 porque el banner lo usa para el lugar y las versiones. El kiosco no monta ese
 banner (no hay ni usuario ni cola de sincronización), pero la app cumple el
@@ -24,6 +31,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 import config as C
+import panel as P
 from lugar import lugar_de
 
 app = FastAPI(title="Dashboard ECCSA", version="1.0.0")
@@ -73,6 +81,7 @@ def _sin_datos() -> dict:
                   "manana": {"max": None, "min": None, "prob_lluvia": None},
                   "leido_en": None},
         "asistencia": {"personas": [], "total": 0, "dentro": 0, "salieron": 0},
+        "imagen": {"hay": False},
         "fondos": [],
         "eventos": [],
     }
@@ -180,3 +189,64 @@ def _shell_version() -> str:
             return fh.read().strip() or "?"
     except Exception:
         return "?"
+
+
+# ── Panel remoto de la pantalla ─────────────────────────────────────────────
+# Lo escribe Admon (módulo Notas) y lo obedece la TV. Ver panel.py para el
+# porqué de que leer no exija token y escribir sí.
+@app.get("/api/panel/estado")
+def panel_estado():
+    """Sin token: lo consulta la propia TV cada 3 s."""
+    return JSONResponse(P.estado())
+
+
+@app.post("/api/panel/comando")
+async def panel_comando(request: Request):
+    """
+    Encola un comando para la pantalla. Requiere el secreto compartido en la
+    cabecera `X-Panel-Token` (env HUB_PANEL_TOKEN en el contenedor).
+    """
+    try:
+        P.exigir_token(request.headers.get("X-Panel-Token"))
+        cuerpo = await _cuerpo(request)
+        comando = P.mandar(cuerpo.get("accion", ""), cuerpo.get("pantalla"))
+        return JSONResponse({"ok": True, "comando": comando})
+    except P.ErrorPanel as exc:
+        return JSONResponse({"ok": False, "error": exc.mensaje}, status_code=exc.status)
+
+
+@app.post("/api/panel/confirmado")
+async def panel_confirmado(request: Request):
+    try:
+        cuerpo = await _cuerpo(request)
+        return JSONResponse(P.confirmar(cuerpo.get("id", 0)))
+    except P.ErrorPanel as exc:
+        return JSONResponse({"ok": False, "error": exc.mensaje}, status_code=exc.status)
+
+
+@app.post("/api/panel/latido")
+def panel_latido():
+    """La TV avisa que está viva. Sin token: no se puede mandar nada con esto."""
+    return JSONResponse(P.latido())
+
+
+@app.post("/api/panel/pantallas")
+async def panel_pantallas(request: Request):
+    """
+    La TV publica su lista de pantallas al arrancar, para que Admon dibuje los
+    botones sin tener la lista duplicada en dos repos.
+    """
+    try:
+        cuerpo = await _cuerpo(request)
+        return JSONResponse(P.publicar_pantallas(cuerpo.get("pantallas", [])))
+    except P.ErrorPanel as exc:
+        return JSONResponse({"ok": False, "error": exc.mensaje}, status_code=exc.status)
+
+
+async def _cuerpo(request: Request) -> dict:
+    """El JSON del POST, o {} si no viene o no es objeto. Nunca revienta."""
+    try:
+        datos = await request.json()
+    except Exception:
+        return {}
+    return datos if isinstance(datos, dict) else {}

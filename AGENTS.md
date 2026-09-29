@@ -126,6 +126,7 @@ Efectos caros (confeti, ken-burns) se apagan solos si los fps caen de 40
 | `?salida=ya` | fuerza el cartel final con el 18:30 gigante |
 | `?salida=fuera` | desactiva la marca de salida aunque sea la hora (para capturar otra cosa a las 18:30) |
 | `?reloj=1` | fuerza la cuenta de segundos aunque la pantalla esté fija por URL (se esconde justo cuando no hay rotación, así que sin esto no se podría revisar) |
+| `?pantalla=portada` | la pantalla de portada con la imagen del mes |
 
 Las capturas de las 11 pantallas se sacan solas con el Edge del ServerVM (el
 mismo que corre en la TV): `deploy/capturar.ps1`.
