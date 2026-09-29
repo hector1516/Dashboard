@@ -90,10 +90,17 @@ def _escribir(datos: dict) -> None:
 
 
 def estado() -> dict:
-    """Lo que lee la TV. Sin token."""
+    """
+    Lo que lee la TV. Sin token.
+
+    `confirmado` es para el otro lado (la UI de Admon): dice cuándo lo obedeció
+    la TV la última vez. Sin él, la interfaz quedaría con el botón apretado y
+    sin saber si la pantalla hizo algo o si la TV estaba apagada.
+    """
     datos = _leer()
     return {
         "comando": datos.get("comando"),
+        "confirmado": datos.get("confirmado"),
         "pantallas": _leer_pantallas(),
         "tv_conectada": _tv_conectada(),
     }
