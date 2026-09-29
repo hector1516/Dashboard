@@ -81,8 +81,9 @@ nuevo:
 | **Reporte firmado** | `destaque` | **toma de pantalla** 8 s + arpegio + confeti |
 | **Cumpleaños hoy / aniversario** | `destaque` | toma de pantalla 9 s |
 | Aviso del admin (`HUB_Notificaciones`) | `alerta` | banda ámbar, 3 notas graves |
+| **Aviso a pantalla completa** (`pantalla`) | `aviso` | 10 s a pantalla completa: fondo verde saturado (90%), el **nombre de quien lo hizo en 168 px**, el módulo de dónde viene arriba, el dato grande, la barra de tiempo y "Continuar". **Sin fotografías**, por pedido explícito del usuario. Van en COLA de 3: si llegan cuatro de golpe se muestran uno por uno y el resto se ve de banda. Pausa la rotación. Atajo: `?aviso=km\|ticket\|firmado\|presencia` |
 | **Marca de salida (lun–vie 18:30)** | `salida` | NO es una alerta: es una capa propia (`CapaSalida.svelte`) que se come la pantalla. Cuenta regresiva de 10 s (número gigante sobre rojo latente + un "tic" por segundo) y al llegar el **18:30 en números de 520 px** con bocinazo, 45 s. Pausa la rotación mientras está. Atajo: `?salida=cuenta\|ya\|fuera` |
-| **Entrada / salida de la oficina** | `info` | banda con su propio tono: 👋 *Hola, {nombre}* (tres notas que suben) · 🚪 *Adiós, {nombre}* (dos que bajan). Vienen de `HUB_NetworkPresence`, que escribe el `network_scanner_worker`; el kiosco sólo lee |
+| **Entrada / salida de la oficina** | `pantalla` | aviso a pantalla completa con su propio tono: 👋 *Entró, {nombre}* (tres notas que suben) · 🚪 *Salió, {nombre}* (dos que bajan). Vienen de `HUB_NetworkPresence`, que escribe el `network_scanner_worker`; el kiosco sólo lee. Lo que evita que sea insoportable es el cooldown de 20 min por persona y tipo, no que sea una banda |
 | Sin movimiento 6 h | `info` | banda informativa |
 
 Antispam: dedup por `id`, máximo 1 `destaque` cada 3 min, tope de 3 bandas, y en

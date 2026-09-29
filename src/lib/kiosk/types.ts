@@ -8,10 +8,10 @@
  * pantalla vieja con un snapshot nuevo sepa que no confiar.
  */
 
-export type NivelEvento = 'info' | 'exito' | 'destaque' | 'alerta';
+export type NivelEvento = 'info' | 'exito' | 'destaque' | 'alerta' | 'pantalla';
 
 /** Sonido del aviso. Por defecto es el del nivel; algunos lo pisan. */
-export type TonoEvento = NivelEvento | 'hola' | 'adios' | 'click';
+export type TonoEvento = NivelEvento | 'hola' | 'adios' | 'click' | 'tic' | 'salida' | 'aviso';
 
 /** Evento en vivo para el ticker / toast / toma de pantalla. */
 export interface EventoKiosko {
@@ -21,6 +21,10 @@ export interface EventoKiosko {
 	/** Tono propio; si no viene, suena el del nivel. */
 	tono?: TonoEvento;
 	icono: string;
+	/** De qué módulo de ECCSA viene ("HUB · OxxoGas", "Field · Reportes"). */
+	modulo?: string;
+	/** Quién lo hizo. Va con letra grande: en una TV lo primero que se lee. */
+	persona?: string;
 	titulo: string;
 	texto: string;
 	meta: string;
@@ -29,6 +33,8 @@ export interface EventoKiosko {
 	imagen?: string;
 	/** Si viene, el evento toma la pantalla completa este tiempo. */
 	segundos?: number;
+	/** Sólito en celebraciones: el front lanza confeti al abrir el aviso. */
+	confeti?: boolean;
 }
 
 export interface VehiculoKm {

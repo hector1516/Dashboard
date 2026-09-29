@@ -4,9 +4,9 @@
 
 	  info     → banda tipo ticker abajo (no interrumpe la pantalla actual)
 	  exito    → toast de esquina 6s, con sonido de 2 notas
-	  destaque → TOMA DE PANTALLA completa 8s + confeti + arpegio. Pausa la
-	             rotación: si algo importante pasó, no se cambia de pantalla
-	             encima del mensaje.
+	  pantalla → AVISO A PANTALLA COMPLETA 10s, con el nombre de quien lo hizo
+	             en grande y el módulo de dónde viene. Pausa la rotación y va en
+	             cola: si llegan cuatro de golpe se muestran uno por uno.
 	  alerta   → banda ámbar/roja en el ticker, 3 notas graves
 
 	Reglas que evitan que esto se vuelva ruido (el riesgo real de un kiosco):
@@ -26,29 +26,30 @@
 		/** Últimos eventos a mostrar como bandas (info/alert), más nuevos primero. */
 		banda: EventoKiosko[];
 		toast: EventoKiosko | null;
-		toma: EventoKiosko | null;
-		onCerrarToma: () => void;
+		/** Aviso a pantalla completa que se está mostrando ahora (o null). */
+		aviso: EventoKiosko | null;
+		onCerrarAviso: () => void;
 	}
 
-	let { banda, toast, toma, onCerrarToma }: Props = $props();
+	let { banda, toast, aviso, onCerrarAviso }: Props = $props();
 
-	let restante = $state(0);
+	let restantePantalla = $state(0);
 
-	// Cuenta regresiva de la toma de pantalla, en segundos.
+	// Cuenta atrás del aviso a pantalla completa, y confeti si es celebración.
 	$effect(() => {
-		if (!toma) {
-			restante = 0;
+		if (!aviso) {
+			restantePantalla = 0;
 			return;
 		}
-		restante = toma.segundos ?? 8;
+		const seg = aviso.segundos ?? 10;
 		const t0 = Date.now();
 		const paso = () => {
-			restante = Math.max(0, (toma.segundos ?? 8) - Math.floor((Date.now() - t0) / 1000));
-			if (restante > 0) requestAnimationFrame(paso);
+			restantePantalla = Math.max(0, seg - Math.floor((Date.now() - t0) / 1000));
+			if (restantePantalla > 0) requestAnimationFrame(paso);
 		};
 		requestAnimationFrame(paso);
-		// Confeti una vez al abrir la toma (no en cada re-render).
-		lanzarConfeti(120);
+		// Confeti una sola vez al abrir el aviso (no en cada re-render).
+		if (aviso.confeti) lanzarConfeti(120);
 	});
 </script>
 
@@ -85,24 +86,52 @@
 	</div>
 {/if}
 
-<!-- Toma de pantalla completa -->
-{#if toma}
-	<div class="toma" style="--c:{colorDe(toma.nivel)}" role="alertdialog">
-		<div class="toma-caja">
-			{#if toma.imagen}
-				<img class="toma-img" src={toma.imagen} alt="" />
-			{:else}
-				<div class="toma-ic">{toma.icono}</div>
+<!--
+	AVISO A PANTALLA COMPLETA (nivel 'pantalla').
+
+	Es lo que pidió el usuario para las entradas/salidas, los kilómetros, los
+	tickets y los reportes firmados: toda la pantalla, de un color llamativo, con
+	el nombre de QUIÉN arriba en grande, el módulo de dónde viene, y SIN
+	fotografías (una foto de 200 px a 3 metros no dice nada y roba el espacio del
+	texto).
+
+	El fondo es el color del evento al 88% con una viñeta más oscura en el centro:
+	llamativo y sin perder legibilidad. El blanco del texto lleva sombra porque
+	encima de un color saturado un blanco plano vibra y deja de leerse.
+-->
+{#if aviso}
+	<div class="aviso" style="--c:{colorDe('pantalla')}" role="alertdialog">
+		<div class="aviso-fondo" aria-hidden="true"></div>
+		<div class="aviso-caja">
+			<div class="aviso-modulo">
+				<span class="aviso-ic">{aviso.icono}</span>
+				{aviso.modulo ?? 'ECCSA'}
+			</div>
+
+			{#if aviso.persona}
+				<div class="aviso-persona">{aviso.persona}</div>
 			{/if}
-			<div class="toma-titulo">{toma.titulo}</div>
-			<div class="toma-texto">{toma.texto}</div>
-			<div class="toma-meta">{toma.meta}</div>
-			<button class="toma-cerrar" onclick={onCerrarToma}>
-				Continuar <span class="cuenta">{restante}s</span>
-			</button>
+
+			<div class="aviso-titulo">{aviso.titulo}</div>
+			{#if aviso.texto}
+				<div class="aviso-texto">{aviso.texto}</div>
+			{/if}
+			{#if aviso.meta}
+				<div class="aviso-meta">{aviso.meta}</div>
+			{/if}
+
+			<div class="aviso-pie">
+				<div class="aviso-barra" style="--r:{restantePantalla}">
+					<span class="lleno" style="width:{restantePantalla * 10}%"></span>
+				</div>
+				<button class="aviso-cerrar" onclick={onCerrarAviso}>
+					Continuar <span class="cuenta">{restantePantalla}s</span>
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}
+
 
 <script lang="ts" module>
 	function colorDe(nivel: string): string {
@@ -111,7 +140,10 @@
 				info: 'var(--color-info)',
 				exito: 'var(--color-success)',
 				destaque: 'var(--color-primary-light)',
-				alerta: 'var(--color-warning)'
+				alerta: 'var(--color-warning)',
+				// Verde saturado: es la capa que se come la pantalla, tiene que
+				// ser inconfundible con la de las bandas informationales.
+				pantalla: '#16a34a'
 			} as Record<string, string>
 		)[nivel] ?? 'var(--color-info)';
 	}
@@ -164,34 +196,122 @@
 	.toast-texto { font-size: 15px; color: var(--color-text); }
 	@keyframes entraToast { from { opacity: 0; transform: translateX(60px); } to { opacity: 1; transform: none; } }
 
-	/* ── Toma de pantalla ───────────────────────────────────── */
-	.toma {
-		position: absolute; inset: 0; z-index: 50;
-		display: flex; align-items: center; justify-content: center;
-		background: rgba(2, 6, 23, 0.72);
-		backdrop-filter: blur(18px);
-		animation: entraToma 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+	/* ── Aviso a pantalla completa ──────────────────────────── */
+	.aviso {
+		position: absolute;
+		inset: 0;
+		z-index: 55;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		/* El color del evento se ve en los bordes y en la viñeta; el centro se
+		   apaga para que el texto blanco sea legible. */
+		background: color-mix(in srgb, var(--c) 90%, #04121f);
 	}
-	.toma-caja {
-		display: flex; flex-direction: column; align-items: center; gap: 12px;
-		padding: 54px 90px; border-radius: 32px; text-align: center;
-		background: linear-gradient(160deg, color-mix(in srgb, var(--c) 18%, rgba(30,41,59,0.96)), rgba(15,23,42,0.96));
-		border: 2px solid color-mix(in srgb, var(--c) 60%, transparent);
-		box-shadow: 0 0 90px color-mix(in srgb, var(--c) 35%, transparent), 0 30px 70px rgba(0,0,0,0.6);
-		max-width: 1300px;
+	.aviso-fondo {
+		position: absolute;
+		inset: 0;
+		background:
+			radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.1) 64%, rgba(0,0,0,0.42) 100%),
+			radial-gradient(circle at 50% 118%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 58%);
+		pointer-events: none;
 	}
-	.toma-img { width: 420px; height: 240px; object-fit: cover; border-radius: 18px; }
-	.toma-ic { font-size: 120px; line-height: 1; filter: drop-shadow(0 0 40px color-mix(in srgb, var(--c) 60%, transparent)); animation: rebote 2s ease-in-out infinite; }
-	.toma-titulo { font-size: 64px; font-weight: 900; color: var(--c); line-height: 1.05; text-shadow: 0 0 40px color-mix(in srgb, var(--c) 40%, transparent); }
-	.toma-texto { font-size: 30px; color: var(--color-text); font-weight: 600; }
-	.toma-meta { font-size: 18px; color: var(--color-text-muted); }
-	.toma-cerrar {
-		margin-top: 10px; font-size: 18px; font-weight: 700; cursor: pointer;
-		color: var(--color-text-muted); background: transparent;
-		border: 1px solid rgba(255,255,255,0.15); border-radius: 999px; padding: 10px 26px;
+	.aviso-caja {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+		text-align: center;
+		padding: 0 90px;
+		max-width: 1750px;
+		animation: entraCaja 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
 	}
-	.toma-cerrar:hover { background: rgba(255,255,255,0.08); }
-	.cuenta { font-variant-numeric: tabular-nums; color: var(--c); }
-	@keyframes entraToma { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
-	@keyframes rebote { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-12px) scale(1.05); } }
+
+	.aviso-modulo {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		font-size: 40px;
+		font-weight: 800;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: rgba(255, 255, 255, 0.72);
+	}
+	.aviso-ic { font-size: 52px; line-height: 1; }
+
+	/* Lo primero que se lee a 6 metros: quién. */
+	.aviso-persona {
+		font-size: 168px;
+		font-weight: 800;
+		line-height: 0.98;
+		letter-spacing: -0.025em;
+		color: #fff;
+		text-shadow: 0 6px 40px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
+	}
+	.aviso-titulo {
+		font-size: 120px;
+		font-weight: 900;
+		line-height: 1;
+		color: #fff;
+		text-shadow: 0 5px 32px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
+	}
+	/* Si no hay persona, el título es el que manda y toma su tamaño. */
+	.aviso-texto {
+		font-size: 54px;
+		font-weight: 700;
+		color: rgba(255, 255, 255, 0.94);
+		text-shadow: 0 4px 22px rgba(0, 0, 0, 0.5);
+	}
+	.aviso-meta {
+		font-size: 34px;
+		font-weight: 600;
+		color: rgba(255, 255, 255, 0.68);
+	}
+
+	.aviso-pie {
+		margin-top: 34px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 14px;
+	}
+	/* Barra de tiempo: deja claro que la pantalla vuelve sola. */
+	.aviso-barra {
+		width: 420px;
+		height: 6px;
+		border-radius: 999px;
+		background: rgba(0, 0, 0, 0.35);
+		overflow: hidden;
+	}
+	.aviso-barra .lleno {
+		display: block;
+		height: 100%;
+		background: rgba(255, 255, 255, 0.85);
+	}
+	.aviso-cerrar {
+		font-size: 22px;
+		font-weight: 700;
+		cursor: pointer;
+		color: rgba(255, 255, 255, 0.75);
+		background: rgba(0, 0, 0, 0.3);
+		border: 1px solid rgba(255, 255, 255, 0.28);
+		border-radius: 999px;
+		padding: 10px 30px;
+	}
+	.aviso-cerrar:hover { background: rgba(0, 0, 0, 0.5); }
+
+	/*
+		SÓLO transform, nunca opacity. Una animación de opacidad que se queda a
+		media camino (tabs en segundo plano, ahorro de energía, o un navegador
+		que congela animaciones) deja el texto del aviso en un verde pálido sobre
+		verde: literalmente ilegible desde el pasillo. El golpe de entrada se
+		logra con escala y desplazamiento, que además van por el compositor y no
+		repintan nada.
+	*/
+	@keyframes entraCaja {
+		from { transform: scale(0.9) translateY(26px); }
+		to   { transform: none; }
+	}
+
 </style>

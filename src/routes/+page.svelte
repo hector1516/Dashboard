@@ -50,7 +50,6 @@ const ROTACION_MS = 45_000;      // 45 s por pantalla
 const REFRESCO_MS = 30_000;      // pedir el snapshot
 const SHELL_MS = 60_000;         // preguntar por versión del build
 const MAX_BANDAS = 3;            // avisos simultáneos abajo
-const COOLDOWN_DESTAQUE_MS = 180_000;  // 1 toma de pantalla cada 3 min
 const APAGADO_DESDE = 0;         // 00:00
 const APAGADO_HASTA = 6;         // 06:00
 const NOCHE_DESDE = 23;          // modo noche (brillo) desde las 23
@@ -117,10 +116,17 @@ const HORA_SALIDA = `${String(SALIDA_HORA).padStart(2, '0')}:${String(SALIDA_MIN
 
 let banda = $state<EventoKiosko[]>([]);
 let toast = $state<EventoKiosko | null>(null);
-let toma = $state<EventoKiosko | null>(null);
+/*
+	Los avisos de nivel 'pantalla' van en COLA, no directo: si alguien registra
+	3 kilómetros y entran 2 tickets en el mismo ciclo, cuatro pantallas
+	completas seguidas son 40 segundos de pasillo sin información. Se muestran uno
+	por uno y los que no caben se van de banda, que es lo que se ve sin estorbar.
+*/
+let colaAviso = $state<EventoKiosko[]>([]);
+let aviso = $state<EventoKiosko | null>(null);
+const MAX_COLA_PANTALLA = 3;
 let vistos = new Set<string>();
 let primerCarga = true;
-let ultimoDestaque = 0;
 let ultimoGanador = '';
 
 let fondoRef = $state<any>(null);
@@ -303,16 +309,22 @@ function anunciar(e: EventoKiosko) {
 	// entradas y salidas); si no, suena el del nivel.
 	tocar(e.tono ?? e.nivel);
 
-	if (e.nivel === 'destaque' && e.segundos) {
-		const ahora = Date.now();
-		if (ahora - ultimoDestaque > COOLDOWN_DESTAQUE_MS) {
-			ultimoDestaque = ahora;
-			toma = e;
-			timers.push(setTimeout(() => (toma = null), e.segundos * 1000));
+	// Aviso a pantalla completa: encola y, si no había ninguno en curso, lo saca
+	// ya. El sonido va aquí (y no al mostrarlo) para que se oiga en el momento
+	// en que llega la noticia, aunque haya que esperar por el que está en
+	// pantalla.
+	if (e.nivel === 'pantalla') {
+		if (colaAviso.length >= MAX_COLA_PANTALLA) {
+			// Ya hay tres esperando: este se ve de banda y no se pierde.
+			banda = [e, ...banda].slice(0, MAX_BANDAS);
+			timers.push(
+				setTimeout(() => (banda = banda.filter((x) => x.id !== e.id)), TICK_EVENTO_MS)
+			);
 			return;
 		}
-		// Con el cooldown activo el evento se degrada a banda: se sigue viendo
-		// aunque no se robe la pantalla.
+		colaAviso = [...colaAviso, e];
+		if (!aviso) sacarSiguienteAviso();
+		return;
 	}
 
 	if (e.nivel === 'exito') {
@@ -326,6 +338,29 @@ function anunciar(e: EventoKiosko) {
 		setTimeout(() => {
 			banda = banda.filter((x) => x.id !== e.id);
 		}, TICK_EVENTO_MS)
+	);
+}
+
+/**
+ * Pasa al siguiente aviso de pantalla completa. Se llama al encolarlo y
+ * cuando termina el que está en curso, para que la cola sea un carrusel y no
+ * un montón de capas apiladas.
+ */
+function sacarSiguienteAviso() {
+	const siguiente = colaAviso[0];
+	if (!siguiente) {
+		aviso = null;
+		return;
+	}
+	colaAviso = colaAviso.slice(1);
+	aviso = siguiente;
+	const seg = siguiente.segundos ?? 10;
+	timers.push(
+		setTimeout(() => {
+			aviso = null;
+			// Pequeña pausa entre uno y otro para que no se encimen los avisos.
+			setTimeout(sacarSiguienteAviso, 500);
+		}, seg * 1000)
 	);
 }
 
@@ -381,9 +416,9 @@ function barajar(): number[] {
 }
 
 function avanzar() {
-	// Una toma de pantalla en curso manda: no se cambia lo que se está leyendo.
-	// Y tampoco la marca de salida, que encima se come la pantalla entera.
-	if (toma || salidaModo) return;
+	// Un aviso a pantalla completa en curso manda: no se cambia lo que se está
+	// leyendo. Y tampoco la marca de salida, que encima se come la pantalla.
+	if (aviso || colaAviso.length || salidaModo) return;
 	saliendo = true;
 	setTimeout(() => {
 		pos = (pos + 1) % orden.length;
@@ -567,6 +602,12 @@ interface ParamsUrl {
 	debug: boolean;
 	/** Fuerza la cuenta de rotación aunque la pantalla esté fija. */
 	reloj?: boolean;
+	/**
+	 * Muestra un aviso de pantalla completo de ejemplo, sin esperar a que
+	 * pase: km | ticket | firmado | presencia. Es lo que se usa para
+	 * revisar el diseño de los avisos y para capturar cómo se ven.
+	 */
+	aviso?: 'km' | 'ticket' | 'firmado' | 'presencia';
 	replay?: boolean;
 	salida?: 'cuenta' | 'ya' | 'fuera';
 }
@@ -585,6 +626,11 @@ function leerParams(): ParamsUrl | null {
 		fija: congelar ? PANTALLAS.findIndex((p) => p.id === id) : null,
 		sinAnim: q.get('sinanim') === '1',
 		debug: q.get('debug') === '1',
+		// `?aviso=km|ticket|firmado|presencia`: un aviso de ejemplo a pantalla
+		// completa, para revisarlo sin esperar a que alguien registre algo.
+		aviso: (['km', 'ticket', 'firmado', 'presencia'].includes(q.get('aviso') ?? '')
+			? q.get('aviso')
+			: undefined) as 'km' | 'ticket' | 'firmado' | 'presencia' | undefined,
 		// `?reloj=1`: muestra la cuenta de segundos aunque la pantalla esté
 		// fija. Se esconde justamente cuando no hay rotación (pantalla anclada
 		// por URL), así que sin este atajo no hay forma de revisarla.
@@ -637,6 +683,7 @@ onMount(() => {
 	sinAnim = params?.sinAnim === true;
 	if (params?.debug) setTimeout(dibujarDebug, 1500);
 	if (params?.replay) setTimeout(replayEventos, 2500);
+	if (params?.aviso) setTimeout(() => anunciar(avisoDeEjemplo(params.aviso as string)), 1500);
 
 	const tReloj = setInterval(tickReloj, 1000);
 	const tDatos = setInterval(refrescar, REFRESCO_MS);
@@ -688,6 +735,62 @@ onDestroy(() => {
  * esto el `docker exec ... --dump-dom` deja los números en el HTML y se
  * revisan sin adivinar.
  */
+/** Avisos de ejemplo para `?aviso=…`. Mismos datos que los de verdad, para que
+ *  al revisar el diseño se vea exactamente lo que se verá en la TV. */
+function avisoDeEjemplo(cual: string): EventoKiosko {
+	const base = { id: `ejemplo:${cual}:${Date.now()}`, nivel: 'pantalla' as const, segundos: 10 };
+	if (cual === 'presencia') {
+		return {
+			...base,
+			tono: 'hola',
+			icono: '👋',
+			modulo: 'Red de la oficina',
+			titulo: 'Entró',
+			persona: 'Priscila Urbina',
+			texto: 'iPhone Priscila',
+			meta: 'entró a la oficina',
+			ts: new Date().toISOString()
+		};
+	}
+	if (cual === 'firmado') {
+		return {
+			...base,
+			tono: 'aviso',
+			icono: '✍️',
+			modulo: 'Field · Reportes',
+			titulo: 'Reporte firmado',
+			persona: 'Víctor Jerónimo',
+			texto: 'RS-00050 · Papeles y Conversiones de México',
+			meta: 'firmado por el cliente',
+			ts: new Date().toISOString()
+		};
+	}
+	if (cual === 'ticket') {
+		return {
+			...base,
+			tono: 'aviso',
+			icono: '🎫',
+			modulo: 'HUB · OxxoGas',
+			titulo: 'Ticket 324745780',
+			persona: 'Ricardo Barajas',
+			texto: 'Kia Rio 21 · SAJ-721-D',
+			meta: 'Carga de combustible',
+			ts: new Date().toISOString()
+		};
+	}
+	return {
+		...base,
+		tono: 'aviso',
+		icono: '🛣️',
+		modulo: 'HUB · Kilómetros',
+		titulo: '3,902 km',
+		persona: 'Héctor Peña',
+		texto: 'Honda City Gris · SAJ-722-B',
+		meta: 'lectura registrada hoy a las 11:14',
+		ts: new Date().toISOString()
+	};
+}
+
 /**
  * ?replay=1 — vuelve a sacar los últimos avisos uno por uno.
  * Sirve para ver y ESCUCHAR cómo se ven las alertas (una entrada, una salida,
@@ -847,15 +950,15 @@ function cambiarVolumen(v: number) {
 			<!-- Canvas único de confeti, sobre todo lo demás -->
 			<canvas class="confeti" bind:this={canvasRef} aria-hidden="true"></canvas>
 
-			<CapaAlertas {banda} {toast} {toma} onCerrarToma={() => (toma = null)} />
+			<CapaAlertas {banda} {toast} {aviso} onCerrarAviso={sacarSiguienteAviso} />
 
 			<!--
 				Cuenta de rotación. Se oculta cuando la pantalla está fija por URL
-				(no hay cambio que anunciar), cuando hay una toma de pantalla o la
-				marca de salida (mandan ellas, no el reloj), y con `?sinanim=1` para
-				que las capturas salgan sin cromo.
+				(no hay cambio que anunciar), cuando hay un aviso a pantalla completa
+				o la marca de salida (mandan ellos, no el reloj), y con `?sinanim=1`
+				para que las capturas salgan sin cromo.
 			-->
-			{#if !sinAnim && !toma && !salidaModo && (params?.reloj || params?.fija === null)}
+			{#if !sinAnim && !aviso && !salidaModo && (params?.reloj || params?.fija === null)}
 				<CuentaRotacion restante={restanteRotacion} />
 			{/if}
 

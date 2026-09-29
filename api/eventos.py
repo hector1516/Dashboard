@@ -16,12 +16,18 @@ Cómo funciona, y por qué NO usa la base para acordarse:
     pantalla deduplica por `id` y en el primer arranque no reproduce el
     historial (si no, la TV saludaría a la oficina con 100 avisos de golpe).
 
-Niveles: `info` (banda), `exito` (toast), `destaque` (toma de pantalla con
-confeti) y `alerta` (banda ámbar con sonido grave).
+Niveles: `info` (banda), `exito` (toast), `pantalla` (aviso a pantalla
+completa, con `confeti: true` si además es celebración) y `alerta` (banda ámbar
+con sonido grave).
 """
 import datetime as _dt
 
 MAX_PENDIENTES_POR_VUELTA = 4   # no se anuncian 30 km de golpe
+
+# Cuánto dura un aviso a pantalla completa. 10 s es lo justo para leer "quién,
+# qué, de dónde" a 3 metros de distancia: más curto pasa inadvertido y más
+# largo hace perder el turno de rotación.
+SEGUNDOS_PANTALLA = 10
 
 # Una persona no genera más de un aviso de presencia cada N minutos. Sin esto,
 # un celular que pierde el WiFi un momento produce SALIDA+ENTRADA cada 3
@@ -75,33 +81,44 @@ def detectar(cursores_nuevos: dict, cursores_previos: dict, detalles: dict, hoy_
             return 0
 
     # ── Kilómetros ──────────────────────────────────────────────────────────
+    # A pantalla completa: es un registro que alguien hizo a mano, y en una TV
+    # de pasillo lo que se ve de lejos es "quién y cuántos km", no el detalle.
     n = nuevo("km")
     for f in (detalles.get("km") or [])[:n][:MAX_PENDIENTES_POR_VUELTA]:
         eventos.append({
             "id": f"km:{f['Id']}",
-            "nivel": "info",
+            "nivel": "pantalla",
+            "tono": "aviso",
             "icono": "🛣️",
-            "titulo": f"Kilómetros · {f['MarcaModelo']}",
-            "texto": f"{f['Nombre']} registró {f['Kilometros']} km",
+            "modulo": "HUB · Kilómetros",
+            "titulo": f"{f['Kilometros']} km",
+            "persona": f.get("Nombre") or "",
+            "texto": f.get("MarcaModelo") or "vehículo",
             "meta": f.get("fecha") or "",
             "ts": _iso(f.get("fecha")),
+            "segundos": SEGUNDOS_PANTALLA,
         })
 
     # ── Tickets OxxoGas ─────────────────────────────────────────────────────
-    n = nuevo("tickets")
-    for t in (detalles.get("tickets") or [])[:n][:MAX_PENDIENTES_POR_VUELTA]:
-        ev = {
+    n = novo = nuevo("tickets")
+    for t in (detalles.get("tickets") or [])[:novo][:MAX_PENDIENTES_POR_VUELTA]:
+        # Sin imagen: los tickets se muestran sin foto (2026-09-28) y el aviso a
+        # pantalla completa tampoco lleva fotografía, por pedido del usuario: en
+        # una pantalla de pasillo una foto de 200 px no dice nada y roba el
+        # espacio del texto, que es lo que importa.
+        eventos.append({
             "id": f"tkt:{t['Id']}",
-            "nivel": "info",
+            "nivel": "pantalla",
+            "tono": "aviso",
             "icono": "🎫",
+            "modulo": "HUB · OxxoGas",
             "titulo": f"Ticket {t['FolioTicket']}",
-            "texto": f"{t['MarcaModelo'] or '—'} · {t['Nombre']}"
-                     + (f" · {_corta(t['Descripcion'], 50)}" if t.get("Descripcion") else ""),
-            "meta": t.get("fecha") or "",
+            "persona": t.get("Nombre") or "",
+            "texto": t.get("MarcaModelo") or "—",
+            "meta": (t.get("Descripcion") or "")[:70],
             "ts": _iso(t.get("fecha")),
-        }
-        # Sin imagen: los tickets se muestran sin foto (2026-09-28).
-        eventos.append(ev)
+            "segundos": SEGUNDOS_PANTALLA,
+        })
 
     # ── Reportes nuevos ─────────────────────────────────────────────────────
     n = nuevo("reportes")
@@ -121,19 +138,23 @@ def detectar(cursores_nuevos: dict, cursores_previos: dict, detalles: dict, hoy_
     for r in (detalles.get("firmados") or [])[:n][:2]:
         eventos.append({
             "id": f"firmado:{r['IdReporte']}",
-            "nivel": "destaque",
+            "nivel": "pantalla",
+            "tono": "aviso",
             "icono": "✍️",
-            "titulo": f"Reporte firmado · {r['Folio']}",
-            "texto": f"{r['Cliente']} · {r['Tecnico']}",
+            "modulo": "Field · Reportes",
+            "titulo": f"Reporte firmado",
+            "persona": r.get("Tecnico") or "",
+            "texto": f"{r['Folio']} · {r['Cliente']}",
             "meta": "firmado por el cliente",
             "ts": _iso(),
-            "segundos": 8,
+            "segundos": SEGUNDOS_PANTALLA,
         })
 
     # ── Entradas y salidas de la oficina (por MAC) ─────────────────────────
-    # Son saludos, no alarmas: van como banda abajo con su propio tono, y NO
-    # toman la pantalla. Alguien entra 8 veces al día; si cada entrada fuera un
-    # takeover, la pantalla del pasillo sería insoportable.
+    # A pantalla completa, como pidió el usuario. Lo que evita que sea
+    # insoportable no es que sea una banda, es el COOLDOWN de 20 min por
+    # persona y tipo: sin él, un celular que pierde el WiFi un momento produce
+    # SALIDA+ENTRADA cada 3 minutos y la pantalla se queda en saludos.
     vistos = dict(presencia_previa or {})
     for p in (detalles.get("presencia") or [])[:nuevo("presencia")][:4]:
         id_usuario = p.get("IdUsuario") or 0
@@ -151,13 +172,16 @@ def detectar(cursores_nuevos: dict, cursores_previos: dict, detalles: dict, hoy_
         nombre = p.get("Nombre") or "(sin usuario)"
         eventos.append({
             "id": f"presencia:{p['Id']}",
-            "nivel": "info",
+            "nivel": "pantalla",
             "tono": "hola" if entrada else "adios",
             "icono": "👋" if entrada else "🚪",
-            "titulo": f"{'Hola' if entrada else 'Adiós'}, {nombre}",
+            "modulo": "Red de la oficina",
+            "titulo": f"{'Entró' if entrada else 'Salió'}",
+            "persona": nombre,
             "texto": p.get("NombreDispositivo") or "dispositivo",
-            "meta": "entró a la oficina" if entrada else "salió de la oficina",
+            "meta": f"{'entró a la oficina' if entrada else 'salió de la oficina'}",
             "ts": _iso(str(p.get("FechaHora"))[:19]),
+            "segundos": SEGUNDOS_PANTALLA,
         })
     if presencia_previa is not None:
         presencia_previa.update(vistos)
@@ -166,13 +190,20 @@ def detectar(cursores_nuevos: dict, cursores_previos: dict, detalles: dict, hoy_
     for p in (hoy_cumple or []):
         eventos.append({
             "id": f"cumple:{_dt.date.today().isoformat()}:{p['Nombre']}",
-            "nivel": "destaque",
+            "nivel": "pantalla",
+            "tono": "exito",
             "icono": "🎂",
-            "titulo": f"¡Feliz cumpleaños, {p['Nombre']}!",
+            "modulo": "HUB · Celebraciones",
+            "titulo": "¡Feliz cumpleaños!",
+            "persona": p.get("Nombre") or "",
             "texto": f"{p.get('edad') or '—'} años hoy",
             "meta": "en ECCSA",
             "ts": _iso(),
-            "segundos": 9,
+            "segundos": SEGUNDOS_PANTALLA,
+            # El confeti lo lanza el front al abrir este aviso. Antes vivía en
+            # el nivel 'destaque', que era una segunda capa de pantalla completa
+            # con otro estilo; ahora todo aviso a pantalla completa se ve igual.
+            "confeti": True,
         })
 
     # ── Avisos del admin (HUB_Notificaciones) ──────────────────────────────

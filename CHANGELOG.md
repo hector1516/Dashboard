@@ -3,6 +3,23 @@
 ## Sin liberar (main)
 
 ### Nuevo
+- **Avisos a pantalla completa** (nuevo nivel `pantalla`): las entradas/salidas,
+  los kilómetros registrados, los tickets OxxoGas y los reportes firmados toman
+  TODA la pantalla 10 segundos, con el nombre de quien lo hizo en 168 px, el
+  módulo de dónde viene, el dato grande y una barra de tiempo. Fondo verde
+  saturado semitransparente con viñeta para que el blanco se lea a 6 metros.
+  Sin fotografías (una foto de 200 px en un pasillo no dice nada). Sonido nuevo
+  `aviso`: tres notas claras con cola y una quinta que se sostiene.
+  Van en cola de 3 y pausan la rotación. Atajo de revisión: `?aviso=…`.
+  El cumpleaños se cambió al mismo nivel (antes tenía una segunda capa de
+  pantalla completa con otro estilo) y ahora es el que trae el confeti.
+
+### Corregido
+- El aviso a pantalla completa se veía translúcido con la pantalla de atrás
+  durante su animación de entrada, y el texto salía pálido si la animación se
+  quedaba a medio camino: se quitó toda animación de `opacity` (sólo
+  `transform`), porque en un kiosco 24/7 una animación congelada deja el aviso
+  ilegible.
 - **Pantalla de portada** (12ª): imagen a pantalla completa con el título
   gigante en el centro encima. La sube una persona desde Notas (Admon) a
   `HUB_PantallaImagenes`, clave PORTADA. Si nadie escribe título, el backend
