@@ -115,6 +115,25 @@
 				</article>
 			{/each}
 		</div>
+
+		<!--
+			La nota que pidió el usuario, y que además es necesaria: estos horarios
+			NO salen de un checador. Los deduce la red —el network_scanner ve que
+			aparece o desaparece una MAC conocida—, así que son una aproximación
+			y no un registro de asistencia. Sin este aviso alguien puede tomar el
+			color de una tarjeta como que es un dato verificado, y en una complaint
+			de asistencia eso importa.
+		-->
+		<p class="nota">
+			<i class="nota-ic">ℹ</i>
+			<span>
+				Los horarios se calculan solos a partir de la red de la oficina
+				(cuando un equipo o celular conocido se conecta), por lo que pueden
+				variar algunos minutos y no siempre detectan todas las entradas ni
+				todas las salidas.
+				<b>Es información orientativa, no un registro oficial de asistencia.</b>
+			</span>
+		</p>
 	{/if}
 </div>
 
@@ -244,6 +263,35 @@
 	.esperando { background: rgba(148, 163, 184, 0.08); border: 1px solid rgba(148, 163, 184, 0.16); }
 	.esperando .rot { color: #64748b; }
 	.esperando .hhmm { color: #64748b; font-size: 30px; }
+
+	/* La nota va al pie de la pantalla, pequeña y apagada: es una aclaración,
+	   no un dato. Con el mismo cuidado que el aviso de que la pantalla no está
+	   rota: se nota si lo buscas, no se nota si estás leyendo. */
+	.nota {
+		margin: 0;
+		flex-shrink: 0;
+		display: flex;
+		align-items: flex-start;
+		gap: 10px;
+		max-width: 1500px;
+		margin-inline: auto;
+		padding: 10px 18px;
+		border-radius: 12px;
+		background: rgba(148, 163, 184, 0.06);
+		border: 1px solid rgba(148, 163, 184, 0.12);
+		font-size: 19px;
+		font-weight: 600;
+		line-height: 1.4;
+		color: #7c8ba1;
+	}
+	.nota-ic {
+		font-style: normal;
+		font-size: 20px;
+		line-height: 1.3;
+		color: #64748b;
+		flex-shrink: 0;
+	}
+	.nota b { color: #a7b3c6; font-weight: 800; }
 
 	.eventos {
 		margin-top: auto;

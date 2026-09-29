@@ -14,6 +14,14 @@
   El cumpleaños se cambió al mismo nivel (antes tenía una segunda capa de
   pantalla completa con otro estilo) y ahora es el que trae el confeti.
 
+### Nuevo
+- La pantalla de asistencia lleva al pie una aclaración: los horarios se
+  calculan solos a partir de la red, pueden variar algunos minutos, no siempre
+  se detectan todas las entradas ni todas las salidas, y es información
+  orientativa, no un registro oficial. No es adorno: sin ese aviso, el color de
+  una tarjeta se puede leer como un dato verificado, y en un reclamo de
+  asistencia eso pesa.
+
 ### Corregido
 - Portada: el título ya no va centrado en la imagen (tapaba el centro, que es
   donde está lo importante) sino pegado arriba como encabezado; se quitó el
