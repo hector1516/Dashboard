@@ -81,11 +81,11 @@
 	.velo {
 		position: absolute;
 		inset: 0;
-		/* Oscurece la franja de arriba (donde va el texto) y respeta el resto:
-		   el centro de la foto es lo que se quiere ver, y antes se tapaba con
-		   una viñeta fuerte. */
+		/* Oscurece la franja de arriba, donde va el título, y respeta el resto:
+		   el centro de la foto es lo que se quiere ver. Con el título pegado
+		   al borde la banda oscura se acorta y se intensifica. */
 		background:
-			linear-gradient(180deg, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.32) 34%, rgba(0, 0, 0, 0.06) 58%, rgba(0, 0, 0, 0.35) 100%);
+			linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.45) 16%, rgba(0, 0, 0, 0.05) 38%, rgba(0, 0, 0, 0.3) 100%);
 	}
 
 	.texto {
@@ -94,13 +94,14 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		/* Arriba, en el tercio superior, no centrado: lo importante de una foto
-		   casi siempre está en el centro, y el título centrado lo tapaba. El
-		   11% son ~120 px en el escenario de 1080. */
+		/* Hasta arriba, pegado al header (que son 56 px): el título hace de
+		   encabezado de la portada, no va flotando en el tercio superior. En
+		   px fijos y no en %, porque el escenario mide 1920x1080 y ya está
+		   escalado: un % aquí sería % del viewport, no de la pantalla. */
 		justify-content: flex-start;
-		gap: 18px;
+		gap: 10px;
 		text-align: center;
-		padding: 11% 90px 0;
+		padding: 14px 90px 0;
 	}
 
 	.titulo {
@@ -125,9 +126,9 @@
 	}
 
 	.pie {
-		font-size: 26px;
+		font-size: 20px;
 		font-weight: 600;
-		color: rgba(255, 255, 255, 0.5);
+		color: rgba(255, 255, 255, 0.42);
 		text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
 	}
 

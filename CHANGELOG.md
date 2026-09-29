@@ -15,10 +15,10 @@
   pantalla completa con otro estilo) y ahora es el que trae el confeti.
 
 ### Corregido
-- Portada: el título ya no va centrado (tapaba el centro de la foto, que es
-  donde está lo importante) y se quitó el texto rojo de "la imagen mide
-  1920x1080". La viñeta también cambió: ahora oscurece la franja de arriba
-  donde va el texto y respeta el resto de la foto.
+- Portada: el título ya no va centrado en la imagen (tapaba el centro, que es
+  donde está lo importante) sino pegado arriba como encabezado; se quitó el
+  texto rojo de "la imagen mide 1920x1080" y la viñeta se acortó a la franja
+  del título.
 - El panel remoto se saltaba la pantalla anclada por `?pantalla=…`: cambiaba
   la pantalla mientras alguien la estaba revisando, y `seguir` arrancaba la
   rotación en un modo donde por definición no hay rotación. Ahora manda el
