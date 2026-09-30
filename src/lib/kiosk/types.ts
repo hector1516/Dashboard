@@ -234,6 +234,18 @@ export interface Snapshot {
 	/** Rutas locales de fondos. Nunca URLs de internet (ver AGENTS.md §Offline). */
 	fondos: string[];
 
+	/** Tema del mes para el fondo. `capa` es un PNG local, generado por el worker. */
+	tema?: {
+		mes: number;
+		nombre: string;
+		icono: string;
+		tinte: string;
+		motivo: string;
+		capa: string;
+		/** Los doce, para poder previsualizar con `?tema=N`. */
+		todos?: { mes: number; nombre: string; icono: string; tinte: string; capa: string }[];
+	};
+
 	/** Ancho con el que el backend generó los thumbs de fotos. */
 	media?: { fotos_w: number };
 

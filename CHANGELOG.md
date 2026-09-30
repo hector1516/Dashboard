@@ -23,6 +23,15 @@
   nombres salían como "Priscila …".
 
 ### Nuevo
+- **Tema del mes en el fondo de todas las pantallas**: los doce meses con su
+  tema (Reyes Magos, amor y amistad, primavera, día del Niño, el mes de las
+  mamás, verano y calor, verano a toda vista, el mes más caluroso,
+  Independencia, Halloween y Día de Muertos, Revolución y otoño, Navidad).
+  Se GENERA en local con Pillow, no se descarga: Bing ignora el parámetro de
+  búsqueda de sus fondos (probado) y el kiosco es offline. Va sobre la foto y
+  bajo la viñeta, así que el texto se lee igual que siempre. Atajo `?tema=N`.
+
+### Nuevo
 - Widget de cumpleaños y aniversario en la esquina de TODAS las pantallas: antes
   el cumple de alguien sólo se veía una vez cada vuelta de 12 pantallas y en el
   aviso del día, y entre una cosa y otra pasaban horas sin que nadie se enterara.

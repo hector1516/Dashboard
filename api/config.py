@@ -26,6 +26,8 @@ WALLPAPERS_DIR = os.path.join(MEDIA_DIR, "wallpapers")
 AVATARS_DIR = os.path.join(MEDIA_DIR, "avatars")
 # Imagen a pantalla completa de la pantalla de portada.
 PANEL_DIR = os.path.join(MEDIA_DIR, "panel")
+# Capa PNG del tema del mes (generada por api/temas.py, no descargada).
+TEMAS_DIR = os.path.join(MEDIA_DIR, "temas")
 
 # El build de la imagen; lo escribe el Dockerfile y lo lee /api/dashboard/version
 # para que la pantalla se recargue sola tras un deploy.
@@ -67,7 +69,7 @@ SCHEMA_VERSION = 1
 
 def asegurar_directorios():
     """Crea el árbol de /data. Idempotente."""
-    for d in (DATA_DIR, MEDIA_DIR, THUMBS_DIR, WALLPAPERS_DIR, AVATARS_DIR, PANEL_DIR):
+    for d in (DATA_DIR, MEDIA_DIR, THUMBS_DIR, WALLPAPERS_DIR, AVATARS_DIR, PANEL_DIR, TEMAS_DIR):
         os.makedirs(d, exist_ok=True)
 
 

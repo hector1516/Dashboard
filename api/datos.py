@@ -15,6 +15,7 @@ Importante: el kiosco NO escribe nada en la base. Es estrictamente de lectura
 import datetime as _dt
 import json
 
+import temas
 from db import get_connection
 
 DIAS_SEMANA = 7
@@ -326,6 +327,43 @@ def bytes_imagen_pantalla(clave: str = "PORTADA") -> tuple[bytes, str] | None:
     if not fila:
         return None
     return fila["Archivo"], (fila.get("ContentType") or "image/jpeg")
+
+
+# ── TEMA DEL MES ─────────────────────────────────────────────────────────────
+def temas_lista() -> list:
+    """
+    Los doce temas, para que el front pueda previsualizar cualquiera con
+    `?tema=N` sin que el worker haya generado ese mes todavía. Son 12 objetos
+    chicos: no vale la pena complicarlo con una llamada aparte.
+    """
+    return [
+        {
+            "mes": m,
+            "nombre": temas.TEMAS[m]["nombre"],
+            "icono": temas.TEMAS[m]["icono"],
+            "tinte": temas.TEMAS[m]["tinte"],
+            "capa": f"/media/temas/mes{m}.png",
+        }
+        for m in range(1, 13)
+    ]
+
+
+def tema_mes(mes: int = None) -> dict:
+    """
+    El tema del mes para el fondo (colores y nombre). La CAPA png la genera
+    `temas.generar_overlay` desde el snapshotter, porque eso escribe un archivo
+    y la API es sólo lectura (AGENTS.md §La API sólo lee).
+    """
+    t = temas.tema_de(mes)
+    return {
+        "mes": t["mes"],
+        "nombre": t["nombre"],
+        "icono": t["icono"],
+        "tinte": t["tinte"],
+        "motivo": t["motivo"],
+        "capa": f"/media/temas/mes{t['mes']}.png",
+        "todos": temas_lista(),
+    }
 
 
 # ── ASISTENCIA DEL DÍA ─────────────────────────────────────────────────────

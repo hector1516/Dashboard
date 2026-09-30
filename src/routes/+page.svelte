@@ -258,6 +258,22 @@ function tickSalida(now: Date) {
 	}
 }
 
+/**
+ * El tema del mes que se pinta. Sale del snapshot; con `?tema=1..12` se
+ * fuerza otro para poder revisarlos todos sin esperar a cada mes.
+ */
+function temaAMostrar() {
+	const t = datos.tema;
+	if (!t || t.mes < 1) return null;
+	const forzado = params?.tema;
+	if (!forzado || forzado === t.mes) return t;
+	// El forzado se saca de la lista de los doce que trae el snapshot: si se
+	// inventara aquí el tinte, la vista previa enseñaría un color que ese mes
+	// no tiene (o con la capa del mes equivocado debajo).
+	const otro = (t.todos ?? []).find((x) => x.mes === forzado);
+	return otro ? otro : t;
+}
+
 /* ── Datos ────────────────────────────────────────────────────── */
 async function refrescar() {
 	try {
@@ -610,6 +626,8 @@ interface ParamsUrl {
 	debug: boolean;
 	/** Fuerza la cuenta de rotación aunque la pantalla esté fija. */
 	reloj?: boolean;
+	/** Fuerza el tema del mes: `?tema=1..12`, para verlos sin esperar. */
+	tema?: number;
 	/**
 	 * Widget de cumpleaños de ejemplo: `?cumple=Nombre` (y `&aniversario=1`
 	 * para ver el de aniversario). Sirve para revisar cómo se ve sin esperar
@@ -645,6 +663,10 @@ function leerParams(): ParamsUrl | null {
 		// `?aviso=km|ticket|firmado|presencia`: un aviso de ejemplo a pantalla
 		// completa, para revisarlo sin esperar a que alguien registre algo.
 		cumple: q.get('cumple') || undefined,
+		tema: (() => {
+			const n = Number(q.get('tema'));
+			return n >= 1 && n <= 12 ? n : undefined;
+		})(),
 		aniversario: q.get('aniversario') === '1',
 		aviso: (['km', 'ticket', 'firmado', 'presencia'].includes(q.get('aviso') ?? '')
 			? q.get('aviso')
@@ -947,6 +969,7 @@ function cambiarVolumen(v: number) {
 			soleado={esSoleado(clima?.codigo_clima ?? 0, clima?.es_dia ?? true)}
 			nublado={esNublado(clima?.codigo_clima ?? 0)}
 			tenue={modoNoche}
+			tema={temaAMostrar()}
 		/>
 
 		<!-- Escenario fijo 1920×1080 escalado al viewport. Determinista. -->

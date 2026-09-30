@@ -17,9 +17,15 @@
 		nublado: boolean;
 		/** Atenúa todo (modo noche 23:00–06:00). */
 		tenue: boolean;
+		/**
+		 * Tema del mes: una capa PNG con la silueta del mes, muy tenue. Va
+		 * ENCIMA de la foto y DEBAJO de la viñeta, para que las pantallas se
+		 * vean como siempre. `?tema=<1-12>` fuerza otro mes para revisarlos.
+		 */
+		tema?: { capa: string; tinte: string; nombre: string; icono: string } | null;
 	}
 
-	let { fondos, periodo, lluvioso, soleado, nublado, tenue }: Props = $props();
+	let { fondos, periodo, lluvioso, soleado, nublado, tenue, tema = null }: Props = $props();
 
 	// Índice del fondo visible y el que se estáfundiendo: se avanza desde
 	// fuera (el orquestador) para que el cambio coincida con la rotación.
@@ -83,6 +89,15 @@
 	{#if siguiente >= 0 && siguiente !== actual}
 		<div class="capa-img encima" style="background-image:url('{fondos[siguiente] ?? ''}');opacity:{progreso}" aria-hidden="true"></div>
 	{/if}
+	<!--
+		Tema del mes: tinte radial + la capa de motivos, sobre la foto y antes
+		del gradiente/vineta. Con la viñeta encima, el texto de las pantallas se
+		lee igual de bien que sin tema: es una capa de ambiente, no un filtro.
+	-->
+	{#if tema?.capa}
+		<div class="capa-tema" style="background-image:url('{tema.capa}')" aria-hidden="true"></div>
+		<div class="tinte-tema" style="--tinte:{tema.tinte}" aria-hidden="true"></div>
+	{/if}
 	<div class="capa-gradiente g-{periodo}" aria-hidden="true"></div>
 	<div class="capa-vineta" class:tenue aria-hidden="true"></div>
 
@@ -117,6 +132,22 @@
 	/* El crossfade lo lleva el inline style (rAF), no una transición: si
 	   hubiera transición, las dos capas se pelearían por la opacidad. */
 	.capa-img.encima { transition: none; }
+
+	.capa-tema {
+		position: absolute; inset: 0;
+		background-size: cover; background-position: center; background-repeat: no-repeat;
+		/* 1.0 a propósito: los motivos se generan con opacidad baja, y con la
+		   viñeta encima (que es fuerte) un 0.55 aquí los volvía invisibles
+		   desde el otro lado de la oficina. La viñeta es la que protege la
+		   legibilidad del texto, no esta capa. */
+		opacity: 1;
+	}
+	.tinte-tema {
+		position: absolute; inset: 0;
+		background:
+			radial-gradient(120% 85% at 12% 8%, color-mix(in srgb, var(--tinte) 34%, transparent) 0%, transparent 58%),
+			radial-gradient(110% 80% at 88% 92%, color-mix(in srgb, var(--tinte) 24%, transparent) 0%, transparent 58%);
+	}
 
 	/* Gradiente base por hora del día: es el fondo cuando no hay imagen local. */
 	.capa-gradiente { position: absolute; inset: 0; }

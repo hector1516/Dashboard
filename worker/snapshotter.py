@@ -125,6 +125,7 @@ def ciclo() -> dict:
             "metricas": D.metricas(sunday),
             "asistencia": D.asistencia_hoy(),
             "imagen": D.imagen_pantalla("PORTADA"),
+            "tema": D.tema_mes(),
         }
     except Exception as exc:
         # La base no responde: se conserva el snapshot anterior.
@@ -152,6 +153,23 @@ def ciclo() -> dict:
     except Exception as exc:
         _log(f"WARN imagen portada: {exc}")
         bloques["imagen"] = {"hay": False}
+
+    # Capas de los DOCE temas del año, no sólo el del mes: son 1.3 s cada una y
+    # se generan una sola vez (el archivo ya no se toca). Con los doce a mano,
+    # el cambio de mes es instantáneo y `?tema=N` puede revisar cualquiera sin
+    # esperar a que llegue ese mes. Son ~40 KB cada uno, 500 KB en total.
+    try:
+        import temas as _T
+        _nuevas = 0
+        for _m in range(1, 13):
+            _destino = os.path.join(C.TEMAS_DIR, f"mes{_m}.png")
+            if not os.path.exists(_destino):
+                if _T.generar_overlay(_m, _destino):
+                    _nuevas += 1
+        if _nuevas:
+            _log(f"temas del año: {_nuevas} capas generadas")
+    except Exception as exc:
+        _log(f"WARN temas del año: {exc}")
 
     # 4) Medios ------------------------------------------------------------
     fotos = D.fotos(C.FOTOS_CARRUSEL)
@@ -265,6 +283,7 @@ def ciclo() -> dict:
         "metricas": bloques["metricas"],
         "asistencia": bloques["asistencia"],
         "imagen": bloques["imagen"],
+        "tema": bloques["tema"],
         "clima": clima,
         "fondos": fondos,
         # Anchos de los thumbs ya generados. El front los lee de acá en vez de
