@@ -44,31 +44,40 @@
 	const conRegistro = $derived(personas.filter((p) => p.entrada));
 
 	/**
-	 * Cuadrados que quepan TODOS, calculados, no un grid que se desborda.
+	 * Tarjetas que quepan TODAS, con el ancho y el alto calculados.
 	 *
-	 * Con 4 personas en un `auto-fit` de 3 columnas quedan dos tarjetas
-	 * chiquitas y un hueco enorme; con 25 nadie cabe. Aquí se elige el número
-	 * de columnas a partir de cuántas hay (una rejilla casi cuadrada) y de ahí
-	 * el lado del cuadro para que quepan en el escenario: alto y ancho dividen
-	 * entre filas y columnas, y se toma el menor.
+	 * Antes eran cuadradas y con 9 personas el lado caía a 204 px, donde
+	 * "Priscila Urbina" no cabía y salía como "Priscila …". Ahora la tarjeta
+	 * es una FRANJA (más ancha que alta), que es como se lee un dato en una
+	 * fila: avatar, nombre completo y las horas, todo en una línea.
+	 *
+	 * Se elige el número de columnas a partir de cuántas hay (rejilla casi
+	 * cuadrada en cantidad), y de ahí el ancho y el alto por separado, para que
+	 * quepan en el escenario. El ancho además tiene tope: con 2 personas no
+	 * quiere decir tarjetas de 880 px, sino 430 px centradas.
 	 */
-	const LADO_MAX = 360;
+	const GAP = 14;
+	const ANCHO_MAX = 560;
+	const ALTO_MAX = 215;
 	const AREA_W = 1780;   // 1920 menos los paddings laterales
-	const AREA_H = 640;    // lo que sobra entre el título y la nota del pie
+	const AREA_H = 620;    // lo que sobra entre el título y la nota del pie
 	const rejilla = $derived.by(() => {
 		const n = conRegistro.length;
-		if (!n) return { cols: 1, filas: 1, lado: 0, visibles: 0 };
+		if (!n) return { cols: 1, filas: 1, ancho: 0, alto: 0, visibles: 0 };
 		// Máximo 24 en pantalla: más de eso ya no es una pantalla, es una tabla.
 		const visibles = Math.min(n, 24);
 		let cols = Math.ceil(Math.sqrt(visibles));
 		cols = Math.max(1, Math.min(6, cols, visibles));
 		const filas = Math.ceil(visibles / cols);
-		const lado = Math.min(
-			Math.floor((AREA_W - (cols - 1) * 14) / cols),
-			Math.floor((AREA_H - (filas - 1) * 14) / filas),
-			LADO_MAX
+		const ancho = Math.min(
+			ANCHO_MAX,
+			Math.floor((AREA_W - (cols - 1) * GAP) / cols)
 		);
-		return { cols, filas, lado, visibles };
+		const alto = Math.min(
+			ALTO_MAX,
+			Math.floor((AREA_H - (filas - 1) * GAP) / filas)
+		);
+		return { cols, filas, ancho, alto, visibles };
 	});
 </script>
 
@@ -94,39 +103,41 @@
 		</div>
 	{:else}
 		<!--
-			Rejilla de CUADRADOS con el lado calculado: se eligen las columnas a
-			partir de cuántas personas hay y de ahí el lado, para que todas quepan
-			a la vez sin scrolls ni huecos raros.
+			Franjas con el ancho y el alto calculados: se eligen las columnas a
+			partir de cuántas personas hay, y de ahí el tamaño, para que todas
+			quepen a la vez sin scrolls ni huecos raros.
 		-->
 		<div
 			class="rejilla"
-			style="--cols:{rejilla.cols};--filas:{rejilla.filas};--lado:{rejilla.lado}px"
+			style="--cols:{rejilla.cols};--filas:{rejilla.filas};--ancho:{rejilla.ancho}px;--alto:{rejilla.alto}px"
 		>
 			{#each conRegistro.slice(0, rejilla.visibles) as p (p.id_usuario)}
+				<!--
+					Una fila: avatar, nombre, y las horas a la derecha. La salida
+					sólo si ya se fue: si sigue en la oficina esa hora todavía no
+					existe, y rayitas o "—" se leerían igual que un dato.
+				-->
 				<article class="tarjeta" class:en-sitio={p.en_sitio} class:fuera={!p.en_sitio}>
-					<div class="avatar">
-						{#if p.avatar}
-							<img src={avatarSrc(p.avatar)} alt="" />
-						{:else}
-							<div class="ph">{iniciales(p.nombre)}</div>
-						{/if}
+					<div class="cabeza">
+						<div class="avatar">
+							{#if p.avatar}
+								<img src={avatarSrc(p.avatar)} alt="" />
+							{:else}
+								<div class="ph">{iniciales(p.nombre)}</div>
+							{/if}
+						</div>
+						<div class="nombre">{p.nombre}</div>
 					</div>
-					<div class="nombre">{p.nombre}</div>
 
 					<div class="horas">
-						<div class="hora llegada">
+						<div class="hora">
 							<span class="rot">Llegó</span>
-							<span class="hhmm">{hhmm(p.entrada)}</span>
+							<span class="hhmm llegada">{hhmm(p.entrada)}</span>
 						</div>
-						<!--
-							La salida sólo si ya se fue. Si sigue en la oficina esa
-							hora todavía no existe, y rayitas o "—" se leen igual que
-							un dato: mejor la fila no está.
-						-->
 						{#if !p.en_sitio && p.salida}
-							<div class="hora ida">
+							<div class="hora">
 								<span class="rot">Se fue</span>
-								<span class="hhmm">{hhmm(p.salida)}</span>
+								<span class="hhmm ida">{hhmm(p.salida)}</span>
 							</div>
 						{/if}
 					</div>
@@ -134,7 +145,7 @@
 			{/each}
 
 			{#if conRegistro.length > rejilla.visibles}
-				<div class="sobran" style="--lado:{rejilla.lado}px">
+				<div class="sobran">
 					+{conRegistro.length - rejilla.visibles}
 					<span>más</span>
 				</div>
@@ -177,61 +188,60 @@
 		abajo, que en una TV se lee como pantalla rota.
 	*/
 	/*
-		Cuadrados con el lado ya calculado en el script (--lado). Se usa
-		`grid-template` explícito en vez de `auto-fit` porque el lado depende de
-		cuántas personas hay: con `auto-fit` el navegador decide y o quedan
-		tarjetas minúsculas con huecos, o se desbordan.
+		Rejilla con el ancho y el alto ya calculados en el script, explícitos en
+		`grid-template`: con `auto-fit` el navegador decide y o quedan tarjetas
+		diminutas con huecos, o se desbordan.
 	*/
 	.rejilla {
 		flex: 1;
 		min-height: 0;
 		display: grid;
-		grid-template-columns: repeat(var(--cols, 4), var(--lado, 280px));
-		grid-template-rows: repeat(var(--filas, 2), var(--lado, 280px));
+		grid-template-columns: repeat(var(--cols, 4), var(--ancho, 430px));
+		grid-template-rows: repeat(var(--filas, 2), var(--alto, 200px));
 		gap: 14px;
 		justify-content: center;
 		align-content: center;
 	}
 
 	/*
-		Una tarjeta = una persona con registro hoy. El color entero dice si
-		sigue aquí o ya se fue, que es lo que se lee a 3 metros; las dos horas
-		van adentro, la de llegada siempre y la de salida sólo si ya se fue.
+		Una tarjeta = una persona, en formato de FRANJA: avatar a la izquierda,
+		nombre completo al centro, horas a la derecha. Verde = sigue en la
+		oficina, rojo = ya salió.
 	*/
 	.tarjeta {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
+		align-items: stretch;
 		justify-content: center;
-		gap: 3px;
-		padding: calc(var(--lado) * 0.05);
-		text-align: center;
+		gap: 8px;
+		padding: 12px 16px;
 		overflow: hidden;
-		border-radius: 18px;
+		border-radius: 16px;
 		animation: entrarStagger 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 	}
 	.tarjeta.en-sitio {
-		background: linear-gradient(160deg, rgba(34, 197, 94, 0.3) 0%, rgba(22, 163, 74, 0.15) 100%);
+		background: linear-gradient(100deg, rgba(34, 197, 94, 0.3) 0%, rgba(22, 163, 74, 0.13) 100%);
 		border: 1px solid rgba(74, 222, 128, 0.55);
-		box-shadow: inset 0 0 40px rgba(34, 197, 94, 0.14);
 	}
 	.tarjeta.fuera {
-		background: linear-gradient(160deg, rgba(239, 68, 68, 0.3) 0%, rgba(185, 28, 28, 0.15) 100%);
+		background: linear-gradient(100deg, rgba(239, 68, 68, 0.3) 0%, rgba(185, 28, 28, 0.13) 100%);
 		border: 1px solid rgba(248, 113, 113, 0.5);
-		box-shadow: inset 0 0 40px rgba(239, 68, 68, 0.12);
 	}
 
-	/*
-		TODO el interior se mide contra `--lado`, no con px fijos. Con 9 personas
-		el cuadrado sale de 204 px y con 2 de 360: si el texto fuera fijo, en el
-		caso chico los nombres se cortaban ("Priscila …") y la tarjeta de dos
-		horas se desbordaba por arriba. Los `max()` son el piso de legibilidad
-		para cuando hay muchas personas.
-	*/
+	/* Fila 1: avatar + nombre. El nombre se lleva TODO el ancho que sobra, que
+	   es justo lo que se perdió cuando la tarjeta era un cuadrado con el
+	   avatar grande al lado. */
+	.cabeza {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		min-width: 0;
+	}
 	.avatar {
-		width: calc(var(--lado) * 0.22);
+		height: calc(var(--alto) * 0.4);
+		max-height: 96px;
 		aspect-ratio: 1;
-		margin-bottom: 3px;
+		flex-shrink: 0;
 		border-radius: 50%;
 		overflow: hidden;
 		background: rgba(0, 0, 0, 0.3);
@@ -239,17 +249,17 @@
 		place-items: center;
 	}
 	.avatar img { width: 100%; height: 100%; object-fit: cover; }
-	.ph { font-size: calc(var(--lado) * 0.1); font-weight: 800; color: rgba(255,255,255,0.75); }
+	.ph { font-size: calc(var(--alto) * 0.16); font-weight: 800; color: rgba(255,255,255,0.75); }
 
+	/* El nombre se lleva el espacio que sobra y no se recorta: para eso la
+	   tarjeta es una franja y no un cuadrado. Sólo cede con dos líneas. */
 	.nombre {
-		font-size: max(20px, calc(var(--lado) * 0.105));
-		line-height: 1.12;
+		flex: 1;
+		min-width: 0;
+		font-size: max(20px, calc(var(--alto) * 0.185));
+		line-height: 1.14;
 		font-weight: 800;
 		color: #fff;
-		/* Hasta DOS líneas: "Priscila Urbina" no cabe en una línea de 204 px y
-		   recortarla a "Priscila …" en una pantalla de pasillo es peor que
-		   partiarla. A la tercera línea se corta. */
-		max-width: 100%;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
@@ -257,46 +267,43 @@
 		overflow: hidden;
 		text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
 	}
-	/* Las dos horas, apiladas y del ancho del cuadro. La etiqueta pequeña a la
-	   izquierda y la hora grande a la derecha: en un cuadrado de 360 px, poner
-	   la hora centrada con la etiqueta encima se come la mitad del alto. */
+
+	/* Fila 2: las horas, en fila y pegadas a la izquierda (donde está el
+	   nombre), para que la tarjeta se lea como una ficha y no como dos
+	   bloques sueltos. */
 	.horas {
 		display: flex;
-		flex-direction: column;
-		gap: 3px;
-		width: 100%;
-		margin-top: 3px;
+		flex-direction: row;
+		gap: 10px;
+		min-width: 0;
 	}
 	.hora {
 		display: flex;
 		align-items: baseline;
-		justify-content: space-between;
-		gap: 6px;
-		padding: 2px 8px;
-		border-radius: 8px;
-		background: rgba(2, 6, 23, 0.34);
+		gap: 8px;
+		padding: 4px 12px;
+		border-radius: 10px;
+		background: rgba(2, 6, 23, 0.36);
 		border: 1px solid rgba(255, 255, 255, 0.1);
 	}
 	.rot {
-		font-size: max(10px, calc(var(--lado) * 0.048));
+		font-size: max(9px, calc(var(--alto) * 0.062));
 		font-weight: 800;
-		letter-spacing: 0.16em;
-		text-indent: 0.16em;
+		letter-spacing: 0.14em;
+		text-indent: 0.14em;
 		text-transform: uppercase;
-		color: rgba(255, 255, 255, 0.6);
-		flex-shrink: 0;
+		color: rgba(255, 255, 255, 0.58);
+		white-space: nowrap;
 	}
 	.hhmm {
-		font-size: max(28px, calc(var(--lado) * 0.15));
+		font-size: max(24px, calc(var(--alto) * 0.2));
 		font-weight: 900;
-		line-height: 1.05;
+		line-height: 1;
 		color: #fff;
 		font-variant-numeric: tabular-nums;
 	}
-	/* La hora de salida se tiñe para que con el rótulo al lado no haga falta
-	   leer: verde = sigue aquí, rojo = ya salió. */
-	.llegada .hhmm { color: #86efac; }
-	.ida .hhmm { color: #fca5a5; }
+	.llegada { color: #86efac; }
+	.ida { color: #fca5a5; }
 
 	/* "+N más": pasa de la lista a la tabla cuando ya no caben. */
 	.sobran {
@@ -305,14 +312,14 @@
 		align-items: center;
 		justify-content: center;
 		gap: 2px;
-		font-size: max(30px, calc(var(--lado) * 0.16));
+		font-size: max(30px, calc(var(--alto) * 0.3));
 		font-weight: 900;
 		color: #94a3b8;
 		border: 1px dashed rgba(148, 163, 184, 0.35);
-		border-radius: 18px;
+		border-radius: 16px;
 	}
 	.sobran span {
-		font-size: max(10px, calc(var(--lado) * 0.05));
+		font-size: max(10px, calc(var(--alto) * 0.07));
 		font-weight: 700;
 		letter-spacing: 0.2em;
 		text-transform: uppercase;

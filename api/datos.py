@@ -20,6 +20,12 @@ from db import get_connection
 DIAS_SEMANA = 7
 
 
+# Minutos que se le restan a la hora de ENTRADA para acercarse a la real. La MAC
+# de una persona aparece en la red hasta varios minutos después de que cruzó la
+# puerta, así que la hora de detección siempre llega "tarde". Ver el docstring
+# de asistencia_hoy() para por qué el ajuste va aquí y no en el snapshotter.
+AJUSTE_ENTRADA_MIN = 4
+
 # Los meses en español, para el título de la pantalla de portada ("ECCSA en
 # Octubre"). Van aquí y no en el front porque el backend arma el título cuando
 # nadie lo escribe, y el front sólo lo muestra.
@@ -331,7 +337,7 @@ def asistencia_hoy() -> dict:
     NINGUNA sirve para esto hoy —
       · `ControlAsistencia` (la vieja, del checador): su último registro es de
         enero de 2023, está abandonada.
-      · `HUB_AsistenciaDiaria`: la最后一次 vez que se calculó fue el 2026-09-11
+      · `HUB_AsistenciaDiaria`: la última vez que se calculó fue el 2026-09-11
         y la mayoría de sus filas traen las horas en NULL; sólo la rellenó a
         mano una vez.
     La que se escribe sola todos los días es `HUB_NetworkPresence`, y la
@@ -342,6 +348,25 @@ def asistencia_hoy() -> dict:
     celular que entra y sale 6 veces no debe verse como 6 llegadas distintas.
     Quien sigue dentro (último evento = ENTRADA) va con `en_sitio` para no
     mostrar una salida que no ha pasado.
+
+    EL AJUSTE DE LA ENTRADA va AQUÍ, en la capa de datos, y no en el snapshotter
+    ni en la vista, por dos razones:
+      · es un dato (la hora de llegada es menor que la de detección), no una
+        decisión de cómo se ve; si mañana se corrige, se corrige un solo lugar
+        y no tres.
+      · `DATEADD` dentro del SQL deja el cálculo en la misma agregación que
+        decide cuál es la primera entrada: si se ajustara en Python, el "primer
+        evento del día" podría dejar de ser el mínimo al ajustar.
+
+    Por qué restar minutos: la MAC aparece en la red cuando el ARP la ve, y eso
+    pasa hasta varios minutos después de que la persona cruzó la puerta (el
+    escáner corre cada 3 min y el detector tiene 5 min de tolerancia). La hora
+    de LLEGADA que se muestra es la de ENTRADA de la tabla, con el ajuste
+    aplicado, para que se parezca a la real.
+
+    OJO: el ajuste es SÓLO de la ENTRADA. La salida no se toca: cuando un
+    dispositivo desaparece de la red se nota de inmediato, y restarle minutos
+    haría que alguien saliera "antes" de irse.
     """
     conn = get_connection()
     with conn.cursor(as_dict=True) as cur:
@@ -349,7 +374,18 @@ def asistencia_hoy() -> dict:
             SELECT
                 d.IdUsuario AS id_usuario,
                 ISNULL(u.Nombre, '(sin usuario)') AS nombre,
-                MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END) AS entrada,
+                -- Primer evento del día YA AJUSTADO (más el tope del día, para
+                -- que a las 00:02 no salga "23:58 de ayer"). Se ordena por la
+                -- hora ajustada, que es la que ve la gente.
+                CASE WHEN MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END)
+                         IS NULL THEN NULL
+                     ELSE CASE WHEN DATEADD(MINUTE, -%d, MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END))
+                                    < CAST(CAST(GETDATE() AS date) AS datetime)
+                               THEN CAST(CAST(GETDATE() AS date) AS datetime)
+                               ELSE DATEADD(MINUTE, -%d, MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END))
+                          END
+                END AS entrada,
+                MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END) AS entrada_cruda,
                 MAX(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END) AS ultima_entrada,
                 MAX(CASE WHEN p.TipoEvento = 'SALIDA'  THEN p.FechaHora END) AS salida,
                 COUNT(*) AS eventos
@@ -361,7 +397,7 @@ def asistencia_hoy() -> dict:
               AND d.IdUsuario IS NOT NULL
             GROUP BY d.IdUsuario, u.Nombre
             ORDER BY entrada
-        """)
+        """, (AJUSTE_ENTRADA_MIN, AJUSTE_ENTRADA_MIN))
         personas = cur.fetchall()
 
         # Último evento de cada quien: define si sigue dentro de la oficina.
@@ -383,7 +419,12 @@ def asistencia_hoy() -> dict:
             # esto vive dentro del bloque de la BD, el snapshot entero se
             # queda en la versión anterior: la pantalla deja de refrescar
             # asistencia sin decir nada, salvo el ERROR del log.
-            entrada = p.get("entrada")
+            # `entrada` viene ya ajustada; `entrada_cruda` es la hora real de
+            # detección. La comparación de "salió y volvió" va con la CRUDA:
+            # comparar un arrival ya corrido contra una salida real daría
+            # falsos positivos ("salió 08:10" cuando en realidad ni había
+            # salido).
+            entrada = p.get("entrada_cruda")
             ultima_entrada = p.get("ultima_entrada")
             ultima_salida = p.get("salida")
 
@@ -400,8 +441,18 @@ def asistencia_hoy() -> dict:
             else:
                 p["salida"] = _s(ultima_salida, hora=True)
 
-            p["entrada"] = _s(entrada, hora=True)
+            # Caso límite: si al restar los 4 minutos la entrada queda
+            # DESPUÉS de la salida, la tarjeta mostraría "llegó 08:05 / se fue
+            # 08:02", que es imposible y hace dudar de toda la pantalla. En ese
+            # caso se queda la hora cruda (sin ajustar): antes de restar, la
+            # detección siempre先后 de la salida.
+            entrada_mostrar = p.get("entrada")
+            if (not p["en_sitio"] and ultima_salida and entrada_mostrar
+                    and entrada_mostrar > ultima_salida):
+                entrada_mostrar = entrada
+            p["entrada"] = _s(entrada_mostrar, hora=True)
             p["reingreso"] = reingreso
+            p.pop("entrada_cruda", None)
             p.pop("ultima_entrada", None)
             p["eventos"] = int(p["eventos"] or 0)
 

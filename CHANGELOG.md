@@ -18,9 +18,18 @@
 - La pantalla de asistencia muestra a todos los que tengan registro HOY con sus
   dos horas: la LLEGADA (la entrada más temprana del día, que es la hora de
   llegada de verdad) siempre, y la de SALIDA sólo si ya se fue — si sigue en la
-  oficina esa hora todavía no pasó y la fila no se pinta. Tarjetas CUADRADAS con
-  el lado calculado para que quepan todas a la vez, y todo el interior medido
-  contra ese lado para que los nombres no se corten ni el cuadro se desborde.
+  oficina esa hora todavía no pasó y la fila no se pinta. Las tarjetas ahora son
+  anchas (hasta 560 px) con el nombre en una fila propia: en el cuadrado los
+  nombres salían como "Priscila …".
+
+### Nuevo
+- La hora de LLEGADA se ajusta 4 minutos, en el SQL de la capa de datos y
+  sólo para la entrada: la MAC aparece en la red hasta varios minutos después
+  de que la persona cruzó la puerta, así que la hora de detección siempre llega
+  tarde. La salida no se toca (una desaparición se nota de inmediato). Con dos
+  topes: no se cruza al día anterior, y si aun así la entrada quedaba después
+  de la salida se recorta a la salida, porque "llegó 08:05 / se fue 08:02" hace
+  dudar de toda la pantalla.
 
 ### Nuevo
 - La pantalla de asistencia lleva al pie una aclaración: los horarios se
