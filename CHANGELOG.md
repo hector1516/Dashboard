@@ -15,11 +15,12 @@
   pantalla completa con otro estilo) y ahora es el que trae el confeti.
 
 ### Nuevo
-- La pantalla de asistencia ahora es "Salidas de hoy": muestra únicamente a
-  quien ya se fue y únicamente su hora de salida (se quitó la de llegada y las
-  tarjetas de quien sigue dentro). Las tarjetas son CUADRADAS con el lado
-  calculado a partir de cuántas personas hay, para que todas quepan en la
-  pantalla a la vez; si son más de 24 sale un cuadro "+N más".
+- La pantalla de asistencia muestra a todos los que tengan registro HOY con sus
+  dos horas: la LLEGADA (la entrada más temprana del día, que es la hora de
+  llegada de verdad) siempre, y la de SALIDA sólo si ya se fue — si sigue en la
+  oficina esa hora todavía no pasó y la fila no se pinta. Tarjetas CUADRADAS con
+  el lado calculado para que quepan todas a la vez, y todo el interior medido
+  contra ese lado para que los nombres no se corten ni el cuadro se desborde.
 
 ### Nuevo
 - La pantalla de asistencia lleva al pie una aclaración: los horarios se
