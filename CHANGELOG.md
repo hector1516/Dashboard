@@ -60,6 +60,17 @@
   donde está lo importante) sino pegado arriba como encabezado; se quitó el
   texto rojo de "la imagen mide 1920x1080" y la viñeta se acortó a la franja
   del título.
+- **La pantalla no recargaba nunca los cambios del front** (esto es lo que
+  hacía que en la TV no apareciera nada de lo nuevo, aunque las capturas
+  Headless salieran bien). El identificador de build salía sólo de
+  `/app/BUILD`, que únicamente cambia al reconstruir la imagen: un despliegue
+  que copia la carpeta `build/` no lo movía. Y la comparación en el navegador
+  era contra `datos.build`, que viene del snapshot y se reescribe cada 2
+  minutos con el build del servidor, así que al primer refresco los dos ya
+  eran iguales con el JS viejo corriendo y no podían volver a diferir. Ahora el
+  build incluye la mtime de `build/index.html` y el navegador recuerda con qué
+  build arrancó. Se agregó además tocar `/data/forzar-recarga` en el contenedor
+  para forzar la recarga de todas las pantallas sin reiniciar Edge.
 - El panel remoto se saltaba la pantalla anclada por `?pantalla=…`: cambiaba
   la pantalla mientras alguien la estaba revisando, y `seguir` arrancaba la
   rotación en un modo donde por definición no hay rotación. Ahora manda el

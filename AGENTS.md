@@ -150,6 +150,33 @@ sh deploy/hotsync.sh                               # si solo cambian .svelte/.cs
   contenedor, reinicia `api` y `snapshotter`, y cambia `/app/BUILD` (que es lo
   que hace que la pantalla se recargue sola).
 
+## Cómo se recarga la pantalla cuando hay un deploy (leer antes de publicar)
+Este fue el agujero que costó una tarde: se subían cambios del front, las
+capturas Headless salían bien y **en la TV seguía lo de antes**, sin un solo
+aviso. Dos fallas encimadas, y la segunda es la que más confunde:
+
+- `leer_build()` (`api/config.py`) devuelve DOS cosas: el texto de `/app/BUILD`
+  (lo escribe el Dockerfile al construir la imagen) **y la mtime de
+  `/app/build/index.html`**. Con sólo el texto, un despliegue que copia la
+  carpeta `build/` dentro del contenedor —que es el hotsync y también lo que se
+  puede hacer a mano— no movía nada y la pantalla no se enteraba.
+- El navegador compara ese identificador contra **el que tiene guardado en
+  `localStorage`**, NO contra `datos.build`. Ese campo viene del snapshot, que
+  se reescribe cada 2 min con el build del servidor: al primer refresco los dos
+  ya eran iguales —con el JS viejo corriendo— y como nunca volvían a diferir,
+  la pantalla no recargaba **nunca**. El bug se auto-ocultaba, y por eso tampoco
+  lo arreglaba subir el BUILD a mano. Antes de recargar se guarda el
+  identificador nuevo, para no entrar en bucle de recargas.
+- **Palanca de operador**: tocar `/data/forzar-recarga` dentro del contenedor
+  cambia el build y recarga todas las pantallas sin ir a la oficina a reiniciar
+  Edge. Hace falta para lo que el navegador no puede detectar solo: cuando el JS
+  que corre ya es el nuevo, en el servidor no cambia nada y nadie lo notaría.
+- Para comprobar si la TV se enteró, contar recargas reales en el log de nginx:
+  las peticiones `GET /` de clientes Edge son recargas; los `GET
+  /api/panel/estado` cada 3 s son el polling del panel, no recargas. Ojo al
+  parsear el log: un patrón mal hecho cuenta como recarga cualquier `GET` y da
+  cifras absurdas (falso positivo).
+
 **Nunca reiniciar Docker Desktop en el ServerVM.** Los despliegues son
 `docker build` + `docker run`; nada de tocar el servicio.
 
