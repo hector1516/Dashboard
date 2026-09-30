@@ -23,6 +23,13 @@
   nombres salían como "Priscila …".
 
 ### Nuevo
+- Widget de cumpleaños y aniversario en la esquina de TODAS las pantallas: antes
+  el cumple de alguien sólo se veía una vez cada vuelta de 12 pantallas y en el
+  aviso del día, y entre una cosa y otra pasaban horas sin que nadie se enterara.
+  Chico, discreto y con brillo lento (no es una alarma), pasando de una persona
+  a otra cada 15 s si hay varias. Atajo `?cumple=Nombre`.
+
+### Nuevo
 - La hora de LLEGADA se ajusta 4 minutos, en el SQL de la capa de datos y
   sólo para la entrada: la MAC aparece en la red hasta varios minutos después
   de que la persona cruzó la puerta, así que la hora de detección siempre llega

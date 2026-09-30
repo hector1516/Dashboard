@@ -32,6 +32,7 @@ import HdrKiosco from '$lib/components/HdrKiosco.svelte';
 import CapaAlertas from '$lib/components/CapaAlertas.svelte';
 import CapaSalida from '$lib/components/CapaSalida.svelte';
 import CuentaRotacion from '$lib/components/CuentaRotacion.svelte';
+import WidgetCumple from '$lib/components/WidgetCumple.svelte';
 import Combustible from '$lib/components/pantallas/Combustible.svelte';
 import Legends from '$lib/components/pantallas/Legends.svelte';
 import Reportes from '$lib/components/pantallas/Reportes.svelte';
@@ -610,6 +611,14 @@ interface ParamsUrl {
 	/** Fuerza la cuenta de rotación aunque la pantalla esté fija. */
 	reloj?: boolean;
 	/**
+	 * Widget de cumpleaños de ejemplo: `?cumple=Nombre` (y `&aniversario=1`
+	 * para ver el de aniversario). Sirve para revisar cómo se ve sin esperar
+	 * al cumpleaños de alguien.
+	 */
+	cumple?: string;
+	/** Ejemplo de aniversario en vez de cumpleaños. */
+	aniversario?: boolean;
+	/**
 	 * Muestra un aviso de pantalla completo de ejemplo, sin esperar a que
 	 * pase: km | ticket | firmado | presencia. Es lo que se usa para
 	 * revisar el diseño de los avisos y para capturar cómo se ven.
@@ -635,6 +644,8 @@ function leerParams(): ParamsUrl | null {
 		debug: q.get('debug') === '1',
 		// `?aviso=km|ticket|firmado|presencia`: un aviso de ejemplo a pantalla
 		// completa, para revisarlo sin esperar a que alguien registre algo.
+		cumple: q.get('cumple') || undefined,
+		aniversario: q.get('aniversario') === '1',
 		aviso: (['km', 'ticket', 'firmado', 'presencia'].includes(q.get('aviso') ?? '')
 			? q.get('aviso')
 			: undefined) as 'km' | 'ticket' | 'firmado' | 'presencia' | undefined,
@@ -742,6 +753,33 @@ onDestroy(() => {
  * esto el `docker exec ... --dump-dom` deja los números en el HTML y se
  * revisan sin adivinar.
  */
+/**
+ * Con `?cumple=Nombre` se mete un cumple de ejemplo para ver el widget sin
+ * esperar al cumpleaños de alguien. Se copia el snapshot y sólo se cambian las
+ * dos listas de]]: nada del resto se toca.
+ */
+function datosDeEjemplo(base: Snapshot, p: NonNullable<typeof params>): Snapshot {
+	const quien = (p?.cumple ?? 'Fulano').slice(0, 40);
+	if (p?.aniversario) {
+		return {
+			...base,
+			cumpleanos: { ...base.cumpleanos, hoy: [] },
+			aniversarios: {
+				...base.aniversarios,
+				hoy: [{ Nombre: quien, dia: null, anos: 7, avatar: null }]
+			}
+		};
+	}
+	return {
+		...base,
+		cumpleanos: {
+			...base.cumpleanos,
+			hoy: [{ Nombre: quien, dia: null, mes: null, edad: 34, avatar: null }]
+		},
+		aniversarios: { ...base.aniversarios, hoy: [] }
+	};
+}
+
 /** Avisos de ejemplo para `?aviso=…`. Mismos datos que los de verdad, para que
  *  al revisar el diseño se vea exactamente lo que se verá en la TV. */
 function avisoDeEjemplo(cual: string): EventoKiosko {
@@ -958,6 +996,15 @@ function cambiarVolumen(v: number) {
 			<canvas class="confeti" bind:this={canvasRef} aria-hidden="true"></canvas>
 
 			<CapaAlertas {banda} {toast} {aviso} onCerrarAviso={sacarSiguienteAviso} />
+
+			<!--
+				Cumpleaños y aniversarios del día, como widget en la esquina en
+				TODAS las pantallas. Se apaga con `?sinanim=1` para que las capturas
+				no salgan con cromo de verificación.
+			-->
+			{#if !sinAnim}
+				<WidgetCumple datos={params?.cumple ? datosDeEjemplo(datos, params) : datos} />
+			{/if}
 
 			<!--
 				Cuenta de rotación. Se oculta cuando la pantalla está fija por URL
