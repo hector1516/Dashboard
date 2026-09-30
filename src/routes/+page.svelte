@@ -603,12 +603,41 @@ async function leerShell() {
 }
 
 /* ── Recarga por versión ──────────────────────────────────────── */
+const CLAVE_BUILD = 'dashboard:build';
+
+/**
+ * Recarga la pantalla cuando hay un build más nuevo en el servidor.
+ *
+ * OJO aquí, que es la clase de bug que costó una tarde entera: la comparación
+ * NO puede ser contra `datos.build`. Ese campo viene del SNAPSHOT, que se
+ * reescribe cada 2 minutos con el build del servidor. Al primer refresco los
+ * dos yaaban iguales —aunque el navegador siga corriendo el JavaScript viejo— y
+ * como nunca volvían a diferir, la pantalla NUNCA se recargaba. Resultado: se
+ * subían cambios del front, las capturas_HEADLESS los mostraban bien y en la
+ * TV seguía lo de antes, sin un solo aviso.
+ *
+ * Lo que sí sirve es que el navegador recuerde con qué build ARRANCO, en
+ * localStorage, y lo compare contra el que ofrece el servidor hoy. Antes de
+ * recargar se guarda el nuevo, para no entrar en bucle de recargas.
+ */
 async function vigilarBuild() {
 	const b = await pedirBuild();
 	if (!b) return;
-	if (datos.build && b !== datos.build) {
-		// El contenedor se reconstruyó: la pantalla se recarga sola. Sin esto
-		// un hotsync no se ve hasta que alguien reinicie Edge a mano.
+	let propio: string | null = null;
+	try {
+		propio = localStorage.getItem(CLAVE_BUILD);
+	} catch {
+		// localStorage bloqueado: sin memoria de build no se puede decidir. Se
+		// sigue living igual, sólo no recarga sola.
+		return;
+	}
+	if (!propio) {
+		// Primer arranque: este bundle es el que hay, se anota.
+		try { localStorage.setItem(CLAVE_BUILD, b); } catch { /* noop */ }
+		return;
+	}
+	if (b !== propio) {
+		try { localStorage.setItem(CLAVE_BUILD, b); } catch { /* noop */ }
 		location.reload();
 	}
 }

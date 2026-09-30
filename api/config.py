@@ -32,6 +32,9 @@ TEMAS_DIR = os.path.join(MEDIA_DIR, "temas")
 # El build de la imagen; lo escribe el Dockerfile y lo lee /api/dashboard/version
 # para que la pantalla se recargue sola tras un deploy.
 BUILD_FILE = os.environ.get("KIOSKO_BUILD_FILE", "/app/BUILD")
+# Palanca de operador: tocar este archivo cambia el identificador de build y
+# recarga TODAS las pantallas a la vez, sin ir a la oficina a reiniciar Edge.
+FORZAR_RECARGA = os.path.join(DATA_DIR, "forzar-recarga")
 
 # ── Ritmo ────────────────────────────────────────────────────────────────────
 # El snapshot se recalcula cada 2 min: los datos que muestra la pantalla son de
@@ -74,12 +77,45 @@ def asegurar_directorios():
 
 
 def leer_build() -> str:
-    """Identificador del build actual (lo escribe el Dockerfile)."""
+    """
+    Identificador del build, con el que la pantalla decide si se recarga sola.
+
+    Son DOS cosas y por eso van las dos: el texto de BUILD_FILE (lo escribe el
+    Dockerfile al construir la imagen) Y la fecha de modificación de
+    /app/build/index.html.
+
+    Lo de la segunda parte es por un agujero real: cuando se publica un cambio
+    sólo del FRONT copiando la carpeta build/ dentro del contenedor (que es lo
+    que hace el hotsync, y lo que se puede hacer a mano), /app/BUILD no cambia
+    — sólo cambió cuando se reconstruye la imagen — y entonces la pantalla
+    comparaba el build del snapshot con el del endpoint, veía el mismo string y
+    NO se recargaba. El resultado: se subían cambios y en la TV seguía lo
+    anterior, sin ningún aviso. Cuatro horas de cambios invisibles en la sala.
+
+    Con la mtime del index.html, cualquier cambio en build/ da un build distinto
+    y la recarga es automática. Los dos lados usan esta MISMA función
+    (snapshotter y /api/dashboard/version), así que nunca se contradicen.
+    """
+    base = "dev"
     try:
         with open(BUILD_FILE, encoding="utf-8") as fh:
-            return fh.read().strip() or "dev"
+            base = fh.read().strip() or "dev"
     except OSError:
-        return "dev"
+        pass
+    try:
+        m = int(os.path.getmtime(os.path.join(os.path.dirname(BUILD_FILE), "build", "index.html")))
+        base = f"{base}.{m}"
+    except OSError:
+        pass
+    # `touch /data/forzar-recarga` → cambia el build → todas las pantallas
+    # recargan. Hace falta porque hay cambios que el navegador no puede detectar
+    # solo: cuando el JS que corre ya es el nuevo, nada cambia en el servidor y
+    # la pantalla no tiene por qué recargar.
+    try:
+        base = f"{base}+{int(os.path.getmtime(FORZAR_RECARGA))}"
+    except OSError:
+        pass
+    return base
 
 
 # ── Base de datos ───────────────────────────────────────────────────────────
