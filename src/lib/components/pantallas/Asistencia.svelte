@@ -27,114 +27,122 @@
 
 	const a = $derived(datos.asistencia);
 	const personas = $derived(a?.personas ?? []);
-	// Los que siguen dentro primero: son los que importan ahora mismo, y en
-	// una lista corta la diferencia se nota.
-	const ordenados = $derived(
-		[...personas].sort((x, y) => Number(y.en_sitio) - Number(x.en_sitio))
+
+	/*
+		Sólo quien YA SE FUE, y sólo su hora de salida. Lo pidió el usuario y
+		tiene lógica: la pregunta útil de esta pantalla al final del día es
+		"¿a qué hora se fue cada quien?", no "a qué hora llegó" (eso ya lo
+		dice el reloj de la entrada) ni "quién sigue aquí" (eso se ve con que
+		no esté en la lista).
+
+		`!en_sitio` es la condición: el backend marca en_sitio cuando el ÚLTIMO
+		evento del día fue una ENTRADA, así que quien sale y vuelve termina con
+		la salida anterior como dato viejo. Filtra aquí y no en el backend para
+		que la lista siga siendo la misma para quien la consume de otra parte.
+	*/
+	const salidos = $derived(
+		personas.filter((p) => !p.en_sitio && p.salida)
 	);
+	const extras = $derived(Math.max(0, personas.length - salidos.length));
+
+	/**
+	 * Cuadrados que quepan TODOS, calculados, no un grid que se desborda.
+	 *
+	 * Con 4 personas en un `auto-fit` de 3 columnas quedan dos tarjetas
+	 * chiquitas y un hueco enorme; con 25 nadie cabe. Aquí se elige el número
+	 * de columnas a partir de cuántas hay (una rejilla casi cuadrada) y de ahí
+	 * el lado del cuadro para que quepan en el escenario: alto y ancho dividen
+	 * entre filas y columnas, y se toma el menor.
+	 */
+	const LADO_MAX = 360;
+	const AREA_W = 1780;   // 1920 menos los paddings laterales
+	const AREA_H = 640;    // lo que sobra entre el título y la nota del pie
+	const rejilla = $derived.by(() => {
+		const n = salidos.length;
+		if (!n) return { cols: 1, filas: 1, lado: 0, visibles: 0 };
+		// Máximo 24 en pantalla: más de eso ya no es una pantalla, es una tabla.
+		const visibles = Math.min(n, 24);
+		let cols = Math.ceil(Math.sqrt(visibles));
+		cols = Math.max(1, Math.min(6, cols, visibles));
+		const filas = Math.ceil(visibles / cols);
+		const lado = Math.min(
+			Math.floor((AREA_W - (cols - 1) * 14) / cols),
+			Math.floor((AREA_H - (filas - 1) * 14) / filas),
+			LADO_MAX
+		);
+		return { cols, filas, lado, visibles };
+	});
 </script>
 
 <div class="screen">
 	<div class="screen-titulo">
-		<span class="ic">🕘</span> Asistencia de hoy
+		<span class="ic">🕘</span> Salidas de hoy
 		{#if a?.total}
 			<span class="contador">
-				{(a.total ?? 0).toString().padStart(2, '0')} registradas ·
-				<span class="dentro">🟢 {(a.dentro ?? 0).toString().padStart(2, '0')} en sitio</span> ·
-				<span class="fuera">🔴 {(a.salieron ?? 0).toString().padStart(2, '0')} fuera</span>
+				<span class="fuera">{(a.salieron ?? 0).toString().padStart(2, '0')} ya se fueron</span>
+				·
+				<span class="dentro">🟢 {(a.dentro ?? 0).toString().padStart(2, '0')} todavía aquí</span>
 			</span>
 		{/if}
 	</div>
 
-	{#if !personas.length}
+	{#if !salidos.length}
 		<div class="vacio">
-			Todavía nadie ha registrado movements hoy
+			Todavía no sale nadie hoy
 			<span class="vacio-sub">
-				La pantalla anota sola cuando un celular o computadora conocido se
-				conecta a la red de la oficina
+				Aquí aparece cada persona en cuanto su equipo o celular se desconecta
+				de la red de la oficina, con la hora
 			</span>
 		</div>
 	{:else}
-		<div class="rejilla" class:uno={personas.length === 1}>
-			{#each ordenados as p (p.id_usuario)}
-				<article class="tarjeta" class:en-sitio={p.en_sitio} class:fuera={!p.en_sitio}>
-					<div class="quien">
-						<div class="avatar">
-							{#if p.avatar}
-								<img src={avatarSrc(p.avatar)} alt="" />
-							{:else}
-								<div class="ph">{iniciales(p.nombre)}</div>
-							{/if}
-						</div>
-						<div class="nombres">
-							<span class="nombre">{p.nombre}</span>
-						</div>
-						<!--
-							El estado ya lo dice el color de toda la tarjeta. Aquí sólo
-							va la palabra, en gris, sin punto de color: el punto verde
-							encima de una tarjeta verde no se ve y el rojo sobre una
-							roja tampoco.
-						-->
-						<span class="estado">{p.en_sitio ? 'En la oficina' : 'Fuera'}</span>
-					</div>
-
-					<div class="horas">
-						<div class="hora entrada">
-							<span class="rot">Llegó</span>
-							<span class="hhmm">{hhmm(p.entrada)}</span>
-						</div>
-						{#if p.salida}
-							<div class="hora salida">
-								<span class="rot">Se fue</span>
-								<span class="hhmm">{hhmm(p.salida)}</span>
-							</div>
-						{:else if p.reingreso}
-							<!-- Salió y volvió: la salida que se ve sería la de
-							     una visita anterior, así que se muestra cuándo
-							     entró en la que sigue. -->
-							<div class="hora salida">
-								<span class="rot">Volvió</span>
-								<span class="hhmm">{hhmm(p.reingreso)}</span>
-							</div>
+		<!--
+			Rejilla de CUADRADOS con el lado calculado: se eligen las columnas a
+			partir de cuántas personas hay y de ahí el lado, para que todas quepan
+			a la vez sin scrolls ni huecos raros.
+		-->
+		<div
+			class="rejilla"
+			style="--cols:{rejilla.cols};--filas:{rejilla.filas};--lado:{rejilla.lado}px"
+		>
+			{#each salidos.slice(0, rejilla.visibles) as p (p.id_usuario)}
+				<article class="tarjeta">
+					<div class="avatar">
+						{#if p.avatar}
+							<img src={avatarSrc(p.avatar)} alt="" />
 						{:else}
-							<div class="hora esperando">
-								<span class="rot">Se fue</span>
-								<span class="hhmm">— — : — —</span>
-							</div>
+							<div class="ph">{iniciales(p.nombre)}</div>
 						{/if}
 					</div>
-
-					<!--
-						Los movimientos no se esconden: 6 entradas significan que el
-						celular perdió el WiFi un rato, y si alguien lo ve con la
-						tarjeta en la mano vale la pena que sepa por qué.
-					-->
-					<span class="eventos">
-						{p.eventos} {p.eventos === 1 ? 'movimiento' : 'movimientos'} en la red
-					</span>
+					<div class="nombre">{p.nombre}</div>
+					<div class="rotulo">Se fue</div>
+					<div class="hhmm">{hhmm(p.salida)}</div>
 				</article>
 			{/each}
-		</div>
 
-		<!--
-			La nota que pidió el usuario, y que además es necesaria: estos horarios
-			NO salen de un checador. Los deduce la red —el network_scanner ve que
-			aparece o desaparece una MAC conocida—, así que son una aproximación
-			y no un registro de asistencia. Sin este aviso alguien puede tomar el
-			color de una tarjeta como que es un dato verificado, y en una complaint
-			de asistencia eso importa.
-		-->
-		<p class="nota">
-			<i class="nota-ic">ℹ</i>
-			<span>
-				Los horarios se calculan solos a partir de la red de la oficina
-				(cuando un equipo o celular conocido se conecta), por lo que pueden
-				variar algunos minutos y no siempre detectan todas las entradas ni
-				todas las salidas.
-				<b>Es información orientativa, no un registro oficial de asistencia.</b>
-			</span>
-		</p>
+			{#if salidos.length > rejilla.visibles}
+				<div class="sobran" style="--lado:{rejilla.lado}px">
+					+{salidos.length - rejilla.visibles}
+					<span>más</span>
+				</div>
+			{/if}
+		</div>
 	{/if}
+
+	<!--
+		La aclaración va FUERA del `{#if}` de arriba a propósito: tiene que leerse
+		también cuando todavía no sale nadie, porque es justo cuando alguien
+		mira la pantalla vacía y necesita saber por qué.
+	-->
+	<p class="nota">
+		<i class="nota-ic">ℹ</i>
+		<span>
+			Los horarios se calculan solos a partir de la red de la oficina (cuando
+			un equipo o celular conocido se conecta), por lo que pueden variar
+			algunos minutos y no siempre detectan todas las entradas ni todas las
+			salidas.
+			<b>Es información orientativa, no un registro oficial de asistencia.</b>
+		</span>
+	</p>
 </div>
 
 <style>
@@ -154,115 +162,108 @@
 		 salían dos tarjetas enormes con medio contenido y un mar de vacío
 		abajo, que en una TV se lee como pantalla rota.
 	*/
+	/*
+		Cuadrados con el lado ya calculado en el script (--lado). Se usa
+		`grid-template` explícito en vez de `auto-fit` porque el lado depende de
+		cuántas personas hay: con `auto-fit` el navegador decide y o quedan
+		tarjetas minúsculas con huecos, o se desbordan.
+	*/
 	.rejilla {
 		flex: 1;
 		min-height: 0;
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(400px, 520px));
+		grid-template-columns: repeat(var(--cols, 4), var(--lado, 280px));
+		grid-template-rows: repeat(var(--filas, 2), var(--lado, 280px));
+		gap: 14px;
 		justify-content: center;
 		align-content: center;
-		gap: 16px;
 	}
 
 	/*
-		TODA la tarjeta va verde o roja, no una barrita de color en un canto: a 3
-		metros la barrita de 5 px es un detalle, y la pregunta de una pantalla de
-		asistencia es "¿quién sigue aquí?", que se contesta con el color entero.
+		Una tarjeta = una persona que ya se fue. Roja (se fue), que es la única
+		información que tiene; el rojo es la misma señal de antes, ahora sin la
+		competencia del verde porque nadie "sigue aquí" en esta pantalla.
 	*/
 	.tarjeta {
-		background: rgba(148, 163, 184, 0.05);
-		border: 1px solid rgba(148, 163, 184, 0.14);
-		border-radius: 14px;
-		padding: 16px 20px 14px;
 		display: flex;
 		flex-direction: column;
-		gap: 11px;
-		min-height: 250px;
-		backdrop-filter: blur(6px);
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
+		padding: 10px;
+		text-align: center;
+		overflow: hidden;
+		background: linear-gradient(160deg, rgba(239, 68, 68, 0.3) 0%, rgba(185, 28, 28, 0.15) 100%);
+		border: 1px solid rgba(248, 113, 113, 0.5);
+		border-radius: 18px;
+		box-shadow: inset 0 0 40px rgba(239, 68, 68, 0.12);
 		animation: entrarStagger 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 	}
-	/* Verde = sigue dentro · rojo = ya salió. */
-	.tarjeta.en-sitio {
-		background: linear-gradient(160deg, rgba(34, 197, 94, 0.30) 0%, rgba(22, 163, 74, 0.16) 100%);
-		border: 1px solid rgba(74, 222, 128, 0.55);
-		box-shadow: inset 0 0 40px rgba(34, 197, 94, 0.14);
-	}
-	.tarjeta.fuera {
-		background: linear-gradient(160deg, rgba(239, 68, 68, 0.28) 0%, rgba(185, 28, 28, 0.14) 100%);
-		border: 1px solid rgba(248, 113, 113, 0.5);
-		box-shadow: inset 0 0 40px rgba(239, 68, 68, 0.12);
-	}
 
-	.quien { display: flex; align-items: center; gap: 11px; min-width: 0; }
-	.estado {
-		margin-left: auto;
-		align-self: flex-start;
-		flex-shrink: 0;
-		font-size: 12px;
-		font-weight: 800;
-		text-transform: uppercase;
-		letter-spacing: 0.14em;
-		color: rgba(255, 255, 255, 0.72);
-	}
 	.avatar {
-		width: 64px;
-		height: 64px;
+		width: 30%;
+		aspect-ratio: 1;
+		max-width: 122px;
+		margin-bottom: 6px;
 		border-radius: 50%;
 		overflow: hidden;
-		flex-shrink: 0;
-		background: rgba(255, 255, 255, 0.07);
+		background: rgba(0, 0, 0, 0.3);
 		display: grid;
 		place-items: center;
 	}
 	.avatar img { width: 100%; height: 100%; object-fit: cover; }
-	.ph { font-size: 26px; font-weight: 800; color: var(--color-primary); }
-	.nombres { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+	.ph { font-size: 34px; font-weight: 800; color: #fca5a5; }
+
 	.nombre {
-		font-size: 28px;
+		font-size: 34px;
 		font-weight: 800;
 		color: #fff;
-		/* Un nombre largo no rompe la tarjeta ni empuja la rejilla. */
+		/* Un nombre largo se recorta con puntos suspensivos en vez de romper el
+		   cuadrado: la tarjeta es cuadrada sí o sí. */
+		max-width: 100%;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
 	}
-	.horas { display: flex; flex-direction: column; gap: 7px; }
-	.hora {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 10px;
-		padding: 8px 13px;
-		border-radius: 10px;
-	}
-	.rot {
-		font-size: 13px;
+	.rotulo {
+		font-size: 16px;
 		font-weight: 800;
+		letter-spacing: 0.24em;
+		text-indent: 0.24em;
 		text-transform: uppercase;
-		letter-spacing: 0.12em;
-		opacity: 0.9;
+		color: rgba(255, 255, 255, 0.62);
+		margin-top: 2px;
 	}
 	.hhmm {
-		font-size: 36px;
+		font-size: 72px;
 		font-weight: 900;
 		line-height: 1;
+		color: #fca5a5;
 		font-variant-numeric: tabular-nums;
+		text-shadow: 0 0 30px rgba(239, 68, 68, 0.45);
 	}
 
-	/* Verde = llegó. */
-	.entrada { background: rgba(2, 6, 23, 0.34); border: 1px solid rgba(255, 255, 255, 0.1); }
-	.entrada .rot { color: rgba(255, 255, 255, 0.62); }
-	.entrada .hhmm { color: #fff; }
-
-	/* Rojo = se fue. */
-	.salida { background: rgba(2, 6, 23, 0.34); border: 1px solid rgba(255, 255, 255, 0.1); }
-	.salida .rot { color: rgba(255, 255, 255, 0.62); }
-	.salida .hhmm { color: #fff; }
-
-	/* Todavía no hay salida: rayitas, no una hora inventada. */
-	.esperando { background: rgba(148, 163, 184, 0.08); border: 1px solid rgba(148, 163, 184, 0.16); }
-	.esperando .rot { color: #64748b; }
-	.esperando .hhmm { color: #64748b; font-size: 30px; }
+	/* "+N más": pasa de la lista a la tabla cuando ya no caben. */
+	.sobran {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
+		font-size: 54px;
+		font-weight: 900;
+		color: #94a3b8;
+		border: 1px dashed rgba(148, 163, 184, 0.35);
+		border-radius: 18px;
+	}
+	.sobran span {
+		font-size: 15px;
+		font-weight: 700;
+		letter-spacing: 0.2em;
+		text-transform: uppercase;
+		color: #64748b;
+	}
 
 	/* La nota va al pie de la pantalla, pequeña y apagada: es una aclaración,
 	   no un dato. Con el mismo cuidado que el aviso de que la pantalla no está

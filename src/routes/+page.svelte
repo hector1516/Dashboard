@@ -80,7 +80,7 @@ const PANTALLAS: PantallaDef[] = [
 	{ id: 'fotos', icono: '📸', label: 'Fotografías' },
 	{ id: 'clima', icono: '🌤️', label: 'Clima' },
 	{ id: 'notas', icono: '📌', label: 'Notas' },
-	{ id: 'asistencia', icono: '🕘', label: 'Asistencia de hoy' },
+	{ id: 'asistencia', icono: '🕘', label: 'Salidas de hoy' },
 	{ id: 'portada', icono: '🖼️', label: 'Portada del mes' }
 ];
 

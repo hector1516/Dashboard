@@ -15,6 +15,13 @@
   pantalla completa con otro estilo) y ahora es el que trae el confeti.
 
 ### Nuevo
+- La pantalla de asistencia ahora es "Salidas de hoy": muestra únicamente a
+  quien ya se fue y únicamente su hora de salida (se quitó la de llegada y las
+  tarjetas de quien sigue dentro). Las tarjetas son CUADRADAS con el lado
+  calculado a partir de cuántas personas hay, para que todas quepan en la
+  pantalla a la vez; si son más de 24 sale un cuadro "+N más".
+
+### Nuevo
 - La pantalla de asistencia lleva al pie una aclaración: los horarios se
   calculan solos a partir de la red, pueden variar algunos minutos, no siempre
   se detectan todas las entradas ni todas las salidas, y es información
