@@ -83,6 +83,23 @@
 </script>
 
 <div class="fondo">
+	<!--
+		OJO CON EL ORDEN DE ESTAS CAPAS, que es de lo más fácil de arruinar:
+
+		1. `.capa-gradiente` — el fondo de la hora del día. Va PRIMERO, abajo de
+		   todo, porque su trabajo es el que se ve cuando NO hay foto: es el
+		   cielo. Es opaco (colores sólidos, sin alfa) y para abajo estaba mal
+		   el orden, con lo que tapaba por completo la foto de Bing Y la capa del
+		   tema del mes. Eso era lo que hacía que "no se viera el fondo": aquí no
+		   se veía nunca porque nada de lo de abajo era visible a través de él.
+		   Si algún día se toca este orden, se revisa con la foto puesta.
+		2. `.capa-img` — la foto de Bing, sobre el cielo, al 0.6 para que se lea
+		   desde el otro lado de la oficina (estaba al 0.34 y con el gradiente
+		   encima ni se notaba que estaba).
+		3. `.capa-tema` + `.tinte-tema` — el tema del mes, como adorno encima.
+		4. `.capa-vineta` — la que protege la legibilidad del texto.
+	-->
+	<div class="capa-gradiente g-{periodo}" aria-hidden="true"></div>
 	{#if fondoActual()}
 		<div class="capa-img" style="background-image:url('{fondoActual()}')" aria-hidden="true"></div>
 	{/if}
@@ -98,7 +115,6 @@
 		<div class="capa-tema" style="background-image:url('{tema.capa}')" aria-hidden="true"></div>
 		<div class="tinte-tema" style="--tinte:{tema.tinte}" aria-hidden="true"></div>
 	{/if}
-	<div class="capa-gradiente g-{periodo}" aria-hidden="true"></div>
 	<div class="capa-vineta" class:tenue aria-hidden="true"></div>
 
 	<!-- Efectos de clima: ambiente, no decoración. Movimientos lentos. -->
@@ -126,7 +142,12 @@
 	.capa-img {
 		position: absolute; inset: -2%;
 		background-size: cover; background-position: center; background-repeat: no-repeat;
-		opacity: 0.34; filter: saturate(1.05);
+		/* 0.6 y no 0.34: la foto de Bing es de las pocas cosas que le dan
+		   carácter a la pantalla, y al 0.34 no se veía ni de cerca. El gradiente
+		   de la hora va DEBAJO (ver el orden en el markup), así que ya no hace
+		   falta bajar tanto la foto para que el texto se lea: para eso está la
+		   viñeta, que va encima de todo. */
+		opacity: 0.6; filter: saturate(1.08);
 		transition: opacity 0.8s ease;
 	}
 	/* El crossfade lo lleva el inline style (rAF), no una transición: si
