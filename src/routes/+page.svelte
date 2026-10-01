@@ -33,6 +33,7 @@ import CapaAlertas from '$lib/components/CapaAlertas.svelte';
 import CapaSalida from '$lib/components/CapaSalida.svelte';
 import CuentaRotacion from '$lib/components/CuentaRotacion.svelte';
 import WidgetCumple from '$lib/components/WidgetCumple.svelte';
+import AcentoTema from '$lib/components/AcentoTema.svelte';
 import Combustible from '$lib/components/pantallas/Combustible.svelte';
 import Legends from '$lib/components/pantallas/Legends.svelte';
 import Reportes from '$lib/components/pantallas/Reportes.svelte';
@@ -1057,6 +1058,14 @@ function cambiarVolumen(v: number) {
 			{#if !sinAnim}
 				<WidgetCumple datos={params?.cumple ? datosDeEjemplo(datos, params) : datos} />
 			{/if}
+
+			<!--
+				Adornos del mes (banderines, calaveras, árboles…) en la esquina
+				inferior izquierda. Van aquí, y no dentro de cada pantalla, para
+				tener UN solo punto de integración: las doce pantallas los heredan
+				con que se monte una vez. Se apagan con `?sinanim=1`.
+			-->
+			<AcentoTema tema={temaAMostrar()} {sinAnim} />
 
 			<!--
 				Cuenta de rotación. Se oculta cuando la pantalla está fija por URL

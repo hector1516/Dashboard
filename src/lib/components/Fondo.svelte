@@ -142,11 +142,14 @@
 		   legibilidad del texto, no esta capa. */
 		opacity: 1;
 	}
+	/* Segundo velo de tinte, encima del que ya trae el PNG. Con 34%/24% los dos
+	   juntos tapaban la foto de Bing por completo: la imagen del fondo tiene que
+	   seguir siendo lo que se ve, el tema sólo va de adorno encima. */
 	.tinte-tema {
 		position: absolute; inset: 0;
 		background:
-			radial-gradient(120% 85% at 12% 8%, color-mix(in srgb, var(--tinte) 34%, transparent) 0%, transparent 58%),
-			radial-gradient(110% 80% at 88% 92%, color-mix(in srgb, var(--tinte) 24%, transparent) 0%, transparent 58%);
+			radial-gradient(120% 85% at 12% 8%, color-mix(in srgb, var(--tinte) 12%, transparent) 0%, transparent 55%),
+			radial-gradient(110% 80% at 88% 92%, color-mix(in srgb, var(--tinte) 9%, transparent) 0%, transparent 55%);
 	}
 
 	/* Gradiente base por hora del día: es el fondo cuando no hay imagen local. */

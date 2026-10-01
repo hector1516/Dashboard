@@ -233,6 +233,21 @@ def _puntos_motivo(d, motivo: str, color, base=0.30):
             d.line([sx, sy - r, sx, sy + r], fill=_rgb("#e2e8f0", base * 1.5), width=5)
 
 
+def _reforzar_alfa(im, factor: float, tope: int):
+    """
+    Multiplica el canal alfa de la capa para hacerla visible sobre la foto.
+
+    Se hace con `Image.point` sobre el canal, que es un par de multiplicaciones
+    en C: a 1920x1080 tarda microsegundos. Trabajar con `ImageEnhance` sobre el
+    alfa no sirve (opera sobre el RGB) y recorrer los 2 millones de píxeles a
+    mano tarda segundos y sólo para esto.
+    """
+    from PIL import Image
+    a = im.getchannel("A").point(lambda v: min(tope, int(v * factor)))
+    im.putalpha(a)
+    return im
+
+
 def generar_overlay(mes: int | None, ruta_destino: str) -> str | None:
     """
     Escribe la capa PNG del tema y devuelve la ruta (o None si no pudo).
@@ -256,7 +271,12 @@ def generar_overlay(mes: int | None, ruta_destino: str) -> str | None:
         for x in range(0, ANCHO, 2):
             d1 = math.dist((x, y), (150, 120)) / 900.0
             d2 = math.dist((x, y), (ANCHO - 120, ALTO - 90)) / 950.0
-            a = max(0.0, 1 - d1) * 0.34 + max(0.0, 1 - d2) * 0.24
+            # Este lavado es un velo de color sobre TODO el lienzo, y la capa
+            # va ENCIMA de la foto de Bing. Con 0.34/0.24 se comía la imagen
+            # entera: en la prueba con la foto del ave, el sujeto quedaba
+            # verde y naranja lost in tint. Ahora apenas insinúa el tinte del mes
+            # y deja que la foto siga siendo la protagonista.
+            a = max(0.0, 1 - d1) * 0.10 + max(0.0, 1 - d2) * 0.07
             col = (r, g, b, int(a * 255))
             for dy in range(2):
                 for dx in range(2):
@@ -266,9 +286,19 @@ def generar_overlay(mes: int | None, ruta_destino: str) -> str | None:
     d = ImageDraw.Draw(im, "RGBA")
     _puntos_motivo(d, t["motivo"], t["tinte"])
 
-    # Todo borroso: los motivos nítidos se ven como logos estampados encima de
-    # la foto en vez de como un ambiente.
-    im = im.filter(ImageFilter.GaussianBlur(2.2))
+    # Refuerzo del canal alfa. Este es el ajuste del que depende que el tema se
+    # vea o no: los motivos se dibujan con opacidades bajas a propósito (base
+    # 0.30) porque la capa va ENCIMA de la foto de Bing y debajo de la viñeta.
+    # Con esos valores solos, desde el otro lado de la oficina no se veía NADA:
+    # el PNG salía con alfa promedio 25/255 y máximo 140, que contra una foto
+    # oscurecida por la viñeta es indescifrable. Se multiplica el alfa global
+    # para que los motivos lean como ambiente sin volverse un filtro que tape
+    # la foto: tope de 178 (~70%) para que la imagen de Bing siga pasando.
+    im = _reforzar_alfa(im, factor=1.55, tope=150)
+
+    # Borroso, pero no tanto: con 2.2 los motivos se volvían una mancha y se
+    # perdían los bordes; a 1.0 siguen siendo formas y se nota que son adornos.
+    im = im.filter(ImageFilter.GaussianBlur(1.0))
 
     os.makedirs(os.path.dirname(ruta_destino), exist_ok=True)
     im.save(ruta_destino, "PNG", optimize=True)
