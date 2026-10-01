@@ -44,6 +44,7 @@ import Metricas from '$lib/components/pantallas/Metricas.svelte';
 import Clima from '$lib/components/pantallas/Clima.svelte';
 import Pulso from '$lib/components/pantallas/Pulso.svelte';
 import Asistencia from '$lib/components/pantallas/Asistencia.svelte';
+import IngenieriaCampo from '$lib/components/pantallas/IngenieriaCampo.svelte';
 import Portada from '$lib/components/pantallas/Portada.svelte';
 
 /* ── Configuración de la pantalla ─────────────────────────────── */
@@ -82,6 +83,7 @@ const PANTALLAS: PantallaDef[] = [
 	{ id: 'clima', icono: '🌤️', label: 'Clima' },
 	{ id: 'notas', icono: '📌', label: 'Notas' },
 	{ id: 'asistencia', icono: '🕘', label: 'Asistencia de hoy' },
+	{ id: 'campo', icono: '📍', label: 'Ingenieros en Campo' },
 	{ id: 'portada', icono: '🖼️', label: 'Portada del mes' }
 ];
 
@@ -1037,6 +1039,7 @@ function cambiarVolumen(v: number) {
 							{:else if pantalla.id === 'clima'}<Clima {datos} />
 							{:else if pantalla.id === 'notas'}<Notas {datos} />
 							{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
+							{:else if pantalla.id === 'campo'}<IngenieriaCampo {datos} />
 							{:else if pantalla.id === 'portada'}<Portada {datos} />
 							{/if}
 						{/key}

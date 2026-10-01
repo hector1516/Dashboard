@@ -367,6 +367,63 @@ def tema_mes(mes: int = None) -> dict:
 
 
 # ── ASISTENCIA DEL DÍA ─────────────────────────────────────────────────────
+def ubicaciones_hoy() -> dict:
+    """
+    Dónde está cada quien HOY, desde `HUB_Ubicaciones`.
+
+    La tabla la escribe la app Field cuando alguien presiona el botón flotante
+    «Aquí estoy» (migración 0047). Cada registro es una ubicación en el
+    momento en que se presionar; un Ingeniero que se mueve la vuelve a
+    presionar y queda otro renglón.
+
+    De todos los renglones del día se toma el MÁS RECIENTE de cada usuario: la
+    pantalla dice dónde está HOY, no dónde pasó a las 9 de la mañana. Por eso
+    `ROW_NUMBER() OVER (PARTITION BY IdUsuario ORDER BY FechaRegistro DESC)` y
+    no un `MAX` con `GROUP BY`: el desempate por hora queda definido en la misma
+    consulta, así que dos registros del mismo segundo no pueden duplicar a la
+    persona en el mapa.
+
+    SOLO HOY, y a propósito: `FechaRegistro >= CAST(GETDATE() AS date)` en el
+    servidor. Al día siguiente la pantalla arranca en blanco sola, sin que nadie
+    tenga que borrar nada ni que la vista sepa qué día es.
+
+    La hora NO se devuelve ni se muestra: el mapa es "quién está dónde", no un
+    historial. Si algún día hace falta saber desde cuándo lleva ahí el dato,
+    ya está en la tabla.
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor(as_dict=True) as cur:
+                cur.execute("""
+                    SELECT TOP 200
+                           u.Nombre AS nombre,
+                           t.Latitud AS lat,
+                           t.Longitud AS lon,
+                           t.PrecisionM AS precision
+                    FROM (
+                        SELECT ub.IdUsuario, ub.Latitud, ub.Longitud, ub.PrecisionM,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY ub.IdUsuario
+                                   ORDER BY ub.FechaRegistro DESC, ub.Id DESC
+                               ) AS rn
+                        FROM HUB_Ubicaciones ub
+                        WHERE ub.FechaRegistro >= CAST(GETDATE() AS date)
+                    ) t
+                    JOIN HUB_Users u ON u.Id = t.IdUsuario
+                    WHERE t.rn = 1 AND u.Activo = 1
+                    ORDER BY u.Nombre
+                """)
+                personas = [
+                    {"nombre": r["nombre"], "lat": float(r["lat"]),
+                     "lon": float(r["lon"]),
+                     "precision": float(r["precision"]) if r["precision"] is not None else None}
+                    for r in cur.fetchall()
+                ]
+        return {"personas": personas}
+    except Exception:
+        return {"personas": []}
+
+
 def asistencia_hoy() -> dict:
     """
     Quién entró y salió HOY, desde `HUB_NetworkPresence`.

@@ -124,6 +124,7 @@ def ciclo() -> dict:
             "celebraciones": D.celebraciones(),
             "metricas": D.metricas(sunday),
             "asistencia": D.asistencia_hoy(),
+            "ubicaciones": D.ubicaciones_hoy(),
             "imagen": D.imagen_pantalla("PORTADA"),
             "tema": D.tema_mes(),
         }
@@ -153,6 +154,19 @@ def ciclo() -> dict:
     except Exception as exc:
         _log(f"WARN imagen portada: {exc}")
         bloques["imagen"] = {"hay": False}
+
+    # Mapa "Ingenieros en Campo". Los bytes van a /data/media/maps/ y al snapshot
+    # sólo llega la ruta y cuántos hay. Se genera aquí y no en la API por lo
+    # mismo que las capas de los temas: la API es sólo lectura.
+    try:
+        import mapa as _Mapa
+        _info = _Mapa.mapa_ingenieria(bloques["ubicaciones"].get("personas"))
+        bloques["ubicaciones"]["mapa"] = _info.get("ruta")
+        bloques["ubicaciones"]["personas_total"] = _info.get("personas", 0)
+        bloques["ubicaciones"]["zoom"] = _info.get("zoom")
+    except Exception as exc:
+        _log(f"WARN mapa ingenieria: {exc}")
+        bloques["ubicaciones"]["mapa"] = None
 
     # Capas de los DOCE temas del año, no sólo el del mes: son 1.3 s cada una y
     # se generan una sola vez (el archivo ya no se toca). Con los doce a mano,
@@ -282,6 +296,7 @@ def ciclo() -> dict:
         "aniversarios": bloques["celebraciones"]["aniversarios"],
         "metricas": bloques["metricas"],
         "asistencia": bloques["asistencia"],
+        "ubicaciones": bloques["ubicaciones"],
         "imagen": bloques["imagen"],
         "tema": bloques["tema"],
         "clima": clima,
