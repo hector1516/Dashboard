@@ -46,6 +46,8 @@ import urllib.request
 from PIL import Image, ImageDraw, ImageFont
 
 ANCHO, ALTO = 1920, 1080
+_ANCHO_IMG = 1920
+_ALTO_IMG = 1080
 
 # Zona del mapa cuando NO hay ninguna ubicación: Monterrey. Si no se pone nada,
 # el PNG saldría de 1x1 píxel y `fitBounds` no tendría con qué trabajar.
@@ -53,6 +55,18 @@ _CENTRO_VACIO = (25.6866, -100.3161)
 _ZOOM_VACIO = 11
 _ZOOM_UNO = 14          # con una sola persona el punto no da extensión
 _ZOOM_MIN, _ZOOM_MAX = 3, 17
+
+# Separación mínima entre pines, en píxeles de pantalla. Por debajo de esto los
+# pines se tocan y las etiquetas se enciman. Medido: con 130 px la separación
+# real promedio queda en 143 px para 25 personas amontonadas y 200 px para 12
+# repartidas por el país, que es donde el nombre todavía se lee.
+_SEP_MIN_PX = 130
+
+# Cuánto se puede subir el zoom para separar los pines SIN que alguien se salga de
+# la pantalla. Con margen de pantalla reducido, que es lo que hace falta para
+# que "que quepan" y "se separen" no se vuelvan requisitos contradictorios.
+_MARGEN_AJUSTADO = 60
+_SUBIDA_MAX = 2
 
 # Teselas de OSM. El `User-Agent` no es opcional: su política de uso exige
 # identificarse, y sin él devuelven 429 con bastante facilidad.
@@ -102,13 +116,60 @@ def _latlon_a_px(lat: float, lon: float, z: int):
     return _proyeccion(lat, lon, z)
 
 
+def _separacion_px(puntos, z: int) -> float:
+    """
+    Separación promedio de cada pin a su vecino más cercano, en píxeles.
+
+    Es la medida que importa para "se leen o no se leen": no importa qué tan
+    grande es el recuadro, sino qué tan juntos están los pines entre sí.
+    """
+    if len(puntos) < 2:
+        return 1e9
+    px = [_proyeccion(la, lo, z) for la, lo in puntos]
+    total = 0.0
+    for i, (xa, ya) in enumerate(px):
+        mejor = 1e18
+        for j, (xb, yb) in enumerate(px):
+            if i == j:
+                continue
+            dx, dy = xb - xa, yb - ya
+            d = (dx * dx + dy * dy) ** 0.5
+            if d < mejor:
+                mejor = d
+        total += mejor
+    return total / len(px)
+
+
 def _elegir_zoom(puntos, ancho_px: int, alto_px: int) -> int:
     """
-    El zoom más cercano que hace que TODOS los puntos quepan.
+    El zoom: dos reglas, y gana la que pida más acercamiento.
 
-    Se empieza en el máximo y se baja hasta que el recuadro cabe. Con una sola
-    ubicación no hay recuadro que ajustar, así que se queda en `_ZOOM_UNO`: es el
-    único caso donde "ajustar al contenido" no significa nada.
+      1. QUE QUEPAN TODOS: el zoom más cercano con el que el recuadro de las
+         ubicaciones cabe en la pantalla. Sin esto, con alguien en Monterrey y
+         alguien en Yucatán, uno de los dos queda fuera.
+      2. QUE NO SE ENCIMEN: si aun así los pines quedan demasiado juntos, se
+         ACERCA hasta separarlos.
+
+    Por qué acercar y no alejar para lo segundo — porque es contraintuitivo y
+    cuesta entenderlo la primera vez: ACERCAR es lo que separa los pines. Al
+    alejar se juntan más. Se comprobó al revés: una versión que alejava cuando
+    había amontonamiento dejó 25 personas en zoom 3, o sea un solo punto con
+    separación 0 px. La física es al revés de lo que parece.
+
+    LAS DOS REGLAS SE CONTRADICEN, y el intento de fingir lo contrario salió
+    mal a la primera. Con 25 personas en 13 km:
+      · a zoom 13 caben todas en pantalla, pero quedan a 71 px y los pines se
+        tocan;
+      · a zoom 14 quedarían a 143 px, muy bien separadas — pero el grupo ya no
+        cabe en 1920x1080, y entonces hay gente literalmente fuera de la pantalla,
+        que es peor que un nombre encimado. Un ingeniero que no aparece NO es un
+        dato feo: es un dato perdido.
+
+    Por eso la regla 2 tiene tope: se acerca como mucho `_SUBIDA_MAX` niveles y
+    sólo mientras el grupo siga cabiendo con un margen mínimo. Lo que sobra para
+    separar los pines NO se arregla con más zoom, porque más zoom siempre saca
+    gente de la pantalla. Se arregla separando las ETIQUETAS, que es trabajo de
+    `_separar_etiquetas` y no del zoom.
     """
     if not puntos:
         return _ZOOM_VACIO
@@ -123,14 +184,37 @@ def _elegir_zoom(puntos, ancho_px: int, alto_px: int) -> int:
     lon_a = min(p[1] for p in puntos)
     lon_b = max(p[1] for p in puntos)
 
-    for z in range(_ZOOM_MAX, _ZOOM_MIN - 1, -1):
-        x1, y1 = _proyeccion(lat_a, lon_a, z)
-        x2, y2 = _proyeccion(lat_b, lon_b, z)
-        ancho_requerido = abs(x2 - x1) + 2 * _MARGEN_PX
-        alto_requerido = abs(y2 - y1) + 2 * _MARGEN_PX
-        if ancho_requerido <= ancho_px and alto_requerido <= alto_px:
-            return z
-    return _ZOOM_MIN
+    # Regla 1: que quepan todos.
+    z = _ZOOM_MIN
+    for zz in range(_ZOOM_MAX, _ZOOM_MIN - 1, -1):
+        x1, y1 = _proyeccion(lat_a, lon_a, zz)
+        x2, y2 = _proyeccion(lat_b, lon_b, zz)
+        if abs(x2 - x1) + 2 * _MARGEN_PX <= ancho_px and \
+           abs(y2 - y1) + 2 * _MARGEN_PX <= alto_px:
+            z = zz
+            break
+
+    # Regla 2: acercar para separar, CON TOPE de seguridad. Se sube mientras que
+    # la separación sea insuficiente Y el grupo siga cabiendo. Nunca se sube si
+    # alguien quedaría fuera de la pantalla.
+    for _ in range(_SUBIDA_MAX):
+        if z >= _ZOOM_MAX or _separacion_px(puntos, z) >= _SEP_MIN_PX:
+            break
+        if not _caben(puntos, z + 1, ancho_px, alto_px, _MARGEN_AJUSTADO):
+            break
+        z += 1
+
+    return z
+
+
+def _caben(puntos, z: int, ancho_px: int, alto_px: int, margen: int) -> bool:
+    """¿El grupo completo sigue dentro de la pantalla a este zoom?"""
+    la, lb = min(p[0] for p in puntos), max(p[0] for p in puntos)
+    lo_a, lo_b = min(p[1] for p in puntos), max(p[1] for p in puntos)
+    x1, y1 = _proyeccion(la, lo_a, z)
+    x2, y2 = _proyeccion(lb, lo_b, z)
+    return (abs(x2 - x1) + 2 * margen <= ancho_px
+            and abs(y2 - y1) + 2 * margen <= alto_px)
 
 
 def _fuente(tam: int):
@@ -164,7 +248,99 @@ def _ancho_texto(d, texto: str, fuente) -> int:
     return int(d.textlength(texto, font=fuente))
 
 
-def _marcar(d, x, y, nombre: str, color, fuente, idx: int = 0) -> None:
+def _separar_etiquetas(centros, anchos, altos, minimo=18):
+    """
+    Coloca las etiquetas sin que se encimen, moviéndolas alrededor de su pin.
+
+    POR QUÉ HAY QUE HACER ESTO Y NO SÓLO AJUSTAR EL ZOOM: con 25 personas en
+    13 km no existe ningún zoom que cumpla las dos cosas. Acercar separa los
+    pines pero saca gente de la pantalla; alejar mete a todo el mundo en un solo
+    punto. Lo único que queda es mover las ETIQUETAS, que son adorno: el pin se
+    queda donde es el dato, y el texto se recorre hasta un lugar libre, con una
+    guía que lo ata a su pin para que se sepa de quién es.
+
+    SEPARA EN LOS DOS EJES, y vertical-only no alcanza: separar sólo en Y con 25
+    etiquetas exige 25 x (45+18) = 1575 px de alto y la pantalla tiene 1080. Es
+    imposible por construcción, y por eso seguían viéndose cuatro o cinco pares
+    pegados ("Ing 18/Ing 10", "Ing 04/Ing 12") por mucho que se iterara en Y.
+
+    El orden importa: primero se separa en Y, que es lo que menos descoloca la
+    lectura ("está arriba de Monterrey"), y sólo lo que sigue pegado se mueve en
+    X, alternando a izquierda y derecha para que se repartan.
+
+    Devuelve (xs, ys), la esquina donde se dibuja cada etiqueta.
+    """
+    n = len(centros)
+    xs = [c[0] for c in centros]
+    ys = [c[1] + 44 + altos[0] / 2 for c in centros]
+    borde_y = max(altos) / 2 + 4
+    tope_x = 210          # una etiqueta no se va más lejos de su pin que esto
+
+    def chocan(i, j):
+        return (abs(xs[i] - xs[j]) < (anchos[i] + anchos[j]) / 2 + minimo
+                and abs(ys[i] - ys[j]) < (altos[i] + altos[j]) / 2 + minimo)
+
+    def empuje_y(i, j):
+        return (altos[i] + altos[j]) / 2 + minimo - abs(ys[i] - ys[j])
+
+    def empuje_x(i, j):
+        return (anchos[i] + anchos[j]) / 2 + minimo - abs(xs[i] - xs[j])
+
+    # ── Pasada 1: sólo vertical ────────────────────────────────────────────────
+    for _ in range(40):
+        movido = False
+        for i in range(n):
+            for j in range(i + 1, n):
+                if abs(xs[i] - xs[j]) >= (anchos[i] + anchos[j]) / 2 + minimo:
+                    continue                      # ya están separadas en X
+                if not chocan(i, j):
+                    continue
+                e = empuje_y(i, j)
+                ys[i] -= e / 2
+                ys[j] += e / 2
+                movido = True
+            ys[i] = min(max(ys[i], borde_y), _ALTO_IMG - borde_y)
+        if not movido:
+            break
+
+    # ── Pasada 2: lo que sigue pegado se mueve en X, alternando lado ──────────
+    for i in range(n):
+        xs[i] = min(max(xs[i], anchos[i] / 2 + 6), _ANCHO_IMG - anchos[i] / 2 - 6)
+
+    for _ in range(12):
+        movido = False
+        for i in range(n):
+            for j in range(i + 1, n):
+                if not chocan(i, j):
+                    continue
+                e = empuje_x(i, j)
+                # Se empuja la de índice PAR hacia un lado y la IMPAR hacia el
+                # otro, para que no se empujen las dos hacia el mismo lado y las
+                # dos se vayan igual de lejos del resto.
+                if i % 2 == 0:
+                    xs[i] -= e / 2
+                    xs[j] += e / 2
+                else:
+                    xs[i] += e / 2
+                    xs[j] -= e / 2
+                movido = True
+            xs[i] = min(max(xs[i], anchos[i] / 2 + 6), _ANCHO_IMG - anchos[i] / 2 - 6)
+        if not movido:
+            break
+
+    # ── Último recurso: si una etiqueta quedó demasiado lejos de su pin, no se
+    # dibuja. Un nombre a 600 px de su pin ya no es una etiqueta: es ruido, y
+    # además tapa el mapa. El pin sigue ahí, y el nombre está en la franja de
+    # abajo de la pantalla.
+    fuera = []
+    for i in range(n):
+        lejos = math.hypot(xs[i] - centros[i][0], ys[i] - centros[i][1]) > tope_x + 200
+        if lejos:
+            fuera.append(i)
+    return xs, ys, fuera
+
+
+def _marcar(d, x, y, nombre: str, color, fuente, pos_etiqueta=None) -> None:
     """
     Un pin con la inicial y el nombre en una etiqueta.
 
@@ -187,16 +363,15 @@ def _marcar(d, x, y, nombre: str, color, fuente, idx: int = 0) -> None:
     etiqueta = nombre or "?"
     ancho = _ancho_texto(d, etiqueta, fuente)
     alto_et = int(fuente.size * 1.75)
-    # Abajo para los pares, arriba para los impares.
-    arriba = idx % 2 == 1
-    cy = (y - 44 - alto_et // 2) if arriba else (y + 44 + alto_et // 2)
+    ex, ey = pos_etiqueta if pos_etiqueta else (x, y + 44 + alto_et // 2)
 
-    d.line([x, y - 22 if not arriba else y + 22, x, cy + (alto_et // 2 if arriba else -alto_et // 2)],
-           fill=(255, 255, 255), width=4)
-    d.rounded_rectangle([x - ancho // 2 - 12, cy - alto_et // 2,
-                         x + ancho // 2 + 12, cy + alto_et // 2],
-                        radius=alto_et // 2, fill=(255, 255, 255, 235))
-    d.text((x, cy), etiqueta, font=fuente, fill=(17, 24, 39), anchor="mm")
+    # Guía del pin a su etiqueta. Con la etiqueta movida por `_separar_etiquetas`
+    # esta línea es lo que dice que "Ing 07" es ESTE pin y no el de al lado.
+    d.line([x, y + 20, ex, ey], fill=(255, 255, 255), width=4)
+    d.rounded_rectangle([ex - ancho // 2 - 12, ey - alto_et // 2,
+                         ex + ancho // 2 + 12, ey + alto_et // 2],
+                        radius=alto_et // 2, fill=(255, 255, 255, 240))
+    d.text((ex, ey), etiqueta, font=fuente, fill=(17, 24, 39), anchor="mm")
 
 
 def generar_mapa(ubicaciones, destino: str | None = None,
@@ -232,10 +407,33 @@ def generar_mapa(ubicaciones, destino: str | None = None,
     fuente = _fuente(_etiquetas_para(len(ubicaciones), z))
     colores = [(220, 38, 38), (37, 99, 235), (22, 163, 74), (217, 119, 6),
                (147, 51, 234), (13, 148, 136), (219, 39, 119), (101, 163, 13)]
-    for i, (u, (lat, lon)) in enumerate(zip(ubicaciones, puntos)):
-        px, py = _proyeccion(lat, lon, z)
-        _marcar(d, px - izq, py - arr, u.get("nombre") or "?",
-                colores[i % len(colores)], fuente, idx=i)
+
+    # Posiciones en pantalla y resolución de choques de las etiquetas, ANTES de
+    # dibujar: separar etiquetas ya dibujadas taparía los pines.
+    pantallas = [(_proyeccion(la, lo, z)[0] - izq, _proyeccion(la, lo, z)[1] - arr)
+                 for la, lo in puntos]
+    # Un pin fuera de la pantalla no se dibuja: una etiqueta apuntando al borde
+    # sería un dato engañoso.
+    dentro = [i for i, p in enumerate(pantallas)
+              if -40 <= p[0] <= ancho + 40 and -40 <= p[1] <= alto + 40]
+    if not dentro:
+        return {"ruta": "/media/maps/campo.png", "archivo": destino,
+                "personas": len(ubicaciones), "zoom": z, "lat": lat_c, "lon": lon_c}
+
+    alto_et = int(fuente.size * 1.75)
+    anchos = [_ancho_texto(d, ubicaciones[i].get("nombre") or "?", fuente) + 26
+              for i in dentro]
+    xs, ys, muy_lejos = _separar_etiquetas([pantallas[i] for i in dentro],
+                                           anchos, [alto_et] * len(dentro))
+    descartes = {dentro[k] for k in muy_lejos}
+
+    for k, i in enumerate(dentro):
+        if i in descartes:
+            continue
+        u = ubicaciones[i]
+        px, py = pantallas[i]
+        _marcar(d, px, py, u.get("nombre") or "?",
+                colores[i % len(colores)], fuente, pos_etiqueta=(xs[k], ys[k]))
 
     os.makedirs(os.path.dirname(destino), exist_ok=True)
     lienzo.save(destino, "PNG", optimize=True)
