@@ -256,3 +256,17 @@ HEALTHCHECK del contenedor.
 9. **Suma de odómetro**: la serie diaria de km **no** puede ser
    `SUM(Kilometros)` (esa columna es el odómetro: daba 594,362 km en un día).
    Es "última lectura del día menos la lectura anterior".
+
+## Cómo levantar la TV cuando el kiosco se apaga (LEER SI `tv_conectada` sale False)
+- El cliente es **Edge en modo kiosco**, no un worker. Si no hay proceso `msedge.exe`
+  con `--kiosk`, la TV está apagada y no es un bug del servidor.
+- **El dominio `dashboard.ecc-sa.com.mx` NO resuelve desde el ServerVM**: no hay DNS
+  ni entrada en el hosts. Hay que lanzar el kiosco con la IP
+  `http://10.188.141.31:8101/`.
+- Desde SSH (sesión 0) un `Start-Process msedge` abre el navegador donde nadie lo ve.
+  Para que aparezca en el escritorio hay que correrlo en la **sesión interactiva**:
+  una tarea programada con `-LogonType Interactive` para el usuario `ECCSA`, que es
+  la sesión `console` (id 1). Es lo único que funciona.
+- **Comprobar que volvió**: `tv_conectada` en `/api/panel/estado` y que el log de
+  nginx reciba peticiones del navegador. Ojo al parsear el log: un `grep` mal escrito
+  dio "0 peticiones" cuando había 107 mil. Comparar contra el reloj del contenedor.
