@@ -164,6 +164,9 @@ def ciclo() -> dict:
         bloques["ubicaciones"]["mapa"] = _info.get("ruta")
         bloques["ubicaciones"]["personas_total"] = _info.get("personas", 0)
         bloques["ubicaciones"]["zoom"] = _info.get("zoom")
+        bloques["ubicaciones"]["pins"] = _info.get("pins") or []
+        bloques["ubicaciones"]["grupos"] = _info.get("grupos", 0)
+        bloques["ubicaciones"]["colores"] = _info.get("colores") or []
     except Exception as exc:
         _log(f"WARN mapa ingenieria: {exc}")
         bloques["ubicaciones"]["mapa"] = None

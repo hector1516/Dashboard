@@ -248,7 +248,141 @@ def _ancho_texto(d, texto: str, fuente) -> int:
     return int(d.textlength(texto, font=fuente))
 
 
-def _separar_etiquetas(centros, anchos, altos, minimo=18):
+# ── Agrupación: gente que reporta desde el mismo punto ───────────────────────
+
+# A esta distancia se consideran "el mismo sitio". Con 120 m, dos personas en la
+# misma oficina o en la misma calle salen como una sola señal, que es lo que uno
+# quiere ver de una pantalla: "hay cinco aquí", no cinco pines encimados donde
+# sólo se lee el de arriba.
+_AGRUPAR_M = 120
+_RADIO_PX = 34          # radio del pin (con foto dentro)
+
+
+def _dist_m(lat1, lon1, lat2, lon2) -> float:
+    """Distancia en metros entre dos coordenadas (haversine)."""
+    r = 6371000.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = p2 - p1
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(min(1.0, a)))
+
+
+def _agrupar(ubicaciones, radio_m=_AGRUPAR_M):
+    """
+    Agrupa a quien está en el mismo sitio. Union-find: O(n²), que con las dos o
+    tres dezenas de registros del día es irrelevante y mucho más fácil de acertar
+    que una grilla con celdas de tamaño fijo.
+
+    Devuelve grupos con sus miembros y su centroide, del más numerous al menos.
+    """
+    n = len(ubicaciones)
+    padre = list(range(n))
+
+    def buscar(a):
+        while padre[a] != a:
+            padre[a] = padre[padre[a]]          # compresión de caminos
+            a = padre[a]
+        return a
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if _dist_m(ubicaciones[i]["lat"], ubicaciones[i]["lon"],
+                       ubicaciones[j]["lat"], ubicaciones[j]["lon"]) <= radio_m:
+                ri, rj = buscar(i), buscar(j)
+                if ri != rj:
+                    padre[ri] = rj
+
+    grupos = {}
+    for i in range(n):
+        grupos.setdefault(buscar(i), []).append(i)
+
+    salida = []
+    for miembros in grupos.values():
+        salida.append({
+            "miembros": miembros,
+            "lat": sum(ubicaciones[i]["lat"] for i in miembros) / len(miembros),
+            "lon": sum(ubicaciones[i]["lon"] for i in miembros) / len(miembros),
+        })
+    salida.sort(key=lambda g: -len(g["miembros"]))
+    return salida
+
+
+def _nombres_grupo(miembros, ubicaciones, maximo=3):
+    """Nombres de un grupo, con corte honesto.
+
+    Con seis personas en la misma oficina, seis nombres en una sola etiqueta son
+    ilegibles: se muestran los primeros y cuántos más hay. Los demás están en la
+    franja de abajo de la pantalla, que sí los lista todos.
+    """
+    nombres = [ubicaciones[i].get("nombre") or "?" for i in miembros]
+    if len(nombres) <= maximo:
+        return ", ".join(nombres)
+    return ", ".join(nombres[:maximo]) + f" +{len(nombres) - maximo}"
+
+
+_AVATARES = {}            # id_usuario -> bytes, una vez por proceso
+
+
+def _avatar_bytes(id_usuario):
+    """Bytes del avatar del usuario, o None si no tiene.
+
+    Los archivos los escribe el snapshotter en /data/media/avatars/u<Id>.jpg a
+    partir de HUB_UserAvatars. Se leen del disco y no de la base: el mapa se
+    regenera cada 5 minutos como mucho, y no tiene sentido volver a pedir un JPEG
+    a la base en cada vuelta.
+    """
+    if not id_usuario:
+        return None
+    if id_usuario in _AVATARES:
+        return _AVATARES[id_usuario]
+    ruta = os.path.join(os.environ.get("KIOSKO_DATA", "/data"), "media",
+                        "avatars", f"u{int(id_usuario)}.jpg")
+    try:
+        with open(ruta, "rb") as fh:
+            crudo = fh.read()
+    except OSError:
+        crudo = None
+    _AVATARES[id_usuario] = crudo or None
+    return _AVATARES[id_usuario]
+
+
+_CARAS = {}                # (hash, lado) -> imagen circular ya recortada
+
+
+def _cara_redonda(crudo, lado):
+    """Avatar recortado en círculo, cacheado por contenido.
+
+    Recortar en círculo importa: una foto cuadrada dentro de un pin redondo deja
+    las esquinas del fondo del retrato y se ve como un sticker pegado. Y antes de
+    circular hay que recortar a cuadrado al centro, porque si no una foto apaisada
+    se estira y la cara sale chueca.
+    """
+    if not crudo:
+        return None
+    clave = (hash(crudo), lado)
+    if clave in _CARAS:
+        return _CARAS[clave]
+    try:
+        from PIL import ImageDraw
+        im = Image.open(io.BytesIO(crudo)).convert("RGB")
+        lado_min = min(im.size)
+        izq = (im.width - lado_min) // 2
+        arr = (im.height - lado_min) // 2
+        im = im.crop((izq, arr, izq + lado_min, arr + lado_min))
+        im = im.resize((lado, lado), Image.LANCZOS)
+
+        mascara = Image.new("L", (lado, lado), 0)
+        ImageDraw.Draw(mascara).ellipse([0, 0, lado - 1, lado - 1], fill=255)
+        salida = Image.new("RGBA", (lado, lado), (0, 0, 0, 0))
+        salida.paste(im, (0, 0), mascara)
+        _CARAS[clave] = salida
+        return salida
+    except Exception:
+        return None
+
+
+def _separar_etiquetas(centros, anchos, altos, minimo=18, obstaculos=None):
     """
     Coloca las etiquetas sin que se encimen, moviéndolas alrededor de su pin.
 
@@ -271,10 +405,36 @@ def _separar_etiquetas(centros, anchos, altos, minimo=18):
     Devuelve (xs, ys), la esquina donde se dibuja cada etiqueta.
     """
     n = len(centros)
+    obstaculos = obstaculos or []
     xs = [c[0] for c in centros]
-    ys = [c[1] + 44 + altos[0] / 2 for c in centros]
+    ys = [c[1] + 46 + altos[0] / 2 for c in centros]
     borde_y = max(altos) / 2 + 4
     tope_x = 210          # una etiqueta no se va más lejos de su pin que esto
+
+    def choca_pine(i, obs):
+        """¿La etiqueta i cae encima de este pin?
+
+        El defecto que quedaba: las etiquetas se apartaban unas de otras pero
+        pasaban POR ENCIMA de los pines ajenos, y tapaban la cara de media
+        docena de gente. Un pin con foto es un dato, no un adorno: no puede
+        quedar debajo de una etiqueta.
+        """
+        cx, cy, r = obs
+        dx = max(abs(cx - xs[i]) - anchos[i] / 2, 0)
+        dy = max(abs(cy - ys[i]) - altos[i] / 2, 0)
+        return (dx * dx + dy * dy) ** 0.5 < r
+
+    def choca_otro_pine(i):
+        return any(choca_pine(i, o) for o in obstaculos)
+
+    def esquivar_pines(i):
+        """Sube la etiqueta hasta que deja de tapar un pin."""
+        for _ in range(10):
+            if not choca_otro_pine(i):
+                return True
+            ys[i] -= altos[i] + minimo
+            ys[i] = max(ys[i], borde_y)
+        return not choca_otro_pine(i)
 
     def chocan(i, j):
         return (abs(xs[i] - xs[j]) < (anchos[i] + anchos[j]) / 2 + minimo
@@ -300,6 +460,7 @@ def _separar_etiquetas(centros, anchos, altos, minimo=18):
                 ys[j] += e / 2
                 movido = True
             ys[i] = min(max(ys[i], borde_y), _ALTO_IMG - borde_y)
+            esquivar_pines(i)
         if not movido:
             break
 
@@ -325,6 +486,14 @@ def _separar_etiquetas(centros, anchos, altos, minimo=18):
                     xs[j] -= e / 2
                 movido = True
             xs[i] = min(max(xs[i], anchos[i] / 2 + 6), _ANCHO_IMG - anchos[i] / 2 - 6)
+            if choca_otro_pine(i):
+                lado = 1 if i % 2 == 0 else -1
+                for _ in range(10):
+                    if not choca_otro_pine(i):
+                        break
+                    xs[i] += lado * (anchos[i] / 2 + minimo)
+                    xs[i] = min(max(xs[i], anchos[i] / 2 + 6),
+                                _ANCHO_IMG - anchos[i] / 2 - 6)
         if not movido:
             break
 
@@ -338,6 +507,93 @@ def _separar_etiquetas(centros, anchos, altos, minimo=18):
         if lejos:
             fuera.append(i)
     return xs, ys, fuera
+
+
+def _pin_avatar(lienzo, x, y, id_usuario, nombre, color, lado=_RADIO_PX):
+    """
+    El pin: la FOTO del usuario dentro de un círculo con anillo de color.
+
+    La foto es lo que hace útil la pantalla a tres metros: un mapa con diez
+    iniciales es un mapa con diez letras. Con la cara se sabe de un vistazo quién
+    está en Saltillo.
+
+    Si no hay foto se cae a la inicial, pero nunca a un círculo vacío: un pin sin
+    rostro es un pin sin quién.
+    """
+    d = ImageDraw.Draw(lienzo, "RGBA")
+    r = lado / 2
+
+    # Halo y anillo: el blanco separa la cara del mapa, y el color identifica al
+    # grupo cuando hay varias personas en el mismo punto.
+    d.ellipse([x - r - 6, y - r - 6, x + r + 6, y + r + 6], fill=(0, 0, 0, 70))
+    d.ellipse([x - r - 4, y - r - 4, x + r + 4, y + r + 4], fill=(255, 255, 255, 255))
+
+    cara = _cara_redonda(_avatar_bytes(id_usuario), int(lado))
+    if cara is not None:
+        # El marco es TRANSPARENTE con un anillo de color, no un cuadrado
+        # relleno: al crearlo con el color de fondo opaco y dibujarle la elipse
+        # encima, las esquinas no se borran y salía un rectángulo rojo detrás de
+        # cada cara.
+        lado_m = int(lado) + 10
+        marco = Image.new("RGBA", (lado_m, lado_m), (0, 0, 0, 0))
+        ImageDraw.Draw(marco).ellipse([0, 0, lado_m - 1, lado_m - 1],
+                                      fill=color + (255,))
+        lienzo.paste(marco, (int(x - r - 5), int(y - r - 5)), marco)
+        lienzo.paste(cara, (int(x - r), int(y - r)), cara)
+    else:
+        d.ellipse([x - r, y - r, x + r, y + r], fill=color,
+                  outline=(255, 255, 255), width=4)
+        d.text((x, y - 1), (nombre or "?")[0].upper(), font=_fuente(int(lado * 0.5)),
+               fill=(255, 255, 255), anchor="mm")
+
+
+def _grupo_pines(lienzo, x, y, miembros, ubicaciones, color, radio=_RADIO_PX):
+    """
+    Un grupo de gente en el mismo sitio: las caras en abanico alrededor del centro.
+
+    Con cinco personas reportando la misma oficina, cinco pines encima muestran
+    sólo el último: cuatro desaparecen de la pantalla, que es justo lo que esta
+    pantalla no puede hacer. Con las caras en abanico se ve cuántas son y cuáles.
+
+    · hasta 4: abanico completo alrededor del centroide;
+    · más de 4: se abren hacia arriba y sale una pastilla con "+N", porque a
+      partir de cinco el abanico ya no se distingue y sólo se ve un bulto.
+
+    Devuelve la lista de pines para las animaciones de la pantalla.
+    """
+    d = ImageDraw.Draw(lienzo, "RGBA")
+    n = len(miembros)
+    r = radio / 2
+
+    if n == 1:
+        u = ubicaciones[miembros[0]]
+        _pin_avatar(lienzo, x, y, u.get("id_usuario"), u.get("nombre"), color, radio)
+        return [{"x": int(x), "y": int(y), "n": 1, "i": miembros[0]}]
+
+    if n <= 4:
+        paso = 2 * math.pi / n
+        for k, i in enumerate(miembros):
+            ang = -math.pi / 2 + k * paso
+            u = ubicaciones[i]
+            _pin_avatar(lienzo, x + math.cos(ang) * (radio + 26),
+                        y + math.sin(ang) * (radio + 26),
+                        u.get("id_usuario"), u.get("nombre"), color, radio)
+    else:
+        for k, i in enumerate(miembros[:4]):
+            ang = -math.pi / 2 + (k - 1.5) * 0.55
+            u = ubicaciones[i]
+            _pin_avatar(lienzo, x + math.cos(ang) * (radio + 34),
+                        y + math.sin(ang) * (radio + 34),
+                        u.get("id_usuario"), u.get("nombre"), color, radio - 4)
+        fuente_c = _fuente(24)
+        texto = f"+{n - 4}"
+        tw = d.textlength(texto, font=fuente_c)
+        d.rounded_rectangle([x + r - 10, y + r - 4, x + r + 20 + tw, y + r + 46],
+                            radius=19, fill=color + (255,))
+        d.text((x + r + 10 + tw / 2, y + r + 21), texto, font=fuente_c,
+               fill=(255, 255, 255), anchor="mm")
+
+    return [{"x": int(x), "y": int(y), "n": n, "i": miembros}]
 
 
 def _marcar(d, x, y, nombre: str, color, fuente, pos_etiqueta=None) -> None:
@@ -408,32 +664,64 @@ def generar_mapa(ubicaciones, destino: str | None = None,
     colores = [(220, 38, 38), (37, 99, 235), (22, 163, 74), (217, 119, 6),
                (147, 51, 234), (13, 148, 136), (219, 39, 119), (101, 163, 13)]
 
-    # Posiciones en pantalla y resolución de choques de las etiquetas, ANTES de
-    # dibujar: separar etiquetas ya dibujadas taparía los pines.
+    # ── Agrupar: quien reporta desde el mismo sitio se dibuja como uno ────────
+    # Se agrupa ANTES de decidir el zoom y las etiquetas, porque el zoom tiene que
+    # encajar con los GRUPOS y no con cada persona: si cinco personas reportan la
+    # misma oficina, el mapa no necesita cinco puntos separados.
+    grupos = _agrupar(ubicaciones)
+    puntos_g = [(g["lat"], g["lon"]) for g in grupos]
+    z = _elegir_zoom(puntos_g, ancho, alto)   # siempre sobre los GRUPOS
+    cx, cy = _proyeccion(lat_c, lon_c, z)
+    izq, arr = cx - ancho / 2, cy - alto / 2
     pantallas = [(_proyeccion(la, lo, z)[0] - izq, _proyeccion(la, lo, z)[1] - arr)
-                 for la, lo in puntos]
+                 for la, lo in puntos_g]
+
     # Un pin fuera de la pantalla no se dibuja: una etiqueta apuntando al borde
     # sería un dato engañoso.
     dentro = [i for i, p in enumerate(pantallas)
               if -40 <= p[0] <= ancho + 40 and -40 <= p[1] <= alto + 40]
     if not dentro:
         return {"ruta": "/media/maps/campo.png", "archivo": destino,
-                "personas": len(ubicaciones), "zoom": z, "lat": lat_c, "lon": lon_c}
+                "personas": len(ubicaciones), "grupos": len(grupos), "zoom": z,
+                "lat": lat_c, "lon": lon_c, "pins": []}
 
+    # ── Etiquetas, con los pines como obstáculo ───────────────────────────────
     alto_et = int(fuente.size * 1.75)
-    anchos = [_ancho_texto(d, ubicaciones[i].get("nombre") or "?", fuente) + 26
+    textos = [_nombres_grupo(grupos[i]["miembros"], ubicaciones)
+              if len(grupos[i]["miembros"]) > 1
+              else (ubicaciones[grupos[i]["miembros"][0]].get("nombre") or "?")
               for i in dentro]
+    anchos = [_ancho_texto(d, t, fuente) + 26 for t in textos]
+    # El radio del obstáculo no es el del pin: un grupo de más de cuatro lleva
+    # además la pastilla "+N" colgando abajo a la derecha, y sin contarla como
+    # obstáculo la etiqueta se le monta encima (se veía "Ing 2, Ing 3, Ing 4 +4"
+    # encima del +3).
+    obstaculos = []
+    for i in dentro:
+        extra = 46 if len(grupos[i]["miembros"]) > 4 else 0
+        obstaculos.append((pantallas[i][0], pantallas[i][1], _RADIO_PX + 8 + extra))
+
     xs, ys, muy_lejos = _separar_etiquetas([pantallas[i] for i in dentro],
-                                           anchos, [alto_et] * len(dentro))
+                                           anchos, [alto_et] * len(dentro),
+                                           obstaculos=obstaculos)
     descartes = {dentro[k] for k in muy_lejos}
 
+    # ── Dibujar ───────────────────────────────────────────────────────────────
+    pins = []
     for k, i in enumerate(dentro):
-        if i in descartes:
-            continue
-        u = ubicaciones[i]
         px, py = pantallas[i]
-        _marcar(d, px, py, u.get("nombre") or "?",
-                colores[i % len(colores)], fuente, pos_etiqueta=(xs[k], ys[k]))
+        g = grupos[i]
+        color = colores[i % len(colores)]
+        # El pin SIEMPRE se dibuja, tenga etiqueta o no: la cara es el dato.
+        pins += _grupo_pines(lienzo, px, py, g["miembros"], ubicaciones, color)
+        if k in descartes:
+            continue
+        ex, ey = xs[k], ys[k]
+        d.line([px, py + 22, ex, ey], fill=(255, 255, 255), width=4)
+        d.rounded_rectangle([ex - anchos[k] / 2 + 13, ey - alto_et / 2,
+                             ex + anchos[k] / 2 - 13, ey + alto_et / 2],
+                            radius=alto_et // 2, fill=(255, 255, 255, 240))
+        d.text((ex, ey), textos[k], font=fuente, fill=(17, 24, 39), anchor="mm")
 
     os.makedirs(os.path.dirname(destino), exist_ok=True)
     lienzo.save(destino, "PNG", optimize=True)
@@ -442,9 +730,18 @@ def generar_mapa(ubicaciones, destino: str | None = None,
         "ruta": "/media/maps/campo.png",
         "archivo": destino,
         "personas": len(ubicaciones),
+        "grupos": len(grupos),
         "zoom": z,
         "lat": lat_c,
         "lon": lon_c,
+        # Dónde quedó cada pin, en píxeles del PNG. La pantalla los usa para poner
+        # encima los efectos: el mapa es una imagen quieta y el pulso lo pone el
+        # navegador, que es donde de verdad se puede animar.
+        "pins": pins,
+        # El color se manda para que la lista de nombres de abajo coincida con
+        # el del pin. Si el front eligiera su propia paleta, los puntos de color
+        # no significarían nada.
+        "colores": [f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}" for c in colores],
     }
 
 

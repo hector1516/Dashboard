@@ -396,6 +396,7 @@ def ubicaciones_hoy() -> dict:
             with conn.cursor(as_dict=True) as cur:
                 cur.execute("""
                     SELECT TOP 200
+                           u.Id AS id_usuario,
                            u.Nombre AS nombre,
                            t.Latitud AS lat,
                            t.Longitud AS lon,
@@ -413,9 +414,12 @@ def ubicaciones_hoy() -> dict:
                     WHERE t.rn = 1 AND u.Activo = 1
                     ORDER BY u.Nombre
                 """)
+                # `id_usuario` no se ve en pantalla: se usa para el avatar del
+                # pin y para agrupar a quien reporta desde el mismo punto. Sin
+                # él el mapa tendría que adivinar de quién es cada cara.
                 personas = [
-                    {"nombre": r["nombre"], "lat": float(r["lat"]),
-                     "lon": float(r["lon"]),
+                    {"id_usuario": r["id_usuario"], "nombre": r["nombre"],
+                     "lat": float(r["lat"]), "lon": float(r["lon"]),
                      "precision": float(r["precision"]) if r["precision"] is not None else None}
                     for r in cur.fetchall()
                 ]
