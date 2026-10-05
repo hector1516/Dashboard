@@ -30,6 +30,8 @@ import json
 import os
 import sys
 import time
+import signal
+import os
 import traceback
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "api"))
@@ -321,20 +323,47 @@ def ciclo() -> dict:
     return snapshot
 
 
+# Plazo máximo de un ciclo del snapshotter. Holgado a propósito: el snapshot
+# walks muchas consultas y con la base en frío puede tardar.
+CICLO_MAX_SEG = 300
+
+
+def _vence_plazo(signum, frame):
+    raise TimeoutError(f"el ciclo pasó de {CICLO_MAX_SEG}s")
+
+
 def main() -> int:
     una_vez = "--una-vez" in sys.argv
     C.asegurar_directorios()
     _log(f"snapshotter arrancado · datos en {C.DATA_DIR} · build {C.leer_build()}")
+    # ── Watchdog del ciclo ────────────────────────────────────────────────────
+    # El 2026-10-05 este proceso se quedó parado dentro de un `pymssql.connect()`
+    # que nunca retornó: sin error, sin excepción y vivo, así que supervisor no
+    # lo reinició. El síntoma fue un snapshot congelado en la hora 09:01 con la
+    # pantalla mostrando "sin datos" y nadie enterándose. Una conexión de pymssql
+    # de un proceso ya colgado no se recupera, así que el plazo mata el proceso
+    # y supervisor levanta uno limpio.
+    try:
+        signal.signal(signal.SIGALRM, _vence_plazo)
+    except Exception:
+        pass
     while True:
         try:
+            signal.setitimer(signal.ITIMER_REAL, CICLO_MAX_SEG)
             snap = ciclo()
+            signal.setitimer(signal.ITIMER_REAL, 0)
             if snap:
                 _log(
                     f"snapshot ok · {snap['reportes']['esta_semana']} reportes/semana · "
                     f"{snap['kilometros']['total_semana']} km · "
                     f"{len(snap['fondos'])} fondos · degradado={snap['degradado'] or 'nada'}"
                 )
+        except TimeoutError as e:
+            _log(f"WATCHDOG: {e}. Se reinicia el proceso para no quedar colgado.")
+            sys.stdout.flush()
+            os._exit(0)
         except Exception:
+            signal.setitimer(signal.ITIMER_REAL, 0)
             _log("ERROR ciclo:\n" + traceback.format_exc())
         if una_vez:
             return 0

@@ -2,6 +2,25 @@
 
 ## Sin liberar (main)
 
+### Corregido
+- **Las horas de llegada se leían con la hora del procesamiento, no con la
+  real.** `HUB_NetworkPresence` guarda dos fechas: `FechaDeteccion` (el
+  instante del escaneo que prueba el evento) y `FechaHora` (cuándo lo procesó
+  el worker) — y el docstring del escáner dice que la asistencia debe usar la
+  primera. `api/datos.py` leía la segunda. Mientras el worker va al día da
+  igual, pero el 5 de octubre se quedó 6 h 20 min atascado y al reiniciarlo
+  drenó 1 195 escaneos de golpe: las dos columnas se separaron hasta 51 min y
+  el ajuste de 4 minutos caía sobre el número equivocado. Rosa aparecía a las
+  09:22 cuando llegó a las 08:35. Ahora todo se calcula con
+  `COALESCE(FechaDeteccion, FechaHora)`, con respaldo para los registros
+  anteriores a esa columna.
+- **El snapshotter ya no se puede quedar colgado en silencio.** Ese mismo día
+  el proceso se atascó dentro de un `pymssql.connect()` que nunca retornó: sin
+  error, sin excepción y vivo, así que supervisor no lo reinició y el snapshot
+  se congeló a las 09:01 con la pantalla parada. Ahora cada ciclo corre con un
+  plazo de 300 s (SIGALRM); si se pasa, el proceso se sale y supervisor levanta
+  uno limpio.
+
 ### Nuevo
 - **Avisos a pantalla completa** (nuevo nivel `pantalla`): las entradas/salidas,
   los kilómetros registrados, los tickets OxxoGas y los reportes firmados toman

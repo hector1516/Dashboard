@@ -468,31 +468,40 @@ def asistencia_hoy() -> dict:
     haría que alguien saliera "antes" de irse.
     """
     conn = get_connection()
+    # EV: el instante del ESCANEO que prueba el evento, con respaldo en la hora
+    # de proceso para los registros anteriores a esa columna.
+    #
+    # El scanner guarda DOS fechas y su docstring dice que la asistencia debe
+    # usar `FechaDeteccion` (la otra es "cuándo lo procesó el worker"). Cuando el
+    # worker se atascó 6 h y drenó 1 195 escaneos de golpe, leer `FechaHora`
+    # mostraba la hora del drenaje: Rosa llegaba 09:22 cuando llegó 08:35, y el
+    # ajuste de minutos caía sobre el número equivocado.
+    EV = "COALESCE(p.FechaDeteccion, p.FechaHora)"
     with conn.cursor(as_dict=True) as cur:
-        cur.execute("""
+        cur.execute(f"""
             SELECT
                 d.IdUsuario AS id_usuario,
                 ISNULL(u.Nombre, '(sin usuario)') AS nombre,
                 -- Primer evento del día YA AJUSTADO (más el tope del día, para
                 -- que a las 00:02 no salga "23:58 de ayer"). Se ordena por la
                 -- hora ajustada, que es la que ve la gente.
-                CASE WHEN MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END)
+                CASE WHEN MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN {EV} END)
                          IS NULL THEN NULL
-                     ELSE CASE WHEN DATEADD(MINUTE, -%d, MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END))
+                     ELSE CASE WHEN DATEADD(MINUTE, -%d, MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN {EV} END))
                                     < CAST(CAST(GETDATE() AS date) AS datetime)
                                THEN CAST(CAST(GETDATE() AS date) AS datetime)
-                               ELSE DATEADD(MINUTE, -%d, MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END))
+                               ELSE DATEADD(MINUTE, -%d, MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN {EV} END))
                           END
                 END AS entrada,
-                MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END) AS entrada_cruda,
-                MAX(CASE WHEN p.TipoEvento = 'ENTRADA' THEN p.FechaHora END) AS ultima_entrada,
-                MAX(CASE WHEN p.TipoEvento = 'SALIDA'  THEN p.FechaHora END) AS salida,
+                MIN(CASE WHEN p.TipoEvento = 'ENTRADA' THEN {EV} END) AS entrada_cruda,
+                MAX(CASE WHEN p.TipoEvento = 'ENTRADA' THEN {EV} END) AS ultima_entrada,
+                MAX(CASE WHEN p.TipoEvento = 'SALIDA'  THEN {EV} END) AS salida,
                 COUNT(*) AS eventos
             FROM HUB_NetworkPresence p
             JOIN HUB_NetworkDevices d ON d.Id = p.IdDispositivo
             LEFT JOIN HUB_Users u ON u.Id = d.IdUsuario
-            WHERE p.FechaHora >= CAST(CAST(GETDATE() AS date) AS datetime)
-              AND p.FechaHora < DATEADD(day, 1, CAST(CAST(GETDATE() AS date) AS datetime))
+            WHERE {EV} >= CAST(CAST(GETDATE() AS date) AS datetime)
+              AND {EV} < DATEADD(day, 1, CAST(CAST(GETDATE() AS date) AS datetime))
               AND d.IdUsuario IS NOT NULL
             GROUP BY d.IdUsuario, u.Nombre
             ORDER BY entrada
@@ -506,7 +515,8 @@ def asistencia_hoy() -> dict:
                 FROM HUB_NetworkPresence p
                 JOIN HUB_NetworkDevices d ON d.Id = p.IdDispositivo
                 WHERE d.IdUsuario = %s
-                  AND p.FechaHora >= CAST(CAST(GETDATE() AS date) AS datetime)
+                  AND COALESCE(p.FechaDeteccion, p.FechaHora)
+                      >= CAST(CAST(GETDATE() AS date) AS datetime)
                 ORDER BY p.Id DESC
             """, (p["id_usuario"],))
             ultimo = cur.fetchone()
