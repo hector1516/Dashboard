@@ -86,11 +86,33 @@ def _firmar_avatares(avs: dict) -> dict:
     return rutas
 
 
+def _firmar_fotos(fotos: dict) -> dict:
+    """{IdUsuario: '/media/usuarios/u<Id>.jpg'} solo para los que se escribieron."""
+    rutas = {}
+    for id_usuario in (fotos or {}):
+        if os.path.isfile(os.path.join(C.USUARIOS_DIR, f"u{id_usuario}.jpg")):
+            rutas[id_usuario] = f"/media/usuarios/u{id_usuario}.jpg"
+    return rutas
+
+
 def _con_avatares(personas: list, rutas: dict) -> list:
     """Pega la ruta del avatar a cada persona (por nombre → id del snapshot)."""
     for p in personas or []:
         r = rutas.get(p.get("id_usuario"))
         p["avatar"] = r
+        p.pop("id_usuario", None)
+    return personas
+
+
+def _con_caras(personas: list, avatares: dict, fotos: dict) -> list:
+    """
+    Pega avatar (IA) y foto (real, HUB_Users.Foto) a cada persona. El front
+    prefiere `foto` y cae a `avatar` si el usuario no tiene foto real.
+    """
+    for p in personas or []:
+        uid = p.get("id_usuario")
+        p["avatar"] = avatares.get(uid)
+        p["foto"] = fotos.get(uid)
         p.pop("id_usuario", None)
     return personas
 
@@ -196,27 +218,43 @@ def ciclo() -> dict:
     # Los tickets van SIN foto (2026-09-28): no se generan sus thumbs. Antes sí,
     # y además había que rescatarlos de los 15 bytes basura con los que vienen
     # algunos blobs de ImagenTicket: trabajo de CPU y disco para nada.
+    # Se piden UNA vez por ciclo (antes `D.avatares()` se llamaba dos veces,
+    # duplicando la consulta y la decodificación de base64).
+    avs = {}
     try:
-        M.guardar_avatares(D.avatares())
+        avs = D.avatares()
+        M.guardar_avatares(avs)
     except Exception as exc:
         _log(f"WARN avatares: {exc}")
+    # Fotos REALES (HUB_Users.Foto), distintas de los avatares IA. Van a
+    # /media/usuarios y el snapshot las lleva como `foto`.
+    fotos_usr = {}
+    try:
+        fotos_usr = D.fotos_usuarios()
+        M.guardar_fotos_usuarios(fotos_usr)
+    except Exception as exc:
+        _log(f"WARN fotos usuarios: {exc}")
     if not fotos_ok:
         degradado.append("media")
 
-    rutas_avatar = _firmar_avatares(D.avatares())
+    rutas_avatar = _firmar_avatares(avs)
+    rutas_foto = _firmar_fotos(fotos_usr)
 
     # Avatares: en el ranking de Legends y en TODOS los cumpleaños/aniversarios
     # (los de hoy y los del mes). Antes sólo se pegaban a los de hoy y las
     # tarjetas del mes salían con la inicial, que a 3 metros no dice nada.
     bloques["legends"]["ranking"] = _con_avatares(bloques["legends"]["ranking"], rutas_avatar)
     # En asistencia NO se usa `_con_avatares` porque ése borra `id_usuario` y
-    # el front lo necesita como key de la lista.
+    # el front lo necesita como key de la lista. Se pegan avatar y foto.
     for _p in bloques["asistencia"]["personas"]:
         _p["avatar"] = rutas_avatar.get(_p.get("id_usuario"))
+        _p["foto"] = rutas_foto.get(_p.get("id_usuario"))
+    # Celebraciones: foto real primero, avatar IA como respaldo (lo decide el
+    # front, pero aquí se mandan las dos rutas).
     for clave in ("cumpleanos", "aniversarios"):
         for grupo in ("hoy", "del_mes"):
-            bloques["celebraciones"][clave][grupo] = _con_avatares(
-                bloques["celebraciones"][clave][grupo], rutas_avatar)
+            bloques["celebraciones"][clave][grupo] = _con_caras(
+                bloques["celebraciones"][clave][grupo], rutas_avatar, rutas_foto)
 
     # 5) Eventos (deltas contra state.json) ---------------------------------
     state = _leer_json(C.STATE, {})

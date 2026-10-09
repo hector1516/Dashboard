@@ -9,6 +9,7 @@ secretos_local.py
 deploy/env.local
 .env
 .env.local
+contras.txt
 
 # Python
 __pycache__/

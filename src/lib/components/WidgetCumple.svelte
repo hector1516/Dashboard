@@ -52,7 +52,7 @@
 				titulo: '¡Feliz cumpleaños!',
 				nombre: c.Nombre,
 				detalle: c.edad ? `${c.edad} años` : 'Hoy es su día',
-				avatar: c.avatar ?? null,
+				avatar: c.foto ?? c.avatar ?? null,
 				clase: 'cumple'
 			});
 		}
@@ -63,7 +63,7 @@
 				titulo: '¡Feliz aniversario!',
 				nombre: a.Nombre,
 				detalle: a.anos ? `${a.anos} años en ECCSA` : 'Hoy cumple años en ECCSA',
-				avatar: a.avatar ?? null,
+				avatar: a.foto ?? a.avatar ?? null,
 				clase: 'aniversario'
 			});
 		}

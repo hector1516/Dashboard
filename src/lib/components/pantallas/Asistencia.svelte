@@ -120,8 +120,8 @@
 				<article class="tarjeta" class:en-sitio={p.en_sitio} class:fuera={!p.en_sitio}>
 					<div class="cabeza">
 						<div class="avatar">
-							{#if p.avatar}
-								<img src={avatarSrc(p.avatar)} alt="" />
+							{#if p.foto ?? p.avatar}
+								<img src={avatarSrc(p.foto ?? p.avatar)} alt="" />
 							{:else}
 								<div class="ph">{iniciales(p.nombre)}</div>
 							{/if}

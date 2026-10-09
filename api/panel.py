@@ -22,6 +22,7 @@ nadie pueda mover la pantalla sin querer a que quede abierto "por si acaso".
 """
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import time
@@ -67,7 +68,10 @@ def exigir_token(cabecera: str | None) -> None:
             "El panel remoto está deshabilitado: falta HUB_PANEL_TOKEN en el "
             "contenedor del kiosco.", 403,
         )
-    if (cabecera or "").strip() != esperado:
+    # compare_digest y no !=: la comparación no debe filtrar, por el tiempo de
+    # respuesta, cuántos caracteres del token acertó quien lo intenta.
+    if not hmac.compare_digest((cabecera or "").strip().encode("utf-8"),
+                               esperado.encode("utf-8")):
         raise ErrorPanel("Token del panel incorrecto.", 403)
 
 

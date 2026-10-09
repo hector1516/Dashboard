@@ -108,26 +108,53 @@ def thumbs_de_fotos(fotos: list) -> tuple[list, bool]:
     return rutas, ok
 
 
+def _decodificar_b64(valor) -> bytes:
+    """
+    Acepta un data URL (`data:image/jpeg;base64,...`) o base64 pelado y devuelve
+    los bytes. `HUB_Users.Foto` guarda data URLs; `HUB_UserAvatars.AvatarBase64`
+    guarda base64 pelado. Se aceptan los dos.
+    """
+    import base64
+    if isinstance(valor, bytes):
+        return valor
+    s = (valor or "").strip()
+    if s.startswith("data:") and "," in s:
+        s = s.split(",", 1)[1]
+    return base64.b64decode(s)
+
+
+def _guardar_fotos(fotos: dict, carpeta: str, ancho: int, ttl_dias: int) -> bool:
+    """Común a avatares y fotos: decodifica base64 y escribe u<Id>.jpg."""
+    ok = True
+    for id_usuario, b64 in (fotos or {}).items():
+        destino = os.path.join(carpeta, f"u{id_usuario}.jpg")
+        if _es_fresco(destino, ttl_dias=ttl_dias):
+            continue
+        try:
+            thumb = _thumb(_decodificar_b64(b64), ancho)
+            if thumb:
+                _escribir(destino, thumb)
+        except Exception:
+            ok = False
+    return ok
+
+
 def guardar_avatares(avs: dict) -> bool:
     """
     Los avatares de HUB_UserAvatars vienen como base64. Se escriben una vez como
     /media/avatars/u<Id>.jpg y el snapshot lleva la ruta: mandar 20 avatares en
     el JSON infla la respuesta sin necesidad.
     """
-    ok = True
-    for id_usuario, b64 in (avs or {}).items():
-        destino = os.path.join(C.AVATARS_DIR, f"u{id_usuario}.jpg")
-        if _es_fresco(destino, ttl_dias=30):
-            continue
-        try:
-            import base64
-            crudo = base64.b64decode(b64) if isinstance(b64, str) else b64
-            thumb = _thumb(crudo, 256)
-            if thumb:
-                _escribir(destino, thumb)
-        except Exception:
-            ok = False
-    return ok
+    return _guardar_fotos(avs, C.AVATARS_DIR, 256, ttl_dias=30)
+
+
+def guardar_fotos_usuarios(fotos: dict) -> bool:
+    """
+    Fotos REALES de los usuarios (`HUB_Users.Foto`), aparte de los avatares IA.
+    Se escriben como /media/usuarios/u<Id>.jpg. El front las prefiere en
+    Celebraciones y Asistencia, con el avatar IA como respaldo.
+    """
+    return _guardar_fotos(fotos, C.USUARIOS_DIR, 256, ttl_dias=30)
 
 
 def guardar_imagen_panel(clave: str, crudo: bytes, content_type: str, id_img) -> str:

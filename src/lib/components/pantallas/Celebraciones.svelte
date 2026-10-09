@@ -46,7 +46,7 @@
 				<div class="rejilla r-{tam}">
 					{#each hoyCumples as c, i}
 						<div class="tarjeta t-xl" style="--c:236,72,153;animation-delay:{i * 0.1}s">
-							{#if c.avatar}<img class="avatar-g" src={avatarSrc(c.avatar)} alt={c.Nombre} />{:else}<div class="avatar-g ph">{(c.Nombre || '?')[0]}</div>{/if}
+							{#if c.foto ?? c.avatar}<img class="avatar-g" src={avatarSrc(c.foto ?? c.avatar)} alt={c.Nombre} />{:else}<div class="avatar-g ph">{(c.Nombre || '?')[0]}</div>{/if}
 							<div class="nombre">{c.Nombre}</div>
 							<div class="detalle">cumpleaños hoy</div>
 							<div class="edad">{c.edad ?? '—'} años</div>
@@ -55,7 +55,7 @@
 					{/each}
 					{#each hoyAnivers as a, i}
 						<div class="tarjeta t-xl" style="--c:34,197,94;animation-delay:{(i + 1) * 0.1}s">
-							{#if a.avatar}<img class="avatar-g" src={avatarSrc(a.avatar)} alt={a.Nombre} />{:else}<div class="avatar-g ph">{(a.Nombre || '?')[0]}</div>{/if}
+							{#if a.foto ?? a.avatar}<img class="avatar-g" src={avatarSrc(a.foto ?? a.avatar)} alt={a.Nombre} />{:else}<div class="avatar-g ph">{(a.Nombre || '?')[0]}</div>{/if}
 							<div class="nombre">{a.Nombre}</div>
 							<div class="detalle">aniversario hoy</div>
 							<div class="edad">{a.anos ?? '—'} años en ECCSA</div>
@@ -72,7 +72,7 @@
 				<div class="rejilla r-{tam}">
 					{#each cumplesMes as c, i}
 						<div class="tarjeta" style="--c:236,72,153;animation-delay:{i * 0.08}s">
-							{#if c.avatar}<img class="avatar-g" src={avatarSrc(c.avatar)} alt={c.Nombre} />{:else}<div class="avatar-g ph">{(c.Nombre || '?')[0]}</div>{/if}
+							{#if c.foto ?? c.avatar}<img class="avatar-g" src={avatarSrc(c.foto ?? c.avatar)} alt={c.Nombre} />{:else}<div class="avatar-g ph">{(c.Nombre || '?')[0]}</div>{/if}
 							<div class="nombre">{c.Nombre}</div>
 							<div class="detalle">{c.dia} de {mes}</div>
 							<div class="edad">{c.edad ?? '—'} años</div>
@@ -88,7 +88,7 @@
 				<div class="rejilla r-{tam}">
 					{#each anivers as a, i}
 						<div class="tarjeta" style="--c:34,197,94;animation-delay:{i * 0.08}s">
-							{#if a.avatar}<img class="avatar-g" src={avatarSrc(a.avatar)} alt={a.Nombre} />{:else}<div class="avatar-g ph">{(a.Nombre || '?')[0]}</div>{/if}
+							{#if a.foto ?? a.avatar}<img class="avatar-g" src={avatarSrc(a.foto ?? a.avatar)} alt={a.Nombre} />{:else}<div class="avatar-g ph">{(a.Nombre || '?')[0]}</div>{/if}
 							<div class="nombre">{a.Nombre}</div>
 							<div class="detalle">{a.dia} de {mes}</div>
 							<div class="edad">{a.anos ?? '—'} años</div>

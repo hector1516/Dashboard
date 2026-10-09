@@ -100,16 +100,11 @@ def reportes(sunday: str, hoy: str) -> dict:
 # ── KILÓMETROS ──────────────────────────────────────────────────────────────
 def kilometros(sunday: str, hoy: str) -> dict:
     conn = get_connection()
+    # OJO: aquí NO se hace SUM(Kilometros). Esa columna es el ODOMETRO y sumarla
+    # da un número sin sentido (en producción daba 594.362 km en un solo día;
+    # ver AGENTS.md bug #9). El total de la semana y el de hoy se calculan abajo
+    # con la misma resta por vehículo que la serie de 7 días.
     with conn.cursor(as_dict=True) as cur:
-        cur.execute("SELECT ISNULL(SUM(Kilometros),0) AS total FROM HUB_RegistroKilometros WHERE FechaHora >= %s", (sunday,))
-        total_semana = cur.fetchone()["total"] or 0
-        cur.execute("""
-            SELECT ISNULL(SUM(k.Kilometros),0) AS total
-            FROM HUB_RegistroKilometros k
-            WHERE CAST(k.FechaHora AS DATE) = %s
-        """, (hoy,))
-        km_hoy = cur.fetchone()["total"] or 0
-
         # Consumo = última lectura de ESTA semana − última lectura ANTERIOR.
         # Si falta cualquiera de las dos, el vehículo no se muestra: es la
         # misma regla del dashboard de Field y evita restas sin sentido.
@@ -175,6 +170,14 @@ def kilometros(sunday: str, hoy: str) -> dict:
             v.pop("km_7d", None)
             v.pop("previo_7d", None)
 
+        # Total de la semana = suma del consumo REAL por vehículo. Sólo entran
+        # los que tienen las dos lecturas (semana actual y anterior): restar
+        # contra cero sería volver a contar el odómetro.
+        total_semana = sum(
+            int(v["consumo_semana"]) for v in vehiculos
+            if v.get("km_esta_semana") is not None and v.get("km_semana_pasada") is not None
+        )
+
         # Serie de 7 días para la sparkline.
         #
         # OJO: `Kilometros` es el ODOMETRO, no el consumo. Sumar las lecturas de
@@ -224,6 +227,9 @@ def kilometros(sunday: str, hoy: str) -> dict:
             clave = str(d)
             acc = por_dia.get(clave) or {"km": 0, "registros": 0}
             serie.append({"fecha": clave, "km": acc["km"], "registros": acc["registros"]})
+
+        # "Km hoy" = el último punto de la serie (hoy), ya con la resta correcta.
+        km_hoy = serie[-1]["km"] if serie else 0
 
     return {
         "total_semana": total_semana,
@@ -998,6 +1004,22 @@ def avatares() -> dict:
         cur.execute("SELECT IdUsuario, AvatarBase64 FROM HUB_UserAvatars")
         return {r["IdUsuario"]: r["AvatarBase64"] for r in cur.fetchall()
                 if r.get("AvatarBase64")}
+
+
+def fotos_usuarios() -> dict:
+    """
+    {IdUsuario: Foto} con la foto REAL del usuario (`HUB_Users.Foto`), no el
+    avatar generado por IA. Viene como data URL base64 (o base64 pelado) y se
+    convierte en archivo en /media/usuarios/u<Id>.jpg. Se usa en Celebraciones y
+    Asistencia; si el usuario no tiene foto, el front cae al avatar de Legends.
+    """
+    conn = get_connection()
+    with conn.cursor(as_dict=True) as cur:
+        cur.execute("""
+            SELECT Id, Foto FROM HUB_Users
+            WHERE Activo = 1 AND Foto IS NOT NULL AND LTRIM(RTRIM(Foto)) <> ''
+        """)
+        return {r["Id"]: r["Foto"] for r in cur.fetchall() if r.get("Foto")}
 
 
 def _dump(x) -> str:

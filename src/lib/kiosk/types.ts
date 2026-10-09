@@ -92,6 +92,8 @@ export interface Cumpleanero {
 	mes: number | null;
 	edad: number | null;
 	avatar: string | null;
+	/** Foto real (`HUB_Users.Foto`); el front la prefiere sobre `avatar`. */
+	foto?: string | null;
 }
 
 /** Aniversario: años de antigüedad en ECCSA, desde `FechaIngreso`. */
@@ -100,6 +102,8 @@ export interface Aniversariero {
 	dia: number | null;
 	anos: number | null;
 	avatar: string | null;
+	/** Foto real (`HUB_Users.Foto`); el front la prefiere sobre `avatar`. */
+	foto?: string | null;
 }
 
 export interface LegendRow {
@@ -192,8 +196,10 @@ export interface Snapshot {
 			eventos: number;
 			/** Último evento del día = ENTRADA → sigue dentro de la oficina. */
 			en_sitio: boolean;
-			/** Ruta local del avatar; null si no tiene foto. */
+			/** Ruta local del avatar (IA); null si no tiene. */
 			avatar: string | null;
+			/** Foto real (`HUB_Users.Foto`); el front la prefiere sobre `avatar`. */
+			foto?: string | null;
 		}[];
 		total: number;
 		dentro: number;
