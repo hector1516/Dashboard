@@ -24,7 +24,7 @@ MEDIA_DIR = os.path.join(DATA_DIR, "media")
 THUMBS_DIR = os.path.join(MEDIA_DIR, "thumbs")
 WALLPAPERS_DIR = os.path.join(MEDIA_DIR, "wallpapers")
 AVATARS_DIR = os.path.join(MEDIA_DIR, "avatars")
-# Fotos REALES de los usuarios (HUB_Users.Foto), aparte de los avatares IA.
+# Fotos REALES de los usuarios (HUB_UsuariosFotos.Archivo), aparte de los IA.
 # Se usan en Celebraciones y Asistencia; los avatares IA siguen en Legends.
 USUARIOS_DIR = os.path.join(MEDIA_DIR, "usuarios")
 # Imagen a pantalla completa de la pantalla de portada.

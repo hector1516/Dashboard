@@ -106,8 +106,8 @@ def _con_avatares(personas: list, rutas: dict) -> list:
 
 def _con_caras(personas: list, avatares: dict, fotos: dict) -> list:
     """
-    Pega avatar (IA) y foto (real, HUB_Users.Foto) a cada persona. El front
-    prefiere `foto` y cae a `avatar` si el usuario no tiene foto real.
+    Pega avatar (IA) y foto (real, HUB_UsuariosFotos.Archivo) a cada persona.
+    El front prefiere `foto` y cae a `avatar` si el usuario no tiene foto real.
     """
     for p in personas or []:
         uid = p.get("id_usuario")
@@ -226,7 +226,7 @@ def ciclo() -> dict:
         M.guardar_avatares(avs)
     except Exception as exc:
         _log(f"WARN avatares: {exc}")
-    # Fotos REALES (HUB_Users.Foto), distintas de los avatares IA. Van a
+    # Fotos REALES (HUB_UsuariosFotos.Archivo), distintas de los avatares IA. Van a
     # /media/usuarios y el snapshot las lleva como `foto`.
     fotos_usr = {}
     try:

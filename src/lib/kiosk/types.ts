@@ -92,7 +92,7 @@ export interface Cumpleanero {
 	mes: number | null;
 	edad: number | null;
 	avatar: string | null;
-	/** Foto real (`HUB_Users.Foto`); el front la prefiere sobre `avatar`. */
+	/** Foto real (`HUB_UsuariosFotos`); el front la prefiere sobre `avatar`. */
 	foto?: string | null;
 }
 
@@ -102,7 +102,7 @@ export interface Aniversariero {
 	dia: number | null;
 	anos: number | null;
 	avatar: string | null;
-	/** Foto real (`HUB_Users.Foto`); el front la prefiere sobre `avatar`. */
+	/** Foto real (`HUB_UsuariosFotos`); el front la prefiere sobre `avatar`. */
 	foto?: string | null;
 }
 
@@ -198,7 +198,7 @@ export interface Snapshot {
 			en_sitio: boolean;
 			/** Ruta local del avatar (IA); null si no tiene. */
 			avatar: string | null;
-			/** Foto real (`HUB_Users.Foto`); el front la prefiere sobre `avatar`. */
+			/** Foto real (`HUB_UsuariosFotos`); el front la prefiere sobre `avatar`. */
 			foto?: string | null;
 		}[];
 		total: number;

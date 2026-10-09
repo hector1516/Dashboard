@@ -110,9 +110,9 @@ def thumbs_de_fotos(fotos: list) -> tuple[list, bool]:
 
 def _decodificar_b64(valor) -> bytes:
     """
-    Acepta un data URL (`data:image/jpeg;base64,...`) o base64 pelado y devuelve
-    los bytes. `HUB_Users.Foto` guarda data URLs; `HUB_UserAvatars.AvatarBase64`
-    guarda base64 pelado. Se aceptan los dos.
+    Devuelve los bytes de la imagen, venga como venga: `bytes` crudos
+    (`HUB_UsuariosFotos.Archivo` es VARBINARY), un data URL
+    (`data:image/jpeg;base64,...`) o base64 pelado (`HUB_UserAvatars`).
     """
     import base64
     if isinstance(valor, bytes):
@@ -150,9 +150,9 @@ def guardar_avatares(avs: dict) -> bool:
 
 def guardar_fotos_usuarios(fotos: dict) -> bool:
     """
-    Fotos REALES de los usuarios (`HUB_Users.Foto`), aparte de los avatares IA.
-    Se escriben como /media/usuarios/u<Id>.jpg. El front las prefiere en
-    Celebraciones y Asistencia, con el avatar IA como respaldo.
+    Fotos REALES de los usuarios (`HUB_UsuariosFotos.Archivo`), aparte de los
+    avatares IA. Se escriben como /media/usuarios/u<Id>.jpg. El front las
+    prefiere en Celebraciones y Asistencia, con el avatar IA como respaldo.
     """
     return _guardar_fotos(fotos, C.USUARIOS_DIR, 256, ttl_dias=30)
 

@@ -1008,18 +1008,21 @@ def avatares() -> dict:
 
 def fotos_usuarios() -> dict:
     """
-    {IdUsuario: Foto} con la foto REAL del usuario (`HUB_Users.Foto`), no el
-    avatar generado por IA. Viene como data URL base64 (o base64 pelado) y se
-    convierte en archivo en /media/usuarios/u<Id>.jpg. Se usa en Celebraciones y
-    Asistencia; si el usuario no tiene foto, el front cae al avatar de Legends.
+    {IdUsuario: bytes} con la FOTO real (retrato) del usuario, desde
+    `HUB_UsuariosFotos.Archivo` (VARBINARY, la imagen tal cual). NO es el avatar
+    IA de `HUB_UserAvatars` (ésos los sigue usando Legends). Se convierte en
+    archivo en /media/usuarios/u<Id>.jpg y se usa en Celebraciones y Asistencia;
+    si el usuario no tiene foto, el front cae al avatar de Legends.
     """
     conn = get_connection()
     with conn.cursor(as_dict=True) as cur:
         cur.execute("""
-            SELECT Id, Foto FROM HUB_Users
-            WHERE Activo = 1 AND Foto IS NOT NULL AND LTRIM(RTRIM(Foto)) <> ''
+            SELECT f.IdUsuario, f.Archivo
+            FROM HUB_UsuariosFotos f
+            JOIN HUB_Users u ON u.Id = f.IdUsuario
+            WHERE u.Activo = 1 AND f.Archivo IS NOT NULL
         """)
-        return {r["Id"]: r["Foto"] for r in cur.fetchall() if r.get("Foto")}
+        return {r["IdUsuario"]: r["Archivo"] for r in cur.fetchall() if r.get("Archivo")}
 
 
 def _dump(x) -> str:
