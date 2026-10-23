@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## [1.1.0] - 2026-10-23
+
+### Nuevo
+- **Legends en la pantalla grande**: líder de la semana, top 10, puntos de
+  semana y temporada, nivel, racha y logros. La pantalla se rediseñó sin rayos,
+  partículas ni latidos: fondo limpio, jerarquía clara y números legibles a
+  distancia.
+- **El ranking sigue la regla económica**: cotización pagada +15 a +75,
+  entregada +10, cliente nuevo +5, cobranza +3; castigos por vale sin
+  comprobante, reporte tardío y retrabajo.
+- **Datos reales de la semana**: el kiosco calcula la semana en hora de México,
+  lee `HUB_ScoreLog`, usa `HUB_UserLogros` cuando existe y calcula el nivel con
+  los puntos de la temporada.
+- **Ganador anterior** con avatar y nombre, además del ranking actual.
+
+### Cambiado
+- **Shell del kiosco actualizado a 1.11.0**, igual que Field y Admon.
+- **Contrato del snapshot** actualizado en `src/lib/kiosk/types.ts` y
+  `src/lib/kiosk/api.ts`; el backend (`api/datos.py`, `worker/snapshotter.py`)
+  y la pantalla hablan el mismo modelo.
+
 ## Sin liberar (main)
 
 ### Corregido

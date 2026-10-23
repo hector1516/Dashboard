@@ -28,7 +28,15 @@ export function snapshotVacio(build = 'dev'): Snapshot {
 		reportes: { total: 0, firmados: 0, pendientes: 0, hoy: 0, esta_semana: 0, por_ingeniero: [], ultimos: [] },
 		kilometros: { total_semana: 0, hoy: 0, por_vehiculo: [], serie_7dias: [] },
 		tickets: { total_semana: 0, ultimos: [], por_vehiculo: [] },
-		legends: { ranking: [], ganador_semana: null, total_puntos: 0, reset_en_segundos: 0 },
+		legends: {
+			ranking: [],
+			ganador_semana: null,
+			total_puntos: 0,
+			reset_en_segundos: 0,
+			participantes: 0,
+			semana: { inicio: '', fin: '', reset_en_segundos: 0 },
+			temporada: { clave: '', nombre: '', corto: '', inicio: '', fin: '', dias_restantes: 0 }
+		},
 		fotos: { ids: [] },
 		notas: [],
 		cumpleanos: { hoy: [], del_mes: [] },

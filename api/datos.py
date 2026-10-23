@@ -15,6 +15,15 @@ Importante: el kiosco NO escribe nada en la base. Es estrictamente de lectura
 import datetime as _dt
 import json
 
+try:
+    from zoneinfo import ZoneInfo
+
+    _TZ_MX = ZoneInfo("America/Mexico_City")
+except Exception:  # pragma: no cover - respaldo si la imagen no trae tzdata
+    # México quitó el horario de verano en 2022: UTC-6 todo el año. El kiosco
+    # corre en UTC, así que sin esto la semana de Legends cambiaba a las 18:00.
+    _TZ_MX = _dt.timezone(_dt.timedelta(hours=-6))
+
 import temas
 from db import get_connection
 
@@ -581,60 +590,182 @@ def asistencia_hoy() -> dict:
 
 
 # ── LEGENDS ─────────────────────────────────────────────────────────────────
+# Niveles de temporada. Deben ser los mismos de `field/api/legends_core.py`:
+# el kiosco calcula el nivel con los puntos de temporada para no depender de que
+# el auditor haya corrido en el último ciclo.
+_NIVELES = [
+    ("Bronce", 0, "🥉", "#CD7F32"),
+    ("Plata", 250, "🥈", "#C0C0C0"),
+    ("Oro", 750, "🥇", "#FFD700"),
+    ("Diamante", 1500, "💎", "#22D3EE"),
+    ("Leyenda", 3000, "🌟", "#A855F7"),
+]
+
+
+def _ahora_mx() -> _dt.datetime:
+    """Ahora en hora de México, sin tzinfo (así se compara con SQL Server)."""
+    return _dt.datetime.now(_TZ_MX).replace(tzinfo=None)
+
+
+def _nivel_info(puntos: int) -> dict:
+    pts = int(puntos or 0)
+    actual = _NIVELES[0]
+    for nivel in _NIVELES:
+        if pts >= nivel[1]:
+            actual = nivel
+        else:
+            break
+    return {
+        "nombre": actual[0], "min": actual[1],
+        "icono": actual[2], "color": actual[3],
+    }
+
+
+def _tabla_existe(cur, tabla: str) -> bool:
+    cur.execute(
+        "SELECT TOP 1 1 AS existe FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = %s",
+        (tabla,),
+    )
+    return cur.fetchone() is not None
+
+
 def legends() -> dict:
+    """Ranking semanal + temporada + logros/racha para la pantalla grande.
+
+    Solo usuarios con nickname y passkey (la misma regla de Field/Admon: el
+    Legends se juega entre quienes usan la app). Los puntos se leen de
+    `HUB_ScoreLog`, no de la caché `HUB_UserScores`: si el auditor se retrasa,
+    la TV sigue mostrando la tabla real. El nivel se calcula con los puntos de
+    la temporada (trimestre calendario), no con el total histórico.
+    `puesto_anterior` se calcula en el snapshotter contra el ranking previo.
     """
-    Solo usuarios con passkey (misma regla que en Field: el Legends se juega
-    entre quienes usan la app, no entre los de la planilla).
-    `puesto_anterior` se calcula en el snapshotter comparando con el ranking
-    previo guardado en state.json: es lo que dibuja las flechas ↑↓.
-    """
+    ahora = _ahora_mx()
+    inicio_sem = ahora - _dt.timedelta(days=(ahora.weekday() + 1) % 7)
+    inicio_sem = inicio_sem.replace(hour=0, minute=0, second=0, microsecond=0)
+    fin_sem = inicio_sem + _dt.timedelta(days=7)
+
+    q = (ahora.month - 1) // 3 + 1
+    inicio_temp = _dt.datetime(ahora.year, 3 * (q - 1) + 1, 1)
+    if q == 4:
+        fin_temp = _dt.date(ahora.year, 12, 31)
+    else:
+        fin_temp = _dt.date(ahora.year, 3 * q + 1, 1) - _dt.timedelta(days=1)
+
     conn = get_connection()
     with conn.cursor(as_dict=True) as cur:
-        cur.execute("""
-            SELECT TOP 10
-                u.Id AS id_usuario,
-                u.Nombre AS nombre,
-                ISNULL(u.Nickname, u.Nombre) AS nickname,
-                ISNULL(s.PuntuacionSemanal, 0) AS puntos,
-                ISNULL(s.Nivel, 'Bronce') AS nivel
+        # Una sola pasada: semana, temporada y total por usuario. Igual que el
+        # core, se excluye `sync_completado` (no es una acción que valga puntos).
+        cur.execute(
+            """
+            WITH pts AS (
+                SELECT IdUsuario,
+                    SUM(CASE WHEN FechaRegistro >= %s THEN Puntos ELSE 0 END) AS semana,
+                    SUM(CASE WHEN FechaRegistro >= %s THEN Puntos ELSE 0 END) AS temporada,
+                    SUM(Puntos) AS total
+                FROM HUB_ScoreLog
+                WHERE Metrica <> 'sync_completado'
+                GROUP BY IdUsuario
+            )
+            SELECT u.Id AS id_usuario,
+                   u.Nombre AS nombre,
+                   LTRIM(RTRIM(u.Nickname)) AS nickname,
+                   ISNULL(p.semana, 0) AS puntos_semana,
+                   ISNULL(p.temporada, 0) AS puntos_temporada,
+                   ISNULL(p.total, 0) AS puntos_total,
+                   ISNULL(s.RachaDias, 0) AS racha_dias
             FROM HUB_Users u
+            LEFT JOIN pts p ON p.IdUsuario = u.Id
             LEFT JOIN HUB_UserScores s ON s.IdUsuario = u.Id
             WHERE u.Activo = 1
-              AND EXISTS (SELECT 1 FROM HUB_Passkeys p WHERE p.IdUsuario = u.Id)
-            ORDER BY ISNULL(s.PuntuacionSemanal, 0) DESC
-        """)
-        ranking = cur.fetchall()
+              AND u.Nickname IS NOT NULL AND LTRIM(RTRIM(u.Nickname)) <> ''
+              AND EXISTS (SELECT 1 FROM HUB_Passkeys pk WHERE pk.IdUsuario = u.Id)
+            """,
+            (inicio_sem, inicio_temp),
+        )
+        filas = cur.fetchall()
 
-        cur.execute("""
-            SELECT TOP 1 u.Nombre AS nombre, w.PuntuacionSemana AS puntos,
-                CONVERT(VARCHAR(10), w.FechaInicio, 120) AS desde
+        logros = {}
+        try:
+            if _tabla_existe(cur, "HUB_UserLogros"):
+                cur.execute(
+                    "SELECT IdUsuario, COUNT(*) AS n FROM HUB_UserLogros GROUP BY IdUsuario"
+                )
+                logros = {int(r["IdUsuario"]): int(r["n"] or 0) for r in cur.fetchall()}
+        except Exception:
+            # La migración puede no estar aplicada todavía; la pantalla debe
+            # seguir funcionando sin la columna de logros.
+            logros = {}
+
+        cur.execute(
+            """
+            SELECT TOP 1
+                w.IdUsuario AS id_usuario,
+                u.Nombre AS nombre,
+                ISNULL(NULLIF(LTRIM(RTRIM(u.Nickname)), ''), u.Nombre) AS nickname,
+                w.PuntuacionSemana AS puntos,
+                CONVERT(VARCHAR(10), w.FechaInicio, 120) AS desde,
+                CONVERT(VARCHAR(10), w.FechaFin, 120) AS hasta,
+                ISNULL(s.Nivel, 'Bronce') AS nivel
             FROM HUB_WeeklyWinners w
             JOIN HUB_Users u ON w.IdUsuario = u.Id
+            LEFT JOIN HUB_UserScores s ON s.IdUsuario = u.Id
             ORDER BY w.FechaInicio DESC
-        """)
+            """
+        )
         ganador = cur.fetchone()
 
-        cur.execute("SELECT ISNULL(SUM(PuntuacionSemanal),0) AS total FROM HUB_UserScores")
-        total_pts = cur.fetchone()["total"]
+    ranking = []
+    for r in filas:
+        nivel = _nivel_info(r["puntos_temporada"])
+        ranking.append({
+            "id_usuario": int(r["id_usuario"]),
+            "nombre": r["nombre"],
+            "nickname": r["nickname"] or r["nombre"],
+            "puntos_semana": int(r["puntos_semana"] or 0),
+            "puntos_temporada": int(r["puntos_temporada"] or 0),
+            "puntos_total": int(r["puntos_total"] or 0),
+            "racha_dias": int(r["racha_dias"] or 0),
+            "nivel": nivel["nombre"],
+            "icono_nivel": nivel["icono"],
+            "color_nivel": nivel["color"],
+            "logros_desbloqueados": logros.get(int(r["id_usuario"]), 0),
+            "elegible": True,
+        })
 
-    # El avatar NO viaja en el JSON: es un base64 de decenas de KB por persona.
-    # El snapshotter lo convierte en un archivo en /media/avatars/u<Id>.jpg y
-    # reemplaza `id_usuario` por la ruta, así que aquí el id se conserva.
-    # (Antes se quitaba acá y el ranking llegaba sin avatar a la pantalla.)
+    # Desempate igual que `legends_core.ranking`: puntos de semana, temporada,
+    # total y, al final, el Id más bajo.
+    ranking.sort(
+        key=lambda r: (
+            r["puntos_semana"], r["puntos_temporada"], r["puntos_total"],
+            -r["id_usuario"],
+        ),
+        reverse=True,
+    )
+    for i, r in enumerate(ranking, start=1):
+        r["posicion"] = i
 
-    # Segundos para el próximo reinicio (domingo 00:00 hora del servidor).
-    ahora = _dt.datetime.now()
-    dias = (6 - ahora.weekday()) % 7  # 0 = domingo
-    proximo = (ahora + _dt.timedelta(days=dias)).replace(hour=0, minute=0, second=0, microsecond=0)
-    if proximo <= ahora:
-        proximo += _dt.timedelta(days=7)
-    reset_en = int((proximo - ahora).total_seconds())
-
+    # El avatar NO viaja en el JSON: el snapshotter lo convierte en un archivo
+    # local y lo pega a cada fila. Aquí se conserva `id_usuario` para eso.
+    reset_en = max(int((fin_sem - ahora).total_seconds()), 0)
     return {
         "ranking": ranking,
         "ganador_semana": ganador,
-        "total_puntos": total_pts,
+        "total_puntos": sum(r["puntos_semana"] for r in ranking),
+        "participantes": len(ranking),
         "reset_en_segundos": reset_en,
+        "semana": {
+            "inicio": inicio_sem.date().isoformat(),
+            "fin": (fin_sem - _dt.timedelta(days=1)).date().isoformat(),
+            "reset_en_segundos": reset_en,
+        },
+        "temporada": {
+            "clave": f"{ahora.year}-Q{q}",
+            "nombre": f"Temporada Q{q} {ahora.year}",
+            "corto": f"Q{q} {ahora.year}",
+            "inicio": inicio_temp.date().isoformat(),
+            "fin": fin_temp.isoformat(),
+            "dias_restantes": max((fin_temp - ahora.date()).days + 1, 0),
+        },
     }
 
 

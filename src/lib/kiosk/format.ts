@@ -79,6 +79,7 @@ export function medalla(pos: number): string {
 }
 
 export const NIVEL_EMOJI: Record<string, string> = {
+	Leyenda: '🌟',
 	Diamante: '💎',
 	Oro: '🥇',
 	Plata: '🥈',

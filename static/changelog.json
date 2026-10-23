@@ -1,9 +1,10 @@
 {
-	"app": "dashboard",
-	"version": "1.0.0",
-	"cambios": [
-		"🖥️ Centro de Operaciones ECCSA en pantalla completa: 10 pantallas que rotan cada 45 s.",
-		"🔔 Avisos en vivo con sonido: registro de km, tickets, reportes firmados y cumpleaños.",
-		"📴 Desconectado a propósito: si se cae la red o la base de datos, la pantalla sigue mostrando el último dato y lo dice."
-	]
+  "app": "dashboard",
+  "version": "1.1.0",
+  "cambios": [
+    "🏆 Legends en pantalla grande: líder de la semana, top 10 y puntos de semana y temporada.",
+    "💵 El ranking ahora premia el dinero que entra: cotizaciones pagadas, entregadas y cobranza.",
+    "🔥 Cada persona muestra su nivel, su racha y cuántos logros lleva.",
+    "🧭 Menos efectos y más legibilidad para que se lea desde lejos en la oficina."
+  ]
 }

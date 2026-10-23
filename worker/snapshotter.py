@@ -244,6 +244,9 @@ def ciclo() -> dict:
     # (los de hoy y los del mes). Antes sólo se pegaban a los de hoy y las
     # tarjetas del mes salían con la inicial, que a 3 metros no dice nada.
     bloques["legends"]["ranking"] = _con_avatares(bloques["legends"]["ranking"], rutas_avatar)
+    _campeon = bloques["legends"].get("ganador_semana")
+    if _campeon:
+        _campeon["avatar"] = rutas_avatar.get(_campeon.get("id_usuario"))
     # En asistencia NO se usa `_con_avatares` porque ése borra `id_usuario` y
     # el front lo necesita como key de la lista. Se pegan avatar y foto.
     for _p in bloques["asistencia"]["personas"]:

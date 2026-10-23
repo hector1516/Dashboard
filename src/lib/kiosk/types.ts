@@ -107,13 +107,36 @@ export interface Aniversariero {
 }
 
 export interface LegendRow {
+	id_usuario?: number;
 	nombre: string;
 	nickname: string;
-	puntos: number;
+	/** Puntos de la semana actual (domingo 00:00 → sábado 23:59, hora MX). */
+	puntos_semana: number;
+	/** Puntos del trimestre calendario; definen el nivel. */
+	puntos_temporada: number;
+	puntos_total: number;
+	racha_dias: number;
 	nivel: string;
+	icono_nivel: string;
+	color_nivel: string;
+	/** Logros desbloqueados; 0 si la migración aún no está aplicada. */
+	logros_desbloqueados: number;
+	elegible: boolean;
+	posicion?: number;
 	avatar: string | null;
 	/** Puesto en el snapshot anterior, para dibujar la flecha ↑↓. */
 	puesto_anterior: number | null;
+}
+
+export interface LegendGanador {
+	id_usuario?: number;
+	nombre: string;
+	nickname?: string;
+	puntos: number;
+	desde: string;
+	hasta?: string;
+	nivel?: string;
+	avatar?: string | null;
 }
 
 export interface Snapshot {
@@ -151,10 +174,20 @@ export interface Snapshot {
 
 	legends: {
 		ranking: LegendRow[];
-		ganador_semana: { nombre: string; puntos: number; desde: string } | null;
+		ganador_semana: LegendGanador | null;
 		total_puntos: number;
 		/** Cuenta regresiva al reinicio semanal (domingo 00:00). */
 		reset_en_segundos: number;
+		participantes?: number;
+		semana?: { inicio: string; fin: string; reset_en_segundos: number };
+		temporada?: {
+			clave: string;
+			nombre: string;
+			corto: string;
+			inicio: string;
+			fin: string;
+			dias_restantes: number;
+		};
 	};
 
 	fotos: { ids: { IdReporte: number; Folio: string; Cliente: string; ingeniero: string; Orden: number }[] };
