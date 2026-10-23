@@ -80,7 +80,7 @@ def thumbs_de_fotos(fotos: list) -> tuple[list, bool]:
     pantalla simplemente no muestra fotos: el resto sigue.
     """
     rutas = []
-    ok = True
+    fallidas = []
     conn = None
     try:
         from db import get_connection
@@ -102,10 +102,19 @@ def thumbs_de_fotos(fotos: list) -> tuple[list, bool]:
                 if os.path.isfile(destino):
                     rutas.append(f"/media/thumbs/{os.path.basename(destino)}")
                 else:
-                    ok = False
+                    fallidas.append(f"rep_{f['IdReporte']}_{f['Orden']}")
     except Exception:
-        ok = False
-    return rutas, ok
+        return rutas, False
+    if fallidas:
+        # Una sola foto corrupta en la BD NO debe marcar todo el tablero como
+        # degradado. Pasó el 2026-10-23: de 30 fotos del carrusel, una
+        # (reporte 86, orden 1) tenía 1.6 MB que Pillow no podía decodificar;
+        # el kiosco se declaraba "degradado: media", el healthz devolvía 503 y
+        # el contenedor quedaba unhealthy, alternando cada vez que esa foto
+        # entraba o salía del carrusel. La pantalla solo pierde esa foto.
+        print(f"[medios] {len(fallidas)} foto(s) sin thumb: {', '.join(fallidas)}", flush=True)
+    # Degradado solo si había fotos y no se pudo generar ninguna.
+    return rutas, not (fotos and not rutas)
 
 
 def _decodificar_b64(valor) -> bytes:
