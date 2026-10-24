@@ -39,7 +39,7 @@
 		</div>
 		<div class="kpi green" style="animation-delay:0.08s">
 			<span class="kpi-ic">✍️</span><span class="kpi-val">{num(datos.reportes.firmados)}</span>
-			<span class="kpi-lab">Firmados</span><span class="kpi-sub">{num(datos.reportes.pendientes)} pendientes</span>
+			<span class="kpi-lab">Firmados</span><span class="kpi-sub">{num(datos.reportes.pendientes)} pendientes · {m.tasa_firma}% firma</span>
 		</div>
 		<div class="kpi orange" style="animation-delay:0.16s">
 			<span class="kpi-ic">⛽</span><span class="kpi-val">{num(datos.kilometros.total_semana)}</span>
@@ -93,7 +93,20 @@
 			</div>
 		</div>
 
-		<!-- Tops -->
+		<!-- Reportes por día de la semana -->
+		<div class="card top" style="animation-delay:0.35s;flex-direction:column;align-items:stretch;gap:8px">
+			<div class="top-lab" style="text-align:center">Reportes por día — semana</div>
+			<div class="barras-dia">
+				{#each m.reportes_por_dia as v, i}
+					{@const h = Math.max(4, Math.round((v / Math.max(1, ...m.reportes_por_dia)) * 60))}
+					<div class="barra-col">
+						<div class="barra" style="height:{h}px" title="{dias[i]}: {v} reportes"></div>
+						<span class="barra-lab">{dias[i]}</span>
+						<span class="barra-val">{v}</span>
+					</div>
+				{/each}
+			</div>
+		</div>
 		<div class="col-tops">
 			{#if !m.top_cliente && !m.top_ingeniero && !m.ultimo_evento && !m.top_del_dia}
 				<div class="card top sin-datos">
@@ -179,4 +192,9 @@
 	.top-val { font-size: 26px; font-weight: 900; color: var(--color-primary-light); line-height: 1.15; }
 	.top-val.txt { font-size: 19px; }
 	.top-cnt { font-size: 14px; color: #CBD5E1; }
+	.barras-dia { display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; height: 80px; padding: 0 4px; }
+	.barra-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
+	.barra { width: 100%; min-width: 8px; background: linear-gradient(180deg, #FF6B00, #FFAE00); border-radius: 3px 3px 0 0; transition: height 0.3s; }
+	.barra-lab { font-size: 10px; color: #64748B; font-weight: 700; }
+	.barra-val { font-size: 11px; color: #CBD5E1; font-weight: 600; }
 </style>

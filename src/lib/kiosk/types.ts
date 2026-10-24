@@ -205,6 +205,10 @@ export interface Snapshot {
 		actividad_hora: number;
 		ultimo_evento: { texto: string; meta: string } | null;
 		top_del_dia: { nombre: string; valor: number; unidad: string } | null;
+		/** Reportes por día de la semana (dom..sáb). */
+		reportes_por_dia: number[];
+		/** % de reportes de la semana que ya están firmados. */
+		tasa_firma: number;
 	};
 
 	/**

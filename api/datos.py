@@ -964,6 +964,20 @@ def metricas(sunday: str) -> dict:
         """, (sunday,))
         top_dia = cur.fetchone()
 
+        # Reportes por día de la semana (domingo..sábado) para el mini-gráfico.
+        cur.execute("""
+            SELECT DATEPART(weekday, CAST(Fecha AS DATETIME)) - 1 AS dia, COUNT(*) AS total
+            FROM ReportesServicio
+            WHERE Fecha >= %s
+            GROUP BY DATEPART(weekday, CAST(Fecha AS DATETIME)) - 1
+        """, (sunday,))
+        _por_dia = {int(r["dia"]): int(r["total"]) for r in cur.fetchall()}
+        reportes_por_dia = [_por_dia.get(d, 0) for d in range(7)]
+
+        # Tasa de firma: qué % de los reportes de la semana ya están firmados.
+        total_sem = total or 0
+        tasa_firma = round((firmados / total_sem * 100), 1) if total_sem > 0 else 0.0
+
     return {
         "top_cliente": top_cliente,
         "top_ingeniero": top_ingeniero,
@@ -977,6 +991,8 @@ def metricas(sunday: str) -> dict:
             {"nombre": top_dia["nombre"], "valor": top_dia["total"], "unidad": "reportes"}
             if top_dia else None
         ),
+        "reportes_por_dia": reportes_por_dia,
+        "tasa_firma": tasa_firma,
     }
 
 
