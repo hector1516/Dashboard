@@ -100,7 +100,7 @@ let modoNoche = $state(false);
 let modoLigero = $state(false);
 let antiguedad = $state('—');
 let silenciado = $state(false);
-let volumen = $state(0.35);
+let volumen = $state(1.0);
 let bloqueado = $state(false);
 let shellEstado = $state<'idle' | 'syncing' | 'pending' | 'offline' | 'error'>('idle');
 let sinAnim = $state(false);
@@ -955,10 +955,7 @@ function alternarSilencio() {
 	silenciado = nuevo;
 	tocar('click');
 }
-function cambiarVolumen(v: number) {
-	setVolumen(v);
-	volumen = getVolumen();
-}
+function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 </script>
 
 <svelte:head>
@@ -1016,10 +1013,8 @@ function cambiarVolumen(v: number) {
 					generadoEn={datos.generado_en}
 					{antiguedad}
 					{silenciado}
-					{volumen}
 					{bloqueado}
 					onSilenciar={alternarSilencio}
-					onVolumen={cambiarVolumen}
 					onAudioDesbloquear={() => { desbloquear(); bloqueado = audioBloqueado(); }}
 				/>
 

@@ -26,7 +26,7 @@ const HORA_SILENCIO_FIN = 7;
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let silenciado = false;
-let volumen = 0.35;
+let volumen = 1.0;
 let bloqueado = false; // el navegador no dejó crear/resumir el contexto
 let lluviaGain: GainNode | null = null;
 

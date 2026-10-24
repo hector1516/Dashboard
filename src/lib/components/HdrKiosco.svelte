@@ -22,10 +22,8 @@
 		generadoEn: string;
 		antiguedad: string;
 		silenciado: boolean;
-		volumen: number;
 		bloqueado: boolean;
 		onSilenciar: () => void;
-		onVolumen: (v: number) => void;
 		onAudioDesbloquear: () => void;
 	}
 
@@ -39,14 +37,10 @@
 		generadoEn,
 		antiguedad,
 		silenciado,
-		volumen,
 		bloqueado,
 		onSilenciar,
-		onVolumen,
 		onAudioDesbloquear
 	}: Props = $props();
-
-	let abierto = $state(false);
 
 	const ok = $derived(degradado.length === 0);
 	const aviso = $derived(degradado.length > 0 && !degradado.includes('bd'));
@@ -85,24 +79,6 @@
 		<button class="icono" onclick={onSilenciar} title={silenciado ? 'Activar sonido' : 'Silenciar'}>
 			{silenciado ? '🔇' : '🔊'}
 		</button>
-		<button class="icono slider" onclick={() => (abierto = !abierto)} title="Volumen">
-			<div class="barra" style="--v:{silenciado ? 0 : volumen}">
-				<span class="relleno" style="width:{silenciado ? 0 : volumen * 100}%"></span>
-			</div>
-		</button>
-		{#if abierto}
-			<div class="pop">
-				<input
-					type="range"
-					min="0"
-					max="1"
-					step="0.05"
-					value={volumen}
-					oninput={(e) => onVolumen(parseFloat((e.currentTarget as HTMLInputElement).value))}
-				/>
-				<span class="vol-texto">{Math.round(volumen * 100)}%</span>
-			</div>
-		{/if}
 	</div>
 </header>
 
