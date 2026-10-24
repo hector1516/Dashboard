@@ -5,18 +5,22 @@
 #   1. node:20-alpine compila el build estático de SvelteKit,
 #   2. python:3.11-slim + nginx + supervisor corre el resultado.
 #
+# Las dos bases salen de mirror.gcr.io (espejo pull-through de Docker Hub):
+# Docker Hub y ECR Public aplican cuotas por IP y ya tumbaron la CI dos veces.
+# El espejo sirve el MISMO manifiesto, sin esa cuota.
+#
 # El Dockerfile NO lleva credenciales: entran por --env-file al hacer `docker
 # run` (ver deploy/run_container.ps1) y el entrypoint las convierte en
 # /app/api/secretos_local.py, que está en .gitignore.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS build
+FROM mirror.gcr.io/library/node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM python:3.11-slim
+FROM mirror.gcr.io/library/python:3.11-slim
 
 # nginx para servir la pantalla y los medios; supervisor para los 3 procesos.
 # `curl` lo usa el HEALTHCHECK del final.
