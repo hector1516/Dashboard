@@ -975,8 +975,13 @@ def metricas(sunday: str) -> dict:
         reportes_por_dia = [_por_dia.get(d, 0) for d in range(7)]
 
         # Tasa de firma: qué % de los reportes de la semana ya están firmados.
-        total_sem = total or 0
-        tasa_firma = round((firmados / total_sem * 100), 1) if total_sem > 0 else 0.0
+        cur.execute("""
+            SELECT COUNT(*) AS total FROM ReportesServicio
+            WHERE Estatus = 'Firmado' AND Fecha >= %s
+        """, (sunday,))
+        firmados_sem = cur.fetchone()["total"] or 0
+        total_sem = sum(reportes_por_dia) if reportes_por_dia else 0
+        tasa_firma = round((firmados_sem / total_sem * 100), 1) if total_sem > 0 else 0.0
 
     return {
         "top_cliente": top_cliente,
