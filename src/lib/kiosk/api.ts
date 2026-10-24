@@ -39,7 +39,9 @@ export function snapshotVacio(build = 'dev'): Snapshot {
 			pulso: [],
 			actividad_hora: 0,
 			ultimo_evento: null,
-			top_del_dia: null
+			top_del_dia: null,
+			reportes_por_dia: [0, 0, 0, 0, 0, 0, 0],
+			tasa_firma: 0
 		},
 		asistencia: { personas: [], total: 0, dentro: 0, salieron: 0 },
 		imagen: { hay: false },
