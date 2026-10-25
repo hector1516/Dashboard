@@ -28,6 +28,7 @@ import { montarConfeti, redimensionar, degradar, lanzarConfeti, lanzarOro, parar
 import { APP_VERSION, SHELL_VERSION } from '$lib/shell.js';
 
 import Fondo from '$lib/components/Fondo.svelte';
+import AvatarEccsa from '$lib/components/AvatarEccsa.svelte';
 import HdrKiosco from '$lib/components/HdrKiosco.svelte';
 import CapaAlertas from '$lib/components/CapaAlertas.svelte';
 import CapaSalida from '$lib/components/CapaSalida.svelte';
@@ -90,6 +91,8 @@ const PANTALLAS: PantallaDef[] = [
 /* ── Estado ───────────────────────────────────────────────────── */
 let datos = $state<Snapshot>(snapshotVacio());
 let cargando = $state(true);
+let eventoAvatar = $state<string | null>(null);
+let personaAvatar = $state<string | null>(null);
 let orden = $state<number[]>([]);
 let pos = $state(0);
 let saliendo = $state(false);
@@ -327,6 +330,10 @@ function anunciar(e: EventoKiosko) {
 	// El evento puede traer su propio tono (p. ej. 'hola'/'adios' de las
 	// entradas y salidas); si no, suena el del nivel.
 	tocar(e.tono ?? e.nivel);
+
+	// El avatar reacciona al evento.
+	eventoAvatar = e.titulo;
+	personaAvatar = e.persona ?? null;
 
 	// Aviso a pantalla completa: encola y, si no había ninguno en curso, lo saca
 	// ya. El sonido va aquí (y no al mostrarlo) para que se oiga en el momento
@@ -1079,6 +1086,8 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 		</div>
 	</div>
 {/if}
+
+<AvatarEccsa evento={eventoAvatar} persona={personaAvatar} />
 
 <style>
 	/* El contenedor real es 1920×1080 y se escala al viewport: la pantalla se
