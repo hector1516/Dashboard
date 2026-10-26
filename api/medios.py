@@ -388,7 +388,10 @@ def leer_clima() -> tuple[dict, bool]:
 
 def _ahora_iso() -> str:
     import datetime as _dt
-    return _dt.datetime.now().replace(microsecond=0).isoformat()
+    import sys, os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from tz_mx import now_mx as _now_mx
+    return _now_mx().replace(microsecond=0).isoformat()
 
 
 def _escribir_json(ruta: str, datos) -> None:

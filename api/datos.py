@@ -15,14 +15,9 @@ Importante: el kiosco NO escribe nada en la base. Es estrictamente de lectura
 import datetime as _dt
 import json
 
-try:
-    from zoneinfo import ZoneInfo
-
-    _TZ_MX = ZoneInfo("America/Mexico_City")
-except Exception:  # pragma: no cover - respaldo si la imagen no trae tzdata
-    # México quitó el horario de verano en 2022: UTC-6 todo el año. El kiosco
-    # corre en UTC, así que sin esto la semana de Legends cambiaba a las 18:00.
-    _TZ_MX = _dt.timezone(_dt.timedelta(hours=-6))
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from tz_mx import TZ_MX as _TZ_MX
 
 import temas
 from db import get_connection

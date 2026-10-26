@@ -21,6 +21,9 @@ completa, con `confeti: true` si además es celebración) y `alerta` (banda ámb
 con sonido grave).
 """
 import datetime as _dt
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from tz_mx import now_mx as _now_mx
 
 MAX_PENDIENTES_POR_VUELTA = 4   # no se anuncian 30 km de golpe
 
@@ -45,7 +48,7 @@ def _log_debug(msg: str) -> None:
 def _iso(fecha: str | None = None) -> str:
     if fecha:
         return fecha.replace(" ", "T")
-    return _dt.datetime.now().replace(microsecond=0).isoformat()
+    return _now_mx().replace(microsecond=0).isoformat()
 
 
 def _corta(texto, n=90):
@@ -162,7 +165,7 @@ def detectar(cursores_nuevos: dict, cursores_previos: dict, detalles: dict, hoy_
         ultima = vistos.get(clave)
         if ultima:
             try:
-                if (_dt.datetime.now() - _dt.datetime.fromisoformat(ultima)).total_seconds() < \
+                if (_now_mx() - _dt.datetime.fromisoformat(ultima)).total_seconds() < \
                         COOLDOWN_PRESENCIA_MIN * 60:
                     continue
             except Exception:
@@ -189,7 +192,7 @@ def detectar(cursores_nuevos: dict, cursores_previos: dict, detalles: dict, hoy_
     # ── Cumpleaños de HOY: el destaque del día ──────────────────────────────
     for p in (hoy_cumple or []):
         eventos.append({
-            "id": f"cumple:{_dt.date.today().isoformat()}:{p['Nombre']}",
+            "id": f"cumple:{_now_mx().date().isoformat()}:{p['Nombre']}",
             "nivel": "pantalla",
             "tono": "exito",
             "icono": "🎂",
@@ -233,7 +236,7 @@ def sin_actividad(ultimo_evento_iso: str | None, horas: int = 6) -> dict | None:
         t = _dt.datetime.fromisoformat(ultimo_evento_iso)
     except Exception:
         return None
-    if (_dt.datetime.now() - t).total_seconds() < horas * 3600:
+    if (_now_mx() - t).total_seconds() < horas * 3600:
         return None
     return {
         "id": f"silencio:{ultimo_evento_iso}",
