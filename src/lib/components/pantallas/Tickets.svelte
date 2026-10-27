@@ -10,6 +10,7 @@
 <script lang="ts">
 	import { recortar, num } from '$lib/kiosk/format';
 	import type { Snapshot, Ticket } from '$lib/kiosk/types';
+	import TicketCard from '$lib/components/effects/TicketCard.svelte';
 
 	interface Props { datos: Snapshot }
 	let { datos }: Props = $props();
@@ -30,14 +31,15 @@
 	{#if lista.length}
 		<div class="rejilla">
 			{#each lista as tk, i}
-				<div class="tkt" class:reciente={esReciente(i)} style="animation-delay:{i * 0.05}s">
-					<div class="folio">{tk.folio}</div>
-					<div class="vehiculo">{tk.vehiculo}</div>
-					<div class="usuario">👤 {tk.usuario}</div>
-					<div class="cliente">{recortar(tk.cliente, 28) || '—'}</div>
-					<div class="desc">{recortar(tk.descripcion, 34) || '—'}</div>
-					<div class="fecha">{tk.fecha?.replace('T', ' ')}</div>
-				</div>
+				<TicketCard
+					folio={tk.folio}
+					vehiculo={tk.vehiculo}
+					usuario={tk.usuario}
+					cliente={recortar(tk.cliente, 28) || '—'}
+					descripcion={recortar(tk.descripcion, 34) || '—'}
+					fecha={tk.fecha}
+					reciente={esReciente(i)}
+				/>
 			{/each}
 		</div>
 

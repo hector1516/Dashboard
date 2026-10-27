@@ -47,6 +47,7 @@ import Pulso from '$lib/components/pantallas/Pulso.svelte';
 import Asistencia from '$lib/components/pantallas/Asistencia.svelte';
 import IngenieriaCampo from '$lib/components/pantallas/IngenieriaCampo.svelte';
 import Portada from '$lib/components/pantallas/Portada.svelte';
+import LogoTraceLoader from '$lib/components/effects/LogoTraceLoader.svelte';
 
 /* ── Configuración de la pantalla ─────────────────────────────── */
 const ROTACION_MS = 45_000;      // 45 s por pantalla
@@ -1027,7 +1028,7 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 
 				<div class="area">
 					{#if cargando}
-						<div class="cargando"><div class="spinner"></div><div>Cargando centro de operaciones…</div></div>
+						<div class="cargando"><LogoTraceLoader size={120} /><div>Cargando centro de operaciones…</div></div>
 					{:else}
 						{#key pantalla.id}
 							{#if pantalla.id === 'pulso'}<Pulso {datos} />
