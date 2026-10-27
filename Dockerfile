@@ -40,6 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # App: build estático, API, worker, configuración de nginx y supervisor.
 COPY --from=build /app/build /app/build
 COPY api/    /app/api/
+COPY tz_mx.py /app/tz_mx.py
 COPY worker/ /app/worker/
 # Las versiones que anuncia /api/shell/state (contrato del ECCSA-Shell):
 # app.version sale de package.json y shell.version del ECCSA_SHELL_VERSION que
