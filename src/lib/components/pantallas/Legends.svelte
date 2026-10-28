@@ -142,14 +142,6 @@
 					</p>
 				</div>
 
-				<div class="regla">
-					<span class="regla-ic">💡</span>
-					<p>
-						Si le haces <b>ganar dinero</b> a ECCSA, ganas puntos. Si le haces
-						<b>perder dinero</b>, pierdes puntos. Una cotización pagada vale de
-						<b>+15 a +75</b> según el monto.
-					</p>
-				</div>
 			</section>
 
 			<section class="tabla-card">
