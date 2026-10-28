@@ -122,6 +122,8 @@ export interface LegendRow {
 	/** Logros desbloqueados; 0 si la migración aún no está aplicada. */
 	logros_desbloqueados: number;
 	elegible: boolean;
+	/** Desglose de puntos por métrica (por qué va ganando). */
+	desglose?: Record<string, number>;
 	posicion?: number;
 	avatar: string | null;
 	/** Puesto en el snapshot anterior, para dibujar la flecha ↑↓. */

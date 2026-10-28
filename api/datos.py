@@ -691,6 +691,24 @@ def legends() -> dict:
             # seguir funcionando sin la columna de logros.
             logros = {}
 
+        # Desglose de puntos por métrica de la semana actual (para mostrar por qué va ganando)
+        cur.execute(
+            """
+            SELECT IdUsuario, Metrica, SUM(Puntos) AS total
+            FROM HUB_ScoreLog
+            WHERE FechaRegistro >= %s
+            GROUP BY IdUsuario, Metrica
+            """,
+            (inicio_sem,),
+        )
+        desglose_raw = cur.fetchall()
+        desglose_por_usuario = {}
+        for r in desglose_raw:
+            uid = int(r["IdUsuario"])
+            if uid not in desglose_por_usuario:
+                desglose_por_usuario[uid] = {}
+            desglose_por_usuario[uid][r["Metrica"]] = int(r["total"] or 0)
+
         cur.execute(
             """
             SELECT TOP 1
@@ -725,6 +743,7 @@ def legends() -> dict:
             "color_nivel": nivel["color"],
             "logros_desbloqueados": logros.get(int(r["id_usuario"]), 0),
             "elegible": True,
+            "desglose": desglose_por_usuario.get(int(r["id_usuario"]), {}),
         })
 
     # Desempate igual que `legends_core.ranking`: puntos de semana, temporada,

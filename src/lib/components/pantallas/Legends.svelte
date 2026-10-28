@@ -114,6 +114,23 @@
 					</div>
 				</div>
 
+				<!-- Desglose de puntos por métrica -->
+				{#if lider.desglose && Object.keys(lider.desglose).length > 0}
+					<div class="desglose">
+						<p class="desglose-titulo">¿Por qué va ganando?</p>
+						<div class="desglose-items">
+							{#each Object.entries(lider.desglose).sort((a, b) => b[1] - a[1]) as [metrica, pts]}
+								{#if pts !== 0}
+									<div class="desglose-item" class:positivo={pts > 0} class:negativo={pts < 0}>
+										<span class="desglose-metrica">{metrica.replace(/_/g, ' ')}</span>
+										<span class="desglose-pts">{pts > 0 ? '+' : ''}{num(pts)}</span>
+									</div>
+								{/if}
+							{/each}
+						</div>
+					</div>
+				{/if}
+
 				<div class="temporada">
 					<div class="temporada-head">
 						<span>{temporada?.nombre || 'Temporada'}</span>
@@ -530,5 +547,53 @@
 		font-weight: 600;
 		text-align: center;
 		color: #475569;
+	}
+	/* Desglose de puntos */
+	.desglose {
+		margin-top: 1rem;
+		padding: 0.75rem;
+		background: rgba(255, 255, 255, 0.05);
+		border-radius: 8px;
+	}
+	.desglose-titulo {
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		margin: 0 0 0.5rem 0;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+	.desglose-items {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+	.desglose-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.85rem;
+	}
+	.desglose-item.positivo {
+		background: rgba(34, 197, 94, 0.1);
+	}
+	.desglose-item.negativo {
+		background: rgba(239, 68, 68, 0.1);
+	}
+	.desglose-metrica {
+		text-transform: capitalize;
+		color: var(--color-text);
+	}
+	.desglose-pts {
+		font-weight: 700;
+		font-family: monospace;
+	}
+	.desglose-item.positivo .desglose-pts {
+		color: #22C55E;
+	}
+	.desglose-item.negativo .desglose-pts {
+		color: #EF4444;
 	}
 </style>
