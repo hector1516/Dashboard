@@ -14,6 +14,7 @@
 	import { avatarSrc } from '$lib/kiosk/api';
 	import { medalla, hhmmDiff, num } from '$lib/kiosk/format';
 	import type { Snapshot } from '$lib/kiosk/types';
+import MovingBorder from '$lib/components/effects/MovingBorder.svelte';
 
 	interface Props { datos: Snapshot }
 	let { datos }: Props = $props();
@@ -71,6 +72,7 @@
 		</div>
 	{:else}
 		<div class="contenido">
+			<MovingBorder duration={3000}>
 			<section class="lider-card">
 				<p class="kicker">LÍDER DE LA SEMANA</p>
 
@@ -143,6 +145,7 @@
 				</div>
 
 			</section>
+			</MovingBorder>
 
 			<section class="tabla-card">
 				<header class="tabla-head">
