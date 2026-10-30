@@ -28,7 +28,6 @@ import { montarConfeti, redimensionar, degradar, lanzarConfeti, lanzarOro, parar
 import { APP_VERSION, SHELL_VERSION } from '$lib/shell.js';
 
 import Fondo from '$lib/components/Fondo.svelte';
-import AvatarEccsa from '$lib/components/AvatarEccsa.svelte';
 import HdrKiosco from '$lib/components/HdrKiosco.svelte';
 import CapaAlertas from '$lib/components/CapaAlertas.svelte';
 import CapaSalida from '$lib/components/CapaSalida.svelte';
@@ -1100,7 +1099,6 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 	</div>
 {/if}
 
-<AvatarEccsa evento={eventoAvatar} persona={personaAvatar} />
 
 <style>
 	/* El contenedor real es 1920×1080 y se escala al viewport: la pantalla se
