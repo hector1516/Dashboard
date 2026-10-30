@@ -1,57 +1,184 @@
-<!-- Equipo.svelte - Pantalla fusionada: Legends + Celebraciones + Notas -->
+<!-- Equipo.svelte - Pantalla unificada: Legends + Celebraciones + Notas -->
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import type { Snapshot } from '$lib/kiosk/types';
-	import Legends from '$lib/components/pantallas/Legends.svelte';
-	import Celebraciones from '$lib/components/pantallas/Celebraciones.svelte';
-	import Notas from '$lib/components/pantallas/Notas.svelte';
+	import { recortar, num, money } from '$lib/kiosk/format';
+	import type { Snapshot, LegendRow, Cumpleanero, Aniversariero, Nota } from '$lib/kiosk/types';
 
 	interface Props { datos: Snapshot }
 	let { datos }: Props = $props();
 
-	let seccion = $state(0);
-	const secciones = ['Legends', 'Celebraciones', 'Notas'];
+	const lg = $derived(datos.legends);
+	const ranking = $derived(lg.ranking ?? []);
+	const ganador = $derived(lg.ganador_semana);
+	const totalPuntos = $derived(lg.total_puntos ?? 0);
+	const cumpleanos = $derived(datos.cumpleanos);
+	const aniversarios = $derived(datos.aniversarios);
+	const notas = $derived(datos.notas ?? []);
 
-	let timer: ReturnType<typeof setInterval>;
-	onMount(() => {
-		timer = setInterval(() => {
-			seccion = (seccion + 1) % secciones.length;
-		}, 15000);
-		return () => clearInterval(timer);
-	});
+	const hoyCumple = $derived(cumpleanos.hoy ?? []);
+	const mesCumple = $derived(cumpleanos.del_mes ?? []);
+	const hoyAniv = $derived(aniversarios.hoy ?? []);
+	const mesAniv = $derived(aniversarios.del_mes ?? []);
+
+	function medalla(pos: number): string {
+		return pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : `#${pos}`;
+	}
+
+	function nivelColor(nivel: string): string {
+		const colors: Record<string, string> = {
+			'Leyenda': '#ff6b00',
+			'Diamante': '#b9f2ff',
+			'Oro': '#ffd700',
+			'Plata': '#c0c0c0',
+			'Bronce': '#cd7f32'
+		};
+		return colors[nivel] || '#94a3b8';
+	}
 </script>
 
 <div class="screen equipo">
-	<div class="screen-titulo">
-		<span class="ic">👥</span> Equipo — {secciones[seccion]}
-		<div class="tabs">
-			{#each secciones as s, i}
-				<button class="tab" class:active={seccion === i} onclick={() => (seccion = i)}>{s}</button>
-			{/each}
-		</div>
-	</div>
+	<div class="screen-titulo"><span class="ic">👥</span> Equipo</div>
 
-	<div class="contenido">
-		{#if seccion === 0}
-			<Legends {datos} />
-		{:else if seccion === 1}
-			<Celebraciones {datos} />
-		{:else if seccion === 2}
-			<Notas {datos} />
-		{/if}
+	<div class="grid-principal">
+		<!-- Legends -->
+		<div class="seccion legends-seccion">
+			<div class="seccion-titulo">🏆 ECCSA Legends</div>
+			{#if ranking.length}
+				<div class="legends-list">
+					{#each ranking.slice(0, 5) as r, i}
+						<div class="legend-item" style="animation-delay: {i * 0.08}s">
+							<span class="legend-pos">{medalla(i + 1)}</span>
+							<span class="legend-nombre">{r.nombre}</span>
+							<span class="legend-nivel" style="color: {nivelColor(r.nivel)}">{r.nivel}</span>
+							<span class="legend-pts">{num(r.puntos_semana)} pts</span>
+						</div>
+					{/each}
+				</div>
+				<div class="legends-footer">
+					<span>Total: {num(totalPuntos)} pts</span>
+					{#if ganador}
+						<span>Ganador: {ganador.nombre}</span>
+					{/if}
+				</div>
+			{:else}
+				<div class="vacio-mini">Sin ranking</div>
+			{/if}
+		</div>
+
+		<!-- Celebraciones -->
+		<div class="seccion celeb-seccion">
+			<div class="seccion-titulo">🎂 Celebraciones</div>
+			{#if hoyCumple.length || hoyAniv.length}
+				<div class="celeb-list">
+					{#each hoyCumple as c}
+						<div class="celeb-item cumple">
+							<span class="celeb-icon">🎂</span>
+							<span class="celeb-nombre">{c.Nombre}</span>
+							<span class="celeb-detalle">{c.edad ? c.edad + ' años' : 'Hoy'}</span>
+						</div>
+					{/each}
+					{#each hoyAniv as a}
+						<div class="celeb-item aniv">
+							<span class="celeb-icon">⭐</span>
+							<span class="celeb-nombre">{a.Nombre}</span>
+							<span class="celeb-detalle">{a.anos ? a.anos + ' años' : 'Aniversario'}</span>
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<div class="celeb-empty">Sin celebraciones hoy</div>
+			{/if}
+			{#if mesCumple.length || mesAniv.length}
+				<div class="mes-list">
+					{#each mesCumple.slice(0, 3) as c}
+						<div class="mes-item">
+							<span>🎂 {c.Nombre}</span>
+							<span class="mes-fecha">{c.dia}/{c.mes}</span>
+						</div>
+					{/each}
+					{#each mesAniv.slice(0, 3) as a}
+						<div class="mes-item">
+							<span>⭐ {a.Nombre}</span>
+							<span class="mes-fecha">{a.dia} · {a.anos}a</span>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+
+		<!-- Notas -->
+		<div class="seccion notas-seccion">
+			<div class="seccion-titulo">📝 Notas</div>
+			{#if notas.length}
+				<div class="notas-list">
+					{#each notas.slice(0, 4) as n}
+						<div class="nota-item" style="border-left: 3px solid {n.Color || '#FF6B00'}">
+							<div class="nota-titulo">{recortar(n.Titulo, 30)}</div>
+							<div class="nota-contenido">{recortar(n.Contenido, 60)}</div>
+							<div class="nota-meta">{n.Autor} · {n.fecha_modificado || n.fecha_creacion}</div>
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<div class="vacio-mini">Sin notas</div>
+			{/if}
+		</div>
 	</div>
 </div>
 
 <style>
-	.equipo { display: flex; flex-direction: column; height: 100%; }
-	.screen-titulo { display: flex; align-items: center; gap: 0.5rem; }
-	.tabs { display: flex; gap: 0.25rem; margin-left: auto; }
-	.tab {
-		padding: 0.25rem 0.6rem; border: none; background: transparent;
-		color: var(--color-text-muted); font-size: 0.75rem; font-weight: 600;
-		border-radius: 6px; cursor: pointer;
+	.screen { height: 100%; display: flex; flex-direction: column; gap: 0.5rem; }
+	.screen-titulo { font-size: 1.5rem; font-weight: 800; color: var(--color-text); flex-shrink: 0; }
+
+	.grid-principal {
+		flex: 1; min-height: 0; display: grid;
+		grid-template-columns: 1fr 1fr;
+		grid-template-rows: 1fr 1fr;
+		gap: 0.75rem; overflow: hidden;
 	}
-	.tab.active { background: rgba(255, 107, 0, 0.15); color: var(--color-primary-light); }
-	.tab:hover:not(.active) { color: var(--color-text); }
-	.contenido { flex: 1; min-height: 0; overflow: hidden; }
+	.seccion {
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid rgba(255, 255, 255, 0.06);
+		border-radius: 12px; padding: 0.75rem;
+		overflow: hidden; display: flex; flex-direction: column;
+	}
+	.seccion-titulo { font-size: 0.9rem; font-weight: 700; color: var(--color-primary-light); margin-bottom: 0.5rem; flex-shrink: 0; }
+
+	/* Legends */
+	.legends-list { display: flex; flex-direction: column; gap: 0.3rem; }
+	.legend-item {
+		display: flex; align-items: center; gap: 0.5rem;
+		padding: 0.3rem 0.5rem; border-radius: 6px;
+		background: rgba(255, 255, 255, 0.03);
+		animation: entrarStagger 0.4s ease both;
+	}
+	.legend-pos { font-size: 1rem; min-width: 24px; }
+	.legend-nombre { flex: 1; font-size: 0.85rem; font-weight: 600; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.legend-nivel { font-size: 0.7rem; font-weight: 600; }
+	.legend-pts { font-size: 0.8rem; font-weight: 700; color: var(--color-primary-light); }
+	.legends-footer { display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.7rem; color: var(--color-text-muted); }
+
+	/* Celebraciones */
+	.celeb-list { display: flex; flex-direction: column; gap: 0.3rem; }
+	.celeb-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.5rem; border-radius: 6px; background: rgba(255, 255, 255, 0.03); }
+	.celeb-icon { font-size: 1.1rem; }
+	.celeb-nombre { flex: 1; font-size: 0.85rem; font-weight: 600; color: #e2e8f0; }
+	.celeb-detalle { font-size: 0.7rem; color: var(--color-text-muted); }
+	.celeb-empty { color: var(--color-text-muted); font-size: 0.8rem; text-align: center; padding: 0.5rem; }
+	.mes-list { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.2rem; }
+	.mes-item { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-text-muted); padding: 0.2rem 0; }
+	.mes-fecha { color: var(--color-primary-light); font-weight: 600; }
+
+	/* Notas */
+	.notas-list { display: flex; flex-direction: column; gap: 0.4rem; }
+	.nota-item { padding: 0.5rem 0.6rem; border-radius: 6px; background: rgba(255, 255, 255, 0.03); }
+	.nota-titulo { font-size: 0.85rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.15rem; }
+	.nota-contenido { font-size: 0.75rem; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.nota-meta { font-size: 0.65rem; color: #64748b; margin-top: 0.15rem; }
+
+	.vacio-mini { color: var(--color-text-muted); font-size: 0.8rem; text-align: center; padding: 1rem; }
+
+	@keyframes entrarStagger {
+		from { opacity: 0; transform: translateY(8px); }
+		to { opacity: 1; transform: none; }
+	}
 </style>
