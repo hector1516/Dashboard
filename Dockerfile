@@ -18,7 +18,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+ARG BUILD_ID=dev
+RUN echo "$BUILD_ID" > static/build.txt && npm run build
 
 FROM mirror.gcr.io/library/python:3.11-slim
 
