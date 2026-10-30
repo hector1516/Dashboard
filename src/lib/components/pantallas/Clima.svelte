@@ -73,11 +73,12 @@
 </div>
 
 <style>
-	.clima-screen { align-items: center; justify-content: center; gap: 16px; }
+	.clima-screen { align-items: center; justify-content: center; gap: 8px; }
+	.iso-container { flex: 1; min-height: 50vh; }
 
 	.iso-container {
 		width: 100%;
-		max-width: 640px;
+		max-width: 900px;
 		aspect-ratio: 600 / 420;
 		border-radius: 16px;
 		overflow: hidden;
