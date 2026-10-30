@@ -46,6 +46,10 @@ import Clima from '$lib/components/pantallas/Clima.svelte';
 import Pulso from '$lib/components/pantallas/Pulso.svelte';
 import Asistencia from '$lib/components/pantallas/Asistencia.svelte';
 import IngenieriaCampo from '$lib/components/pantallas/IngenieriaCampo.svelte';
+import AsistenciaIso from '$lib/components/AsistenciaIso.svelte';
+import LegendsIso from '$lib/components/LegendsIso.svelte';
+import PanelControlIso from '$lib/components/PanelControlIso.svelte';
+import KilometrosIso from '$lib/components/KilometrosIso.svelte';
 import Portada from '$lib/components/pantallas/Portada.svelte';
 import LogoTraceLoader from '$lib/components/effects/LogoTraceLoader.svelte';
 
@@ -86,7 +90,11 @@ const PANTALLAS: PantallaDef[] = [
 	{ id: 'notas', icono: '📌', label: 'Notas' },
 	{ id: 'asistencia', icono: '🕘', label: 'Asistencia de hoy' },
 	{ id: 'campo', icono: '📍', label: 'Ingenieros en Campo' },
-	{ id: 'portada', icono: '🖼️', label: 'Portada del mes' }
+	{ id: 'portada', icono: '🖼️', label: 'Portada del mes' },
+	{ id: 'asistencia_iso', icono: 'door', label: 'Checador de Asistencia' },
+	{ id: 'legends_iso', icono: 'trophy', label: 'Maquina de Legends' },
+	{ id: 'panel_iso', icono: 'panel', label: 'Panel de Control' },
+	{ id: 'km_iso', icono: 'car', label: 'Odometro Mecanico' },
 ];
 
 /* ── Estado ───────────────────────────────────────────────────── */
@@ -1044,6 +1052,10 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 							{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
 							{:else if pantalla.id === 'campo'}<IngenieriaCampo {datos} />
 							{:else if pantalla.id === 'portada'}<Portada {datos} />
+	{:else if pantalla.id === 'asistencia_iso'}<AsistenciaIso {datos} />
+	{:else if pantalla.id === 'legends_iso'}<LegendsIso {datos} />
+	{:else if pantalla.id === 'panel_iso'}<PanelControlIso {datos} />
+	{:else if pantalla.id === 'km_iso'}<KilometrosIso {datos} />
 							{/if}
 						{/key}
 					{/if}
