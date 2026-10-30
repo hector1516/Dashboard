@@ -247,33 +247,36 @@ def kilometros(sunday: str, hoy: str) -> dict:
 def tickets(sunday: str) -> dict:
     conn = get_connection()
     with conn.cursor(as_dict=True) as cur:
-        cur.execute("SELECT COUNT(*) AS total FROM HUB_OxxoGasTickets WHERE FechaRegistro >= %s", (sunday,))
+        cur.execute("SELECT COUNT(*) AS total FROM HUB_OxxoGasTickets")
         total = cur.fetchone()["total"]
 
         cur.execute("""
-            SELECT TOP 12 t.Id AS id_ticket, t.FolioTicket AS folio,
+            SELECT TOP 10 t.Id AS id_ticket, t.FolioTicket AS folio,
                 a.MarcaModelo AS vehiculo, a.Placas,
                 u.Nombre AS usuario,
                 CONVERT(VARCHAR(16), t.FechaRegistro, 120) AS fecha,
                 ISNULL(c.Cliente, t.IdCliente) AS cliente,
-                ISNULL(t.Descripcion, '') AS descripcion
+                ISNULL(t.Descripcion, '') AS descripcion,
+                t.IdSolicitudVale AS id_solicitud_vale,
+                CONVERT(VARCHAR(16), sv.FechaSolicitud, 120) AS fecha_vale,
+                sv.Estatus AS estatus_vale,
+                sv.MontoUnit AS monto_vale
             FROM HUB_OxxoGasTickets t
             LEFT JOIN HUB_Automoviles a ON t.IdVehiculo = a.Id
             JOIN HUB_Users u ON t.IdUsuario = u.Id
             LEFT JOIN clientes c ON t.IdCliente = c.IdCliente
-            WHERE t.FechaRegistro >= %s
+            LEFT JOIN HUB_SolicitudVales sv ON t.IdSolicitudVale = sv.Id
             ORDER BY t.Id DESC
-        """, (sunday,))
+        """)
         ultimos = cur.fetchall()
 
         cur.execute("""
             SELECT TOP 8 a.MarcaModelo AS vehiculo, COUNT(*) AS total_tickets
             FROM HUB_OxxoGasTickets t
             JOIN HUB_Automoviles a ON t.IdVehiculo = a.Id
-            WHERE t.FechaRegistro >= %s
             GROUP BY a.MarcaModelo
             ORDER BY total_tickets DESC
-        """, (sunday,))
+        """)
         por_vehiculo = cur.fetchall()
 
     return {"total_semana": total, "ultimos": ultimos, "por_vehiculo": por_vehiculo}

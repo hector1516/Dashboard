@@ -111,6 +111,35 @@ def snapshot():
     })
 
 
+@app.get("/api/tickets/{ticket_id}/imagen")
+def ticket_imagen(ticket_id: int):
+    """Sirve la imagen de un ticket de OxxoGas."""
+    try:
+        from db import get_connection
+        conn = get_connection()
+        with conn.cursor(as_dict=True) as cur:
+            cur.execute("SELECT ImagenTicket, ImagenNombre FROM HUB_OxxoGasTickets WHERE Id = %s", (ticket_id,))
+            row = cur.fetchone()
+        if not row or not row.get("ImagenTicket"):
+            raise HTTPException(status_code=404, detail="Imagen no encontrada")
+        from fastapi.responses import Response
+        img_bytes = bytes(row["ImagenTicket"])
+        # Skip 15 bytes of garbage if present
+        if img_bytes[:2] != b"\xff\xd8" and len(img_bytes) > 15:
+            # Try to find JPEG start
+            jpeg_start = img_bytes.find(b"\xff\xd8")
+            if jpeg_start > 0 and jpeg_start < 30:
+                img_bytes = img_bytes[jpeg_start:]
+        content_type = "image/jpeg"
+        if row.get("ImagenNombre", "").lower().endswith(".png"):
+            content_type = "image/png"
+        return Response(content=img_bytes, media_type=content_type)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/dashboard/version")
 def version():
     """

@@ -1,16 +1,12 @@
 <!--
-	🎫 Tickets OxxoGas de la semana.
+	🎫 Tickets OxxoGas — Últimos 10 registrados.
 
-	Rejilla de tarjetas de texto, SIN foto del ticket (decisión del 2026-09-28):
-	la imagen de `HUB_OxxoGasTickets.ImagenTicket` no sirve en varios registros
-	—viene con 15 bytes basura antes del JPEG— y a 3 metros el folio, el vehículo
-	y el cliente se leen mejor que una foto chiquita. Los tres más recientes
-	reciben un borde brillante para que se note la actividad del momento.
+	Rejilla de tarjetas con información ampliada: folio, vehículo, usuario,
+	cliente, descripción, fecha y datos del vale asociado.
 -->
 <script lang="ts">
 	import { recortar, num } from '$lib/kiosk/format';
 	import type { Snapshot, Ticket } from '$lib/kiosk/types';
-	import TicketCard from '$lib/components/effects/TicketCard.svelte';
 
 	interface Props { datos: Snapshot }
 	let { datos }: Props = $props();
@@ -23,10 +19,15 @@
 	function esReciente(i: number): boolean {
 		return i < 3;
 	}
+
+	/** URL de la imagen del ticket (si el backend la sirve). */
+	function imagenUrl(id: number): string {
+		return `/api/tickets/${id}/imagen`;
+	}
 </script>
 
 <div class="screen">
-	<div class="screen-titulo"><span class="ic">🎫</span> Tickets OxxoGas — Esta Semana</div>
+	<div class="screen-titulo"><span class="ic">🎫</span> Tickets OxxoGas — Últimos 10</div>
 
 	{#if lista.length}
 		<div class="rejilla">
@@ -39,6 +40,10 @@
 					descripcion={recortar(tk.descripcion, 34) || '—'}
 					fecha={tk.fecha}
 					reciente={esReciente(i)}
+					fecha_vale={tk.fecha_vale}
+					estatus_vale={tk.estatus_vale}
+					monto_vale={tk.monto_vale}
+					imagen_url={imagenUrl(tk.id_ticket ?? 0)}
 				/>
 			{/each}
 		</div>
@@ -46,7 +51,7 @@
 		<div class="pie">
 			<div class="kpi orange" style="min-width:210px">
 				<span class="kpi-val">{num(t.total_semana)}</span>
-				<span class="kpi-lab">{t.total_semana === 1 ? 'ticket esta semana' : 'tickets esta semana'}</span>
+				<span class="kpi-lab">{t.total_semana === 1 ? 'ticket total' : 'tickets total'}</span>
 			</div>
 			<div class="barra-lateral">
 				{#each (t.por_vehiculo ?? []).slice(0, 5) as x, i}
@@ -61,37 +66,18 @@
 		</div>
 	{:else}
 		<div class="vacio">
-			Sin tickets esta semana
+			Sin tickets registrados
 			<span class="vacio-sub">Se muestran los registrados o sincronizados desde el correo</span>
 		</div>
 	{/if}
 </div>
 
 <style>
-	/* Sin foto la tarjeta es sólo texto: se angosta y caben más por pantalla.
-	   `auto-fit` + `justify-content: center` para que con POCOS tickets (lunes a
-	   la mañana suele haber uno o dos) el bloque quede centrado y no perdido
-	   contra el borde izquierdo. */
 	.rejilla {
-		flex: 1; min-height: 0; display: grid; gap: 12px; align-content: center;
-		grid-template-columns: repeat(auto-fit, minmax(215px, 250px));
+		flex: 1; min-height: 0; display: grid; gap: 14px; align-content: center;
+		grid-template-columns: repeat(auto-fit, minmax(280px, 340px));
 		justify-content: center; overflow: hidden;
 	}
-	.tkt {
-		display: flex; flex-direction: column; justify-content: center; gap: 3px;
-		padding: 12px 14px; border-radius: 12px; min-height: 104px;
-		background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.14);
-		animation: entrarStagger 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
-		position: relative; overflow: hidden;
-	}
-	.tkt.reciente { border-color: rgba(255,174,0,0.55); box-shadow: 0 0 18px rgba(255,174,0,0.18); }
-	.folio { font-weight: 800; color: var(--color-primary-light); font-size: 17px; }
-	.vehiculo { font-weight: 700; color: var(--color-text); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.usuario { font-size: 13.5px; color: #CBD5E1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.cliente { font-size: 13px; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.desc { font-size: 12.5px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.fecha { font-size: 11.5px; color: #475569; margin-top: 3px; }
-
 	.pie { display: flex; align-items: center; gap: 20px; flex-shrink: 0; padding-top: 4px; }
 	.barra-lateral { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 	.barra-lateral .bar-fila { grid-template-columns: 190px 1fr 90px; }

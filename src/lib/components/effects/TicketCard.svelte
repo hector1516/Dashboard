@@ -1,10 +1,6 @@
 <!--
 	Ticket Card — silueta de ticket perforado con parallax sutil.
 
-	Inspirado en DQnamo Kitchen (https://www.dqnamo.com/kitchen).
-	El ticket tiene bordes perforados (como un boleto real) y un
-	efecto de parallax sutil al mover el mouse.
-
 	Uso: <TicketCard folio="TKT-001" vehiculo="Nissan NP300" usuario="Juan" />
 -->
 <script lang="ts">
@@ -16,6 +12,10 @@
 		descripcion?: string;
 		fecha?: string;
 		reciente?: boolean;
+		fecha_vale?: string | null;
+		estatus_vale?: string | null;
+		monto_vale?: number | null;
+		imagen_url?: string | null;
 	}
 	let {
 		folio,
@@ -24,7 +24,11 @@
 		cliente = '',
 		descripcion = '',
 		fecha = '',
-		reciente = false
+		reciente = false,
+		fecha_vale = null,
+		estatus_vale = null,
+		monto_vale = null,
+		imagen_url = null
 	}: Props = $props();
 
 	let mouseX = $state(0);
@@ -50,6 +54,12 @@
 	<div class="perf perf-left"></div>
 	<div class="perf perf-right"></div>
 
+	{#if imagen_url}
+		<div class="ticket-img">
+			<img src={imagen_url} alt="Ticket {folio}" loading="lazy" />
+		</div>
+	{/if}
+
 	<div class="contenido">
 		<div class="folio">{folio}</div>
 		<div class="vehiculo">{vehiculo}</div>
@@ -61,6 +71,17 @@
 			<div class="desc">{descripcion}</div>
 		{/if}
 		<div class="fecha">{fecha?.replace('T', ' ')}</div>
+		{#if fecha_vale}
+			<div class="vale-info">
+				<span class="vale-label">🎫 Vale: {fecha_vale?.replace('T', ' ')}</span>
+				{#if estatus_vale}
+					<span class="vale-estatus" class:cerrado={estatus_vale === 'CERRADO'}>{estatus_vale}</span>
+				{/if}
+				{#if monto_vale}
+					<span class="vale-monto">${monto_vale}</span>
+				{/if}
+			</div>
+		{/if}
 	</div>
 </div>
 
@@ -70,10 +91,10 @@
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
-		gap: 3px;
-		padding: 14px 18px;
+		gap: 4px;
+		padding: 16px 20px;
 		border-radius: 12px;
-		min-height: 110px;
+		min-height: 130px;
 		background: rgba(245, 158, 11, 0.06);
 		border: 1px solid rgba(245, 158, 11, 0.14);
 		overflow: hidden;
@@ -86,7 +107,7 @@
 		box-shadow: 0 0 18px rgba(255, 174, 0, 0.18);
 	}
 
-	/* Perforaciones laterales (como un boleto real) */
+	/* Perforaciones laterales */
 	.perf {
 		position: absolute;
 		top: 50%;
@@ -100,7 +121,7 @@
 	.perf-left { left: -6px; }
 	.perf-right { right: -6px; }
 
-	/* Borde perforado (dashed) */
+	/* Borde perforado */
 	.ticket::before {
 		content: '';
 		position: absolute;
@@ -110,15 +131,57 @@
 		pointer-events: none;
 	}
 
+	.ticket-img {
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		width: 60px;
+		height: 60px;
+		border-radius: 6px;
+		overflow: hidden;
+		z-index: 3;
+		border: 1px solid rgba(245, 158, 11, 0.3);
+	}
+	.ticket-img img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
 	.contenido {
 		position: relative;
 		z-index: 2;
 	}
 
-	.folio { font-weight: 800; color: #ffae00; font-size: 17px; }
-	.vehiculo { font-weight: 700; color: #f1f5f9; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.usuario { font-size: 13.5px; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.cliente { font-size: 13px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.desc { font-size: 12.5px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.fecha { font-size: 11.5px; color: #475569; margin-top: 3px; }
+	.folio { font-weight: 800; color: #ffae00; font-size: 19px; }
+	.vehiculo { font-weight: 700; color: #f1f5f9; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.usuario { font-size: 14px; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.cliente { font-size: 13.5px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.desc { font-size: 13px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.fecha { font-size: 12px; color: #475569; margin-top: 4px; }
+	.vale-info {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-top: 4px;
+		flex-wrap: wrap;
+	}
+	.vale-label { font-size: 11.5px; color: #60A5FA; }
+	.vale-estatus {
+		font-size: 10.5px;
+		padding: 0.1rem 0.4rem;
+		border-radius: 4px;
+		background: rgba(245, 158, 11, 0.15);
+		color: #fbbf24;
+		font-weight: 600;
+	}
+	.vale-estatus.cerrado {
+		background: rgba(34, 197, 94, 0.15);
+		color: #4ade80;
+	}
+	.vale-monto {
+		font-size: 11px;
+		color: #94a3b8;
+		font-weight: 600;
+	}
 </style>

@@ -69,6 +69,10 @@ export interface Ticket {
 	fecha: string;
 	cliente: string;
 	descripcion: string;
+	id_solicitud_vale?: number | null;
+	fecha_vale?: string | null;
+	estatus_vale?: string | null;
+	monto_vale?: number | null;
 }
 
 export interface Nota {
