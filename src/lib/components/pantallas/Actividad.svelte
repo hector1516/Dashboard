@@ -1,4 +1,4 @@
-<!-- Actividad.svelte - Pantalla unificada: Reportes + Tickets + Fotos + Métricas -->
+<!-- Actividad.svelte - Pantalla unificada rediseñada: Reportes + Tickets + Métricas + Km -->
 <script lang="ts">
 	import { recortar, num, money, pct } from '$lib/kiosk/format';
 	import type { Snapshot, Reporte, Ticket } from '$lib/kiosk/types';
@@ -8,17 +8,17 @@
 
 	const r = $derived(datos.reportes);
 	const t = $derived(datos.tickets);
-	const f = $derived(datos.fotos);
 	const m = $derived(datos.metricas);
 	const k = $derived(datos.kilometros);
 
 	const reportes = $derived(r.ultimos ?? []);
 	const tickets = $derived(t.ultimos ?? []);
-	const fotos = $derived(f.ids ?? []);
 	const topCliente = $derived(m.top_cliente);
 	const topIng = $derived(m.top_ingeniero);
 	const tasaFirma = $derived(m.tasa_firma ?? 0);
 	const kmSemana = $derived(k.total_semana ?? 0);
+	const vehiculos = $derived(k.por_vehiculo ?? []);
+	const maxKm = $derived(Math.max(1, ...vehiculos.map((x: any) => x.km_esta_semana ?? x.total_tickets ?? 0)));
 
 	function estatusColor(est: string): string {
 		const e = String(est || '').toUpperCase();
@@ -33,8 +33,8 @@
 <div class="screen actividad">
 	<div class="screen-titulo"><span class="ic">📊</span> Actividad</div>
 
-	<!-- KPIs superiores -->
-	<div class="kpis">
+	<!-- KPIs superiores - barra horizontal -->
+	<div class="kpis-bar">
 		<div class="kpi">
 			<span class="kpi-val">{num(r.total)}</span>
 			<span class="kpi-lab">Reportes</span>
@@ -44,10 +44,6 @@
 			<span class="kpi-lab">Tickets</span>
 		</div>
 		<div class="kpi">
-			<span class="kpi-val">{num(fotos.length)}</span>
-			<span class="kpi-lab">Fotos</span>
-		</div>
-		<div class="kpi">
 			<span class="kpi-val">{num(kmSemana)}</span>
 			<span class="kpi-lab">Km semana</span>
 		</div>
@@ -55,145 +51,173 @@
 			<span class="kpi-val">{pct(tasaFirma)}</span>
 			<span class="kpi-lab">Tasa firma</span>
 		</div>
+		<div class="kpi">
+			<span class="kpi-val">{num(r.firmados)}</span>
+			<span class="kpi-lab">Firmados</span>
+		</div>
+		<div class="kpi">
+			<span class="kpi-val">{num(r.pendientes)}</span>
+			<span class="kpi-lab">Pendientes</span>
+		</div>
 	</div>
 
-	<!-- Contenido principal en grid -->
-	<div class="grid-principal">
-		<!-- Reportes -->
-		<div class="seccion">
-			<div class="seccion-titulo">🔧 Reportes recientes</div>
-			{#if reportes.length}
-				<div class="lista-compacta">
-					{#each reportes.slice(0, 4) as rp}
-						<div class="item">
-							<span class="item-folio" style="color: {estatusColor(rp.Estatus)}">{rp.Folio}</span>
-							<span class="item-desc">{recortar(rp.Cliente, 20)}</span>
-							<span class="item-meta">{rp.ingeniero} · {rp.fecha}</span>
-						</div>
-					{/each}
-				</div>
-			{:else}
-				<div class="vacio-mini">Sin reportes</div>
-			{/if}
-		</div>
-
-		<!-- Tickets -->
-		<div class="seccion">
-			<div class="seccion-titulo">🎫 Tickets OxxoGas</div>
-			{#if tickets.length}
-				<div class="lista-compacta">
-					{#each tickets.slice(0, 4) as tk}
-						<div class="item">
-							<span class="item-folio ticket">{tk.folio}</span>
-							<span class="item-desc">{recortar(tk.cliente, 18)}</span>
-							<span class="item-meta">{tk.vehiculo} · {tk.usuario}</span>
-						</div>
-					{/each}
-				</div>
-			{:else}
-				<div class="vacio-mini">Sin tickets</div>
-			{/if}
-		</div>
-
-		<!-- Métricas -->
-		<div class="seccion">
-			<div class="seccion-titulo">📈 Métricas</div>
-			<div class="metricas-list">
-				{#if topCliente}
-					<div class="metrica">
-						<span class="metrica-label">Top cliente</span>
-						<span class="metrica-val">{recortar(topCliente.Cliente, 18)}</span>
-						<span class="metrica-sub">{num(topCliente.total)} reportes</span>
+	<!-- Contenido principal: 2 columnas grandes -->
+	<div class="contenido">
+		<!-- Columna izquierda: Reportes + Tickets -->
+		<div class="col-izq">
+			<!-- Reportes -->
+			<div class="bloque">
+				<div class="bloque-titulo">🔧 Reportes recientes</div>
+				{#if reportes.length}
+					<div class="lista">
+						{#each reportes.slice(0, 5) as rp, i}
+							<div class="fila" style="animation-delay: {i * 0.05}s">
+								<span class="folio" style="color: {estatusColor(rp.Estatus)}">{rp.Folio}</span>
+								<span class="desc">{recortar(rp.Cliente, 24)}</span>
+								<span class="meta">{rp.ingeniero}</span>
+								<span class="fecha">{rp.fecha}</span>
+							</div>
+						{/each}
 					</div>
+				{:else}
+					<div class="vacio">Sin reportes</div>
 				{/if}
-				{#if topIng}
-					<div class="metrica">
-						<span class="metrica-label">Top ingeniero</span>
-						<span class="metrica-val">{recortar(topIng.nombre, 18)}</span>
-						<span class="metrica-sub">{num(topIng.reportes)} reportes · {num(topIng.horas_totales)}h</span>
+			</div>
+
+			<!-- Tickets -->
+			<div class="bloque">
+				<div class="bloque-titulo">🎫 Tickets OxxoGas</div>
+				{#if tickets.length}
+					<div class="lista">
+						{#each tickets.slice(0, 5) as tk, i}
+							<div class="fila" style="animation-delay: {i * 0.05}s">
+								<span class="folio ticket">{tk.folio}</span>
+								<span class="desc">{recortar(tk.cliente, 20)}</span>
+								<span class="meta">{tk.vehiculo} · {tk.usuario}</span>
+								<span class="fecha">{tk.fecha?.replace('T', ' ')}</span>
+							</div>
+						{/each}
 					</div>
+				{:else}
+					<div class="vacio">Sin tickets</div>
 				{/if}
-				<div class="metrica">
-					<span class="metrica-label">Reportes hoy</span>
-					<span class="metrica-val">{num(r.hoy)}</span>
-				</div>
-				<div class="metrica">
-					<span class="metrica-label">Firmados esta semana</span>
-					<span class="metrica-val">{num(r.firmados)}</span>
-					<span class="metrica-sub">de {num(r.total)}</span>
-				</div>
 			</div>
 		</div>
 
-		<!-- Kilómetros -->
-		<div class="seccion">
-			<div class="seccion-titulo">🚗 Kilómetros</div>
-			<div class="km-list">
-				{#each (k.por_vehiculo ?? []).slice(0, 4) as v}
-					<div class="km-item">
-						<span class="km-vehiculo">{recortar(v.MarcaModelo || v.vehiculo, 16)}</span>
-						<span class="km-val">{num(v.km_esta_semana ?? v.total_tickets ?? 0)} km</span>
+		<!-- Columna derecha: Métricas + Km -->
+		<div class="col-der">
+			<!-- Métricas -->
+			<div class="bloque">
+				<div class="bloque-titulo">📈 Métricas</div>
+				<div class="metricas">
+					{#if topCliente}
+						<div class="metrica-row">
+							<span class="m-label">Top cliente</span>
+							<span class="m-val">{recortar(topCliente.Cliente, 20)}</span>
+							<span class="m-sub">{num(topCliente.total)} reportes</span>
+						</div>
+					{/if}
+					{#if topIng}
+						<div class="metrica-row">
+							<span class="m-label">Top ingeniero</span>
+							<span class="m-val">{recortar(topIng.nombre, 20)}</span>
+							<span class="m-sub">{num(topIng.reportes)} reportes · {num(topIng.horas_totales)}h</span>
+						</div>
+					{/if}
+					<div class="metrica-row">
+						<span class="m-label">Reportes hoy</span>
+						<span class="m-val">{num(r.hoy)}</span>
 					</div>
-				{/each}
-				{#if !(k.por_vehiculo ?? []).length}
-					<div class="vacio-mini">Sin datos</div>
-				{/if}
+					<div class="metrica-row">
+						<span class="m-label">Esta semana</span>
+						<span class="m-val">{num(r.esta_semana)}</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Kilómetros -->
+			<div class="bloque">
+				<div class="bloque-titulo">🚗 Kilómetros</div>
+				<div class="km-list">
+					{#each vehiculos.slice(0, 5) as v, i}
+						<div class="km-row">
+							<span class="km-vehiculo">{recortar(v.MarcaModelo || v.vehiculo, 18)}</span>
+							<div class="km-barra">
+								<div class="km-relleno" style="width: {Math.max(4, Math.round((v.km_esta_semana || v.total_tickets || 0) / maxKm * 100))}%"></div>
+							</div>
+							<span class="km-val">{num(v.km_esta_semana ?? v.total_tickets ?? 0)}</span>
+						</div>
+					{/each}
+					{#if !vehiculos.length}
+						<div class="vacio">Sin datos de km</div>
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>
 </div>
 
 <style>
-	.screen { height: 100%; display: flex; flex-direction: column; gap: 0.5rem; }
-	.screen-titulo { font-size: 1.5rem; font-weight: 800; color: var(--color-text); flex-shrink: 0; }
+	.screen { height: 100%; display: flex; flex-direction: column; gap: 0.75rem; }
+	.screen-titulo { font-size: 1.8rem; font-weight: 800; color: var(--color-text); flex-shrink: 0; }
 
-	.kpis {
+	.kpis-bar {
 		display: flex; gap: 0.75rem; flex-shrink: 0; flex-wrap: wrap;
 	}
 	.kpi {
-		flex: 1; min-width: 80px; text-align: center;
-		padding: 0.5rem 0.75rem; border-radius: 10px;
+		flex: 1; min-width: 90px; text-align: center;
+		padding: 0.6rem 0.75rem; border-radius: 10px;
 		background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);
 	}
-	.kpi-val { display: block; font-size: 1.6rem; font-weight: 800; color: var(--color-primary-light); line-height: 1; }
-	.kpi-lab { display: block; font-size: 0.7rem; color: var(--color-text-muted); margin-top: 2px; text-transform: uppercase; }
+	.kpi-val { display: block; font-size: 1.8rem; font-weight: 800; color: var(--color-primary-light); line-height: 1; }
+	.kpi-lab { display: block; font-size: 0.75rem; color: var(--color-text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
 
-	.grid-principal {
+	.contenido {
 		flex: 1; min-height: 0; display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		grid-template-rows: repeat(2, 1fr);
+		grid-template-columns: 1fr 1fr;
 		gap: 0.75rem; overflow: hidden;
 	}
-	.seccion {
+	.col-izq, .col-der { display: flex; flex-direction: column; gap: 0.75rem; min-height: 0; }
+
+	.bloque {
+		flex: 1; min-height: 0;
 		background: rgba(255, 255, 255, 0.03);
 		border: 1px solid rgba(255, 255, 255, 0.06);
 		border-radius: 12px; padding: 0.75rem;
 		overflow: hidden; display: flex; flex-direction: column;
 	}
-	.seccion-titulo { font-size: 0.9rem; font-weight: 700; color: var(--color-primary-light); margin-bottom: 0.5rem; flex-shrink: 0; }
+	.bloque-titulo { font-size: 1rem; font-weight: 700; color: var(--color-primary-light); margin-bottom: 0.5rem; flex-shrink: 0; }
 
-	.lista-compacta { display: flex; flex-direction: column; gap: 0.35rem; overflow: hidden; }
-	.item {
-		display: flex; align-items: center; gap: 0.5rem;
-		padding: 0.35rem 0.5rem; border-radius: 6px;
+	.lista { display: flex; flex-direction: column; gap: 0.35rem; overflow: hidden; }
+	.fila {
+		display: flex; align-items: center; gap: 0.75rem;
+		padding: 0.4rem 0.6rem; border-radius: 6px;
 		background: rgba(255, 255, 255, 0.03);
-		font-size: 0.8rem;
+		animation: entrarStagger 0.4s ease both;
 	}
-	.item-folio { font-weight: 800; font-size: 0.85rem; min-width: 60px; }
-	.item-folio.ticket { color: #F59E0B; }
-	.item-desc { flex: 1; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.item-meta { font-size: 0.7rem; color: var(--color-text-muted); white-space: nowrap; }
+	.folio { font-weight: 800; font-size: 0.95rem; min-width: 70px; }
+	.folio.ticket { color: #F59E0B; }
+	.desc { flex: 1; font-size: 0.85rem; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.meta { font-size: 0.75rem; color: var(--color-text-muted); white-space: nowrap; }
+	.fecha { font-size: 0.7rem; color: #64748b; white-space: nowrap; }
 
-	.metricas-list { display: flex; flex-direction: column; gap: 0.4rem; }
-	.metrica { display: flex; align-items: center; gap: 0.5rem; }
-	.metrica-label { font-size: 0.75rem; color: var(--color-text-muted); min-width: 90px; }
-	.metrica-val { font-size: 0.9rem; font-weight: 700; color: var(--color-text); }
-	.metrica-sub { font-size: 0.7rem; color: var(--color-text-muted); }
+	.metricas { display: flex; flex-direction: column; gap: 0.4rem; }
+	.metrica-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; }
+	.m-label { font-size: 0.8rem; color: var(--color-text-muted); min-width: 100px; }
+	.m-val { font-size: 0.95rem; font-weight: 700; color: var(--color-text); }
+	.m-sub { font-size: 0.7rem; color: var(--color-text-muted); margin-left: auto; }
 
-	.km-list { display: flex; flex-direction: column; gap: 0.3rem; }
-	.km-item { display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0; }
-	.km-vehiculo { font-size: 0.8rem; color: #e2e8f0; }
-	.km-val { font-size: 0.8rem; font-weight: 700; color: #4ade80; }
+	.km-list { display: flex; flex-direction: column; gap: 0.35rem; }
+	.km-row { display: flex; align-items: center; gap: 0.5rem; }
+	.km-vehiculo { font-size: 0.8rem; color: #e2e8f0; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.km-barra { flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+	.km-relleno { height: 100%; background: #4ade80; border-radius: 3px; transition: width 0.5s; }
+	.km-val { font-size: 0.8rem; font-weight: 700; color: #4ade80; min-width: 60px; text-align: right; }
 
-	.vacio-mini { color: var(--color-text-muted); font-size: 0.8rem; text-align: center; padding: 1rem; }
+	.vacio { color: var(--color-text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem; }
+
+	@keyframes entrarStagger {
+		from { opacity: 0; transform: translateY(8px); }
+		to { opacity: 1; transform: none; }
+	}
 </style>
