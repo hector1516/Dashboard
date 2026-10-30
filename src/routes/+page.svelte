@@ -45,6 +45,8 @@ import Clima from '$lib/components/pantallas/Clima.svelte';
 import Pulso from '$lib/components/pantallas/Pulso.svelte';
 import Asistencia from '$lib/components/pantallas/Asistencia.svelte';
 import IngenieriaCampo from '$lib/components/pantallas/IngenieriaCampo.svelte';
+import Actividad from '$lib/components/pantallas/Actividad.svelte';
+import Equipo from '$lib/components/pantallas/Equipo.svelte';
 import Portada from '$lib/components/pantallas/Portada.svelte';
 import LogoTraceLoader from '$lib/components/effects/LogoTraceLoader.svelte';
 
@@ -73,19 +75,11 @@ const SALIDA_POST_S = 45;        // el cartel de "18:30" dura 45 s
  * y si apareciera una vez cada 3 minutos se olvidaría.
  */
 const PANTALLAS: PantallaDef[] = [
-	{ id: 'pulso', icono: '⚡', label: 'La Oficina Ahora' },
-	{ id: 'combustible', icono: '⛽', label: 'Combustible' },
-	{ id: 'legends', icono: '🏆', label: 'ECCSA Legends' },
-	{ id: 'reportes', icono: '📊', label: 'Reportes' },
-	{ id: 'tickets', icono: '🎫', label: 'Tickets' },
-	{ id: 'celebraciones', icono: '🎂', label: 'Cumpleaños' },
-	{ id: 'metricas', icono: '📈', label: 'Métricas' },
-	{ id: 'fotos', icono: '📸', label: 'Fotografías' },
+	{ id: 'asistencia', icono: '👥', label: 'Asistencia de hoy' },
 	{ id: 'clima', icono: '🌤️', label: 'Clima' },
-	{ id: 'notas', icono: '📌', label: 'Notas' },
-	{ id: 'asistencia', icono: '🕘', label: 'Asistencia de hoy' },
-	{ id: 'campo', icono: '📍', label: 'Ingenieros en Campo' },
-	{ id: 'portada', icono: '🖼️', label: 'Portada del mes' },
+	{ id: 'portada', icono: '📸', label: 'Portada del mes' },
+	{ id: 'actividad', icono: '📊', label: 'Actividad' },
+	{ id: 'equipo', icono: '👥', label: 'Equipo' }
 ];
 
 /* ── Estado ───────────────────────────────────────────────────── */
@@ -1030,19 +1024,11 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 						<div class="cargando"><LogoTraceLoader size={120} /><div>Cargando centro de operaciones…</div></div>
 					{:else}
 						{#key pantalla.id}
-							{#if pantalla.id === 'pulso'}<Pulso {datos} />
-							{:else if pantalla.id === 'combustible'}<Combustible {datos} />
-							{:else if pantalla.id === 'legends'}<Legends {datos} />
-							{:else if pantalla.id === 'reportes'}<Reportes {datos} />
-							{:else if pantalla.id === 'tickets'}<Tickets {datos} />
-							{:else if pantalla.id === 'celebraciones'}<Celebraciones {datos} />
-							{:else if pantalla.id === 'metricas'}<Metricas {datos} />
-							{:else if pantalla.id === 'fotos'}<Fotos {datos} />
-							{:else if pantalla.id === 'clima'}<Clima {datos} />
-							{:else if pantalla.id === 'notas'}<Notas {datos} />
-							{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
-							{:else if pantalla.id === 'campo'}<IngenieriaCampo {datos} />
-							{:else if pantalla.id === 'portada'}<Portada {datos} />
+																																																							{#if pantalla.id === 'clima'}<Clima {datos} />
+													{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
+													{:else if pantalla.id === 'actividad'}<Actividad {datos} />
+	{:else if pantalla.id === 'equipo'}<Equipo {datos} />
+	{:else if pantalla.id === 'portada'}<Portada {datos} />
 							{/if}
 						{/key}
 					{/if}
