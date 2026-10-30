@@ -293,6 +293,169 @@
 		{/if}
 	</svg>
 
+
+		<!-- Animales -->
+		<!-- Mariposas (soleado día) -->
+		{#if esDespejado && es_dia}
+			<g class="butterflies">
+				{#each Array(4) as _, i}
+					<g class="butterfly" style="animation-delay: {i * 1.5}s">
+						<path d="M 0,0 Q 2,-2 4,0 Q 2,1 0,0" fill="rgba(255,100,150,0.7)" class="wing-left">
+							<animate attributeName="d" values="M 0,0 Q 2,-2 4,0 Q 2,1 0,0; M 0,0 Q 2,2 4,0 Q 2,-1 0,0; M 0,0 Q 2,-2 4,0 Q 2,1 0,0" dur="0.4s" repeatCount="indefinite" />
+						</path>
+						<path d="M 0,0 Q -2,-2 -4,0 Q -2,1 0,0" fill="rgba(255,100,150,0.7)" class="wing-right">
+							<animate attributeName="d" values="M 0,0 Q -2,-2 -4,0 Q -2,1 0,0; M 0,0 Q -2,2 -4,0 Q -2,-1 0,0; M 0,0 Q -2,-2 -4,0 Q -2,1 0,0" dur="0.4s" repeatCount="indefinite" />
+						</path>
+						<animateTransform attributeName="transform" type="translate" values="{150 + i * 100},120;{250 + i * 100},100;{350 + i * 100},130;{450 + i * 100},110" dur="{6 + i * 2}s" repeatCount="indefinite" begin="{i * 2}s" />
+					</g>
+				{/each}
+			</g>
+		{/if}
+
+		<!-- Abejas (soleado día) -->
+		{#if esDespejado && es_dia}
+			<g class="bees">
+				{#each Array(3) as _, i}
+					<g class="bee" style="animation-delay: {i * 1}s">
+						<ellipse cx="0" cy="0" rx="2" ry="1.5" fill="#ffeb3b" />
+						<ellipse cx="0" cy="0" rx="1" ry="0.8" fill="#333" />
+						<circle cx="-1" cy="-1" r="1" fill="rgba(255,255,255,0.6)" class="bee-wing">
+							<animate attributeName="r" values="1;0.5;1" dur="0.15s" repeatCount="indefinite" />
+						</circle>
+						<circle cx="1" cy="-1" r="1" fill="rgba(255,255,255,0.6)" class="bee-wing">
+							<animate attributeName="r" values="0.5;1;0.5" dur="0.15s" repeatCount="indefinite" />
+						</circle>
+						<animateTransform attributeName="transform" type="translate" values="{200 + i * 120},150;{280 + i * 120},130;{360 + i * 120},160;{440 + i * 120},140" dur="{5 + i * 1.5}s" repeatCount="indefinite" begin="{i * 2.5}s" />
+					</g>
+				{/each}
+			</g>
+		{/if}
+
+		<!-- Lagartijas en la pared (soleado día) -->
+		{#if esDespejado && es_dia}
+			<g class="lizards">
+				{#each Array(2) as _, i}
+					<g class="lizard">
+						<ellipse cx="0" cy="0" rx="4" ry="1.5" fill="#66bb6a" />
+						<circle cx="3" cy="0" r="1.5" fill="#4caf50" />
+						<line x1="-4" y1="0" x2="-8" y2="0" stroke="#66bb6a" stroke-width="1" />
+						<animateTransform attributeName="transform" type="translate" values="{330 + i * 40},160;{335 + i * 40},155;{330 + i * 40},160" dur="{4 + i}s" repeatCount="indefinite" begin="{i * 1.5}s" />
+					</g>
+				{/each}
+			</g>
+		{/if}
+
+		<!-- Perro en el jardín (siempre de día) -->
+		{#if es_dia}
+			<g class="dog">
+				<ellipse cx="0" cy="0" rx="6" ry="3" fill="#8d6e63" />
+				<circle cx="5" cy="-1" r="2.5" fill="#8d6e63" />
+				<circle cx="4" cy="-2" r="0.8" fill="#333" />
+				<line x1="-6" y1="0" x2="-9" y2="-3" stroke="#8d6e63" stroke-width="1.5" stroke-linecap="round" />
+				<animateTransform attributeName="transform" type="translate" values="120,320;130,315;120,320" dur="6s" repeatCount="indefinite" />
+				<animate attributeName="opacity" values="1;0.9;1" dur="6s" repeatCount="indefinite" />
+			</g>
+		{/if}
+
+		<!-- Gato en el techo (siempre) -->
+		<g class="cat">
+			<ellipse cx="0" cy="0" rx="4" ry="2" fill="#78909c" />
+			<circle cx="3" cy="-1" r="1.8" fill="#78909c" />
+			<polygon points="2,-2 1,-4 3,-3" fill="#78909c" />
+			<polygon points="4,-2 5,-4 3,-3" fill="#78909c" />
+			<circle cx="2.5" cy="-1.5" r="0.5" fill="#ffeb3b" />
+			<circle cx="3.5" cy="-1.5" r="0.5" fill="#ffeb3b" />
+			<line x1="-4" y1="0" x2="-7" y2="-2" stroke="#78909c" stroke-width="1" />
+			<animateTransform attributeName="transform" type="translate" values="380,125;385,120;380,125" dur="5s" repeatCount="indefinite" />
+		</g>
+
+		<!-- Ardilla en árbol (soleado) -->
+		{#if esDespejado && es_dia}
+			<g class="squirrel">
+				<ellipse cx="0" cy="0" rx="3" ry="2" fill="#8d6e63" />
+				<circle cx="2.5" cy="-1" r="1.5" fill="#8d6e63" />
+				<path d="M -3,0 Q -5,-4 -3,-6" stroke="#8d6e63" stroke-width="1.5" fill="none" />
+				<animateTransform attributeName="transform" type="translate" values="135,270;140,265;135,270" dur="4s" repeatCount="indefinite" />
+			</g>
+		{/if}
+
+		<!-- Conejo en el jardín (soleado día) -->
+		{#if esDespejado && es_dia}
+			<g class="rabbit">
+				<ellipse cx="0" cy="0" rx="3" ry="2" fill="#bdbdbd" />
+				<circle cx="2.5" cy="-1" r="1.5" fill="#bdbdbd" />
+				<ellipse cx="2" cy="-3" rx="0.8" ry="2" fill="#bdbdbd" />
+				<ellipse cx="3" cy="-3" rx="0.8" ry="2" fill="#bdbdbd" />
+				<animateTransform attributeName="transform" type="translate" values="460,330;470,325;460,330" dur="7s" repeatCount="indefinite" />
+			</g>
+		{/if}
+
+		<!-- Búho en la noche -->
+		{#if !es_dia}
+			<g class="owl">
+				<ellipse cx="0" cy="0" rx="4" ry="3.5" fill="#5d4037" />
+				<circle cx="0" cy="-1" r="2" fill="#ffeb3b" opacity="0.8" />
+				<circle cx="0" cy="-1" r="1" fill="#333" />
+				<polygon points="-2,-3 0,-5 2,-3" fill="#5d4037" />
+				<animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" />
+				<animateTransform attributeName="transform" type="translate" values="480,80;485,75;480,80" dur="5s" repeatCount="indefinite" />
+			</g>
+		{/if}
+
+		<!-- Murciélagos en la noche -->
+		{#if !es_dia}
+			<g class="bats">
+				{#each Array(3) as _, i}
+					<g class="bat">
+						<path d="M 0,0 Q 3,-2 6,0 Q 3,1 0,0" fill="rgba(80,80,80,0.7)" class="bat-wing">
+							<animate attributeName="d" values="M 0,0 Q 3,-2 6,0 Q 3,1 0,0; M 0,0 Q 3,2 6,0 Q 3,-1 0,0; M 0,0 Q 3,-2 6,0 Q 3,1 0,0" dur="0.3s" repeatCount="indefinite" />
+						</path>
+						<animateTransform attributeName="transform" type="translate" values="{100 + i * 180},50;{200 + i * 180},40;{300 + i * 180},55" dur="{6 + i * 2}s" repeatCount="indefinite" begin="{i * 2}s" />
+					</g>
+				{/each}
+			</g>
+		{/if}
+
+		<!-- Luciérnagas en la noche -->
+		{#if !es_dia}
+			<g class="fireflies">
+				{#each Array(8) as _, i}
+					<circle cx={100 + (i * 67) % 450} cy={200 + (i * 43) % 150} r="1.5" fill="#ffeb3b" class="firefly">
+						<animate attributeName="opacity" values="0;1;0" dur="{1.5 + (i % 3) * 0.5}s" repeatCount="indefinite" begin="{i * 0.4}s" />
+						<animate attributeName="cx" values="{100 + (i * 67) % 450};{120 + (i * 67) % 450}" dur="{3 + (i % 2)}s" repeatCount="indefinite" begin="{i * 0.4}s" />
+						<animate attributeName="cy" values="{200 + (i * 43) % 150};{180 + (i * 43) % 150}" dur="{3 + (i % 2)}s" repeatCount="indefinite" begin="{i * 0.4}s" />
+					</circle>
+				{/each}
+			</g>
+		{/if}
+
+		<!-- Ranas en lluvia -->
+		{#if esLluvioso}
+			<g class="frogs">
+				{#each Array(2) as _, i}
+					<g class="frog">
+						<ellipse cx="0" cy="0" rx="3" ry="2" fill="#4caf50" />
+						<circle cx="2" cy="-1" r="1" fill="#ffeb3b" />
+						<circle cx="-2" cy="-1" r="1" fill="#ffeb3b" />
+						<animateTransform attributeName="transform" type="translate" values="{200 + i * 200},340;{210 + i * 200},335;{200 + i * 200},340" dur="{3 + i}s" repeatCount="indefinite" />
+					</g>
+				{/each}
+			</g>
+		{/if}
+
+		<!-- Caracoles en lluvia -->
+		{#if esLluvioso}
+			<g class="snails">
+				{#each Array(2) as _, i}
+					<g class="snail">
+						<ellipse cx="0" cy="0" rx="2" ry="1.5" fill="#8d6e63" />
+						<circle cx="0" cy="-1" r="2" fill="#a1887f" />
+						<animateTransform attributeName="transform" type="translate" values="{150 + i * 250},350;{155 + i * 250},348;{150 + i * 250},350" dur="{5 + i}s" repeatCount="indefinite" />
+					</g>
+				{/each}
+			</g>
+		{/if}
+
 	<!-- Indicador de clima -->
 	<div class="weather-badge">
 		<span class="weather-icon">{icono}</span>
