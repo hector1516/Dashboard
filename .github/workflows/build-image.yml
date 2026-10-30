@@ -57,6 +57,8 @@ jobs:
         with:
           context: .
           push: true
+          build-args: |
+            BUILD_ID=${{ github.sha }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
