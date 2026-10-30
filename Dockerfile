@@ -19,6 +19,7 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 ARG BUILD_ID=dev
+RUN echo "Build: $BUILD_ID at $(date)" 
 RUN echo "$BUILD_ID" > static/build.txt && npm run build
 
 FROM mirror.gcr.io/library/python:3.11-slim
