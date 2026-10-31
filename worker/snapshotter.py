@@ -140,6 +140,7 @@ def ciclo() -> dict:
         hoy_s = hoy.isoformat()
 
         bloques = {
+            "cotizaciones_lista": D.cotizaciones_lista_facturar(),
             "reportes": D.reportes(sunday, hoy_s),
             "kilometros": D.kilometros(sunday, hoy_s),
             "tickets": D.tickets(sunday),
@@ -332,6 +333,7 @@ def ciclo() -> dict:
         "degradado": sorted(set(degradado)),
         "origen": "bd",
         "build": C.leer_build(),
+        "cotizaciones_lista": bloques["cotizaciones_lista"],
         "reportes": bloques["reportes"],
         "kilometros": bloques["kilometros"],
         "tickets": bloques["tickets"],

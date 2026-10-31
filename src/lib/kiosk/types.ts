@@ -145,6 +145,16 @@ export interface LegendGanador {
 	avatar?: string | null;
 }
 
+export interface CotizacionLista {
+	total: number;
+	verdes: number;
+	amarillos: number;
+	rojos: number;
+	por_autor: Record<string, number>;
+	mas_antiguas: { Folio: number; IdCliente: string; Cliente: string; Contacto: string; Descripcion: string; Autor: string; Fecha: string; FechaLista: string; DiasTranscurridos: number }[];
+	mas_antigua_dias: number;
+}
+
 export interface Snapshot {
 	schema_version: number;
 	generado_en: string;
@@ -202,6 +212,8 @@ export interface Snapshot {
 
 	cumpleanos: { hoy: Cumpleanero[]; del_mes: Cumpleanero[] };
 	aniversarios: { hoy: Aniversariero[]; del_mes: Aniversariero[] };
+
+	cotizaciones_lista: CotizacionLista;
 
 	metricas: {
 		top_cliente: { Cliente: string; total: number } | null;

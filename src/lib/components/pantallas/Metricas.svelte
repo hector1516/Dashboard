@@ -13,6 +13,7 @@
 	let { datos }: Props = $props();
 
 	const m = $derived(datos.metricas);
+	const cl = $derived(datos.cotizaciones_lista);
 	const pulso = $derived(m.pulso ?? []);
 	const maxPulso = $derived(Math.max(1, ...pulso.map((p) => p.valor)));
 	const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -159,6 +160,50 @@
 			{/if}
 		</div>
 	</div>
+	<!-- Cotizaciones Lista Para Facturar -->
+	<div class="cotizaciones-lista">
+		<div class="cot-titulo">📋 Cotizaciones Lista Para Facturar</div>
+		<div class="cot-kpis">
+			<div class="cot-kpi">
+				<span class="cot-val">{cl.total}</span>
+				<span class="cot-lab">Total</span>
+			</div>
+			<div class="cot-kpi verde">
+				<span class="cot-val">{cl.verdes}</span>
+				<span class="cot-lab">&lt; 7 días</span>
+			</div>
+			<div class="cot-kpi amarillo">
+				<span class="cot-val">{cl.amarillos}</span>
+				<span class="cot-lab">7-14 días</span>
+			</div>
+			<div class="cot-kpi rojo">
+				<span class="cot-val">{cl.rojos}</span>
+				<span class="cot-lab">> 14 días</span>
+			</div>
+		</div>
+		{#if cl.mas_antiguas && cl.mas_antiguas.length > 0}
+			<div class="cot-lista">
+				{#each cl.mas_antiguas as c, i}
+					<div class="cot-item">
+						<span class="cot-folio">CM{String(c.Folio).padStart(5, '0')}</span>
+						<span class="cot-cliente">{c.Cliente || c.IdCliente}</span>
+						<span class="cot-dias" class:rojo={(c.DiasTranscurridos ?? 0) > 14} class:amarillo={7 <= (c.DiasTranscurridos ?? 0) && (c.DiasTranscurridos ?? 0) <= 14}>
+							{c.DiasTranscurridos ?? 0}d
+						</span>
+						<span class="cot-autor">{c.Autor}</span>
+					</div>
+				{/each}
+			</div>
+		{/if}
+		{#if cl.por_autor && Object.keys(cl.por_autor).length > 0}
+			<div class="cot-autores">
+				{#each Object.entries(cl.por_autor) as [autor, count]}
+					<span class="cot-autor-chip">{autor}: {count}</span>
+				{/each}
+			</div>
+		{/if}
+	</div>
+
 </div>
 
 <style>
