@@ -48,6 +48,7 @@ import IngenieriaCampo from '$lib/components/pantallas/IngenieriaCampo.svelte';
 import Actividad from '$lib/components/pantallas/Actividad.svelte';
 import Equipo from '$lib/components/pantallas/Equipo.svelte';
 import Portada from '$lib/components/pantallas/Portada.svelte';
+import UsoApps from '$lib/components/pantallas/UsoApps.svelte';
 import LogoTraceLoader from '$lib/components/effects/LogoTraceLoader.svelte';
 
 /* ── Configuración de la pantalla ─────────────────────────────── */
@@ -79,7 +80,8 @@ const PANTALLAS: PantallaDef[] = [
 	{ id: 'clima', icono: '🌤️', label: 'Clima' },
 	{ id: 'portada', icono: '📸', label: 'Portada del mes' },
 	{ id: 'actividad', icono: '📊', label: 'Actividad' },
-	{ id: 'equipo', icono: '👥', label: 'Equipo' }
+	{ id: 'equipo', icono: '👥', label: 'Equipo' },
+	{ id: 'uso_apps', icono: '📱', label: 'Uso de Apps' }
 ];
 
 /* ── Estado ───────────────────────────────────────────────────── */
@@ -1029,6 +1031,7 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 													{:else if pantalla.id === 'actividad'}<Actividad {datos} />
 	{:else if pantalla.id === 'equipo'}<Equipo {datos} />
 	{:else if pantalla.id === 'portada'}<Portada {datos} />
+{:else if pantalla.id === 'uso_apps'}<UsoApps />
 							{/if}
 						{/key}
 					{/if}

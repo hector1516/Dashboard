@@ -150,6 +150,117 @@ def version():
     return JSONResponse({"build": C.leer_build()}, headers={"Cache-Control": "no-store"})
 
 
+@app.get("/api/uso/resumen")
+def uso_resumen():
+    """Resumen de uso de las apps (Admon y Field)."""
+    try:
+        from db import get_connection
+        conn = get_connection()
+        with conn.cursor(as_dict=True) as cur:
+            # Usuarios activos últimos 7 días
+            cur.execute("""
+                SELECT COUNT(DISTINCT Usuario) as activos_7d
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE())
+                  AND Usuario IS NOT NULL
+            """)
+            activos_7d = (cur.fetchone() or {}).get("activos_7d", 0)
+
+            # Total de llamadas últimos 7 días
+            cur.execute("""
+                SELECT COUNT(*) as total_7d
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE())
+            """)
+            total_7d = (cur.fetchone() or {}).get("total_7d", 0)
+
+            # Llamadas por app (últimos 7 días)
+            cur.execute("""
+                SELECT App, COUNT(*) as llamadas
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE())
+                GROUP BY App
+            """)
+            por_app = {r["App"]: r["llamadas"] for r in (cur.fetchall() or [])}
+
+            # Uso por día (últimos 7 días)
+            cur.execute("""
+                SELECT CAST(Fecha AS DATE) as dia, COUNT(*) as llamadas,
+                       COUNT(DISTINCT Usuario) as usuarios
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE())
+                GROUP BY CAST(Fecha AS DATE)
+                ORDER BY dia
+            """)
+            por_dia = [{"dia": str(r["dia"]), "llamadas": r["llamadas"], "usuarios": r["usuarios"]} for r in (cur.fetchall() or [])]
+
+            # Horas pico (últimos 7 días)
+            cur.execute("""
+                SELECT DATEPART(hour, Fecha) as hora, COUNT(*) as llamadas
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE())
+                GROUP BY DATEPART(hour, Fecha)
+                ORDER BY hora
+            """)
+            por_hora = [{"hora": r["hora"], "llamadas": r["llamadas"]} for r in (cur.fetchall() or [])]
+
+            # Días de la semana (últimos 30 días)
+            cur.execute("""
+                SELECT DATENAME(weekday, Fecha) as dia_semana, COUNT(*) as llamadas
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -30, GETDATE())
+                GROUP BY DATENAME(weekday, Fecha)
+                ORDER BY llamadas DESC
+            """)
+            por_dia_semana = [{"dia": r["dia_semana"], "llamadas": r["llamadas"]} for r in (cur.fetchall() or [])]
+
+            # Top 10 endpoints (últimos 7 días)
+            cur.execute("""
+                SELECT TOP 10 Endpoint, COUNT(*) as usos
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE())
+                GROUP BY Endpoint
+                ORDER BY usos DESC
+            """)
+            top_endpoints = [{"endpoint": r["Endpoint"], "usos": r["usos"]} for r in (cur.fetchall() or [])]
+
+            # Top 10 usuarios (últimos 7 días)
+            cur.execute("""
+                SELECT TOP 10 Usuario, COUNT(*) as llamadas
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE()) AND Usuario IS NOT NULL
+                GROUP BY Usuario
+                ORDER BY llamadas DESC
+            """)
+            top_usuarios = [{"usuario": r["Usuario"], "llamadas": r["llamadas"]} for r in (cur.fetchall() or [])]
+
+            # Usuarios inactivos (no usaron en 7 días)
+            cur.execute("""
+                SELECT u.Nombre
+                FROM HUB_Users u
+                WHERE u.Activo = 1 AND u.Id NOT IN (
+                    SELECT DISTINCT Usuario FROM HUB_ApiUsage
+                    WHERE Fecha >= DATEADD(day, -7, GETDATE()) AND Usuario IS NOT NULL
+                )
+            """)
+            inactivos = [r["Nombre"] for r in (cur.fetchall() or [])]
+
+        conn.close()
+        return JSONResponse({
+            "activos_7d": activos_7d,
+            "total_7d": total_7d,
+            "por_app": por_app,
+            "por_dia": por_dia,
+            "por_hora": por_hora,
+            "por_dia_semana": por_dia_semana,
+            "top_endpoints": top_endpoints,
+            "top_usuarios": top_usuarios,
+            "inactivos": inactivos,
+        }, headers={"Cache-Control": "no-store"})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 @app.get("/api/shell/state")
 def shell_state(request: Request):
     """
