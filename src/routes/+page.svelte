@@ -50,6 +50,7 @@ import Equipo from '$lib/components/pantallas/Equipo.svelte';
 import Portada from '$lib/components/pantallas/Portada.svelte';
 import UsoApps from '$lib/components/pantallas/UsoApps.svelte';
 import SabiasQue from '$lib/components/pantallas/SabiasQue.svelte';
+import SwarmRebuild from '$lib/components/SwarmRebuild.svelte';
 import LogoTraceLoader from '$lib/components/effects/LogoTraceLoader.svelte';
 
 /* ── Configuración de la pantalla ─────────────────────────────── */
@@ -94,6 +95,7 @@ let personaAvatar = $state<string | null>(null);
 let orden = $state<number[]>([]);
 let pos = $state(0);
 let saliendo = $state(false);
+let swarmActivo = $state(false);
 let reloj = $state('');
 let fecha = $state('');
 let apagado = $state(false);
@@ -471,8 +473,9 @@ function avanzar() {
 function irAPantalla(id: string) {
 	const destino = PANTALLAS.findIndex((p) => p.id === id);
 	if (destino < 0) return false;
-	// La nueva pantalla va al frente de la lista y `pos` se queda en 0: así el
-	// resto sigue barajado y no se repite hasta que le toque por orden.
+	// Activar el swarm antes de cambiar de pantalla
+	swarmActivo = true;
+	setTimeout(() => { swarmActivo = false; }, 2400);
 	orden = [destino, ...orden.filter((i) => i !== destino)];
 	pos = 0;
 	t0Rotacion = Date.now();
@@ -1047,6 +1050,9 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 
 			<!-- Canvas único de confeti, sobre todo lo demás -->
 			<canvas class="confeti" bind:this={canvasRef} aria-hidden="true"></canvas>
+
+<!-- Swarm Rebuild: se activa en cada transición de pantalla -->
+<SwarmRebuild activo={swarmActivo} duracion={2200} />
 
 			<CapaAlertas {banda} {toast} {aviso} onCerrarAviso={sacarSiguienteAviso} />
 
