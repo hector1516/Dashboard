@@ -38,7 +38,11 @@
 	{#if cargando}
 		<div class="cargando">Cargando estadísticas...</div>
 	{:else if !datos}
-		<div class="cargando">Sin datos de uso</div>
+		<div class="vacio-grande">
+			<span class="vacio-icono">📊</span>
+			<span class="vacio-titulo">Sin datos de uso</span>
+			<span class="vacio-sub">Los datos aparecerán cuando los usuarios comiencen a usar las apps</span>
+		</div>
 	{:else}
 		<!-- KPIs superiores -->
 		<div class="kpis-bar">
@@ -196,6 +200,10 @@
 	.inactivo-chip { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 999px; background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
 
 	.vacio { color: var(--color-text-muted); font-size: 0.85rem; text-align: center; padding: 1rem; }
+	.vacio-grande { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 0.75rem; color: var(--color-text-muted); }
+	.vacio-icono { font-size: 3rem; opacity: 0.5; }
+	.vacio-titulo { font-size: 1.2rem; font-weight: 700; color: var(--color-text); }
+	.vacio-sub { font-size: 0.9rem; max-width: 400px; text-align: center; }
 
 	@keyframes entrarStagger {
 		from { opacity: 0; transform: translateY(8px); }

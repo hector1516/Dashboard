@@ -1005,7 +1005,7 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 
 		<!-- Escenario fijo 1920×1080 escalado al viewport. Determinista. -->
 		<div class="escenario" bind:this={escenarioRef}>
-			<div class="pantalla-caja" class:saliendo>
+			<div class="pantalla-caja" class:saliendo class:entrando={!saliendo}>
 				<HdrKiosco
 					pantallaIcono={pantalla.icono}
 					pantallaLabel={pantalla.label}
@@ -1023,7 +1023,11 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 
 				<div class="area">
 					{#if cargando}
-						<div class="cargando"><LogoTraceLoader size={120} /><div>Cargando centro de operaciones…</div></div>
+						<div class="cargando">
+							<LogoTraceLoader size={120} />
+							<div class="cargando-texto">Cargando centro de operaciones…</div>
+							<div class="cargando-sub">Conectando con el servidor</div>
+						</div>
 					{:else}
 						{#key pantalla.id}
 																																																							{#if pantalla.id === 'clima'}<Clima {datos} />
@@ -1104,7 +1108,8 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 	}
 
 	.pantalla-caja { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-	.pantalla-caja.saliendo { opacity: 0; transform: scale(0.98); transition: all 0.5s ease; }
+	.pantalla-caja.saliendo { opacity: 0; transform: scale(0.97) translateY(8px); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+	.pantalla-caja.entrando { opacity: 1; transform: scale(1) translateY(0); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
 
 	.area { position: relative; flex: 1; min-height: 0; }
 
@@ -1122,7 +1127,11 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 
 	.negro { position: fixed; inset: 0; background: #000; z-index: 999; }
 
-	.cargando { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; color: #475569; }
+	.cargando { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; color: #475569; animation: fadeIn 0.3s ease; }
+	.cargando-texto { font-size: 1.2rem; font-weight: 600; color: #94a3b8; }
+	.cargando-sub { font-size: 0.9rem; color: #475569; animation: pulse 1.5s ease-in-out infinite; }
+	@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+	@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 	.spinner {
 		width: 54px; height: 54px; border: 5px solid rgba(255,107,0,0.2);
 		border-top-color: var(--color-primary); border-radius: 50%;
