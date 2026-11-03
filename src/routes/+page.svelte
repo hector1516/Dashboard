@@ -1052,7 +1052,7 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 			<canvas class="confeti" bind:this={canvasRef} aria-hidden="true"></canvas>
 
 <!-- Swarm Rebuild: se activa en cada transición de pantalla -->
-<SwarmRebuild activo={swarmActivo} duracion={2200} />
+<SwarmRebuild activo={swarmActivo} duracion={2800} objetivo={escenarioRef} />
 
 			<CapaAlertas {banda} {toast} {aviso} onCerrarAviso={sacarSiguienteAviso} />
 
