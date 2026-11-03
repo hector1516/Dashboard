@@ -49,6 +49,7 @@ import Actividad from '$lib/components/pantallas/Actividad.svelte';
 import Equipo from '$lib/components/pantallas/Equipo.svelte';
 import Portada from '$lib/components/pantallas/Portada.svelte';
 import UsoApps from '$lib/components/pantallas/UsoApps.svelte';
+import SabiasQue from '$lib/components/pantallas/SabiasQue.svelte';
 import LogoTraceLoader from '$lib/components/effects/LogoTraceLoader.svelte';
 
 /* ── Configuración de la pantalla ─────────────────────────────── */
@@ -81,7 +82,8 @@ const PANTALLAS: PantallaDef[] = [
 	{ id: 'portada', icono: '📸', label: 'Portada del mes' },
 	{ id: 'actividad', icono: '📊', label: 'Actividad' },
 	{ id: 'equipo', icono: '👥', label: 'Equipo' },
-	{ id: 'uso_apps', icono: '📱', label: 'Uso de Apps' }
+	{ id: 'uso_apps', icono: '📱', label: 'Uso de Apps' },
+	{ id: 'sabias_que', icono: '💡', label: 'Sabías que...' }
 ];
 
 /* ── Estado ───────────────────────────────────────────────────── */
@@ -1036,6 +1038,7 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 	{:else if pantalla.id === 'equipo'}<Equipo {datos} />
 	{:else if pantalla.id === 'portada'}<Portada {datos} />
 {:else if pantalla.id === 'uso_apps'}<UsoApps />
+{:else if pantalla.id === 'sabias_que'}<SabiasQue />
 							{/if}
 						{/key}
 					{/if}
