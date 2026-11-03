@@ -1,10 +1,10 @@
 <!-- SabiasQue.svelte - Pantalla de tutoriales "Sabias que...?"
-     Muestra infografias de tutoriales que cambian aleatoriamente
-     cada vez que se accede a la pantalla. -->
+     Muestra infografias chibi 1920x1080 en rotacion automatica.
+     Mismo contenido, sin agregar imagenes nuevas. -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	// Lista de imagenes disponibles (agregar mas conforme se generen)
+	// Las 25 imagenes disponibles en disco (sq_01..sq_25)
 	const IMAGENES = [
 		'/sabias_que/sq_01_busqueda_rapida.png',
 		'/sabias_que/sq_02_crear_cotizacion.png',
@@ -19,35 +19,65 @@
 		'/sabias_que/sq_11_repositorio.png',
 		'/sabias_que/sq_12_administrar_usuarios.png',
 		'/sabias_que/sq_13_telegram.png',
-		// Agregar mas imagenes aqui conforme se generen:
-		// '/sabias_que/sq_14_metricas_dashboard.png',
-		// '/sabias_que/sq_15_nota_rapida.png',
-		// etc...
+		'/sabias_que/sq_14_metricas_dashboard.png',
+		'/sabias_que/sq_15_nota_rapida.png',
+		'/sabias_que/sq_16_enviar_whatsapp.png',
+		'/sabias_que/sq_17_historial_cambios.png',
+		'/sabias_que/sq_18_filtrar_fecha.png',
+		'/sabias_que/sq_19_voz_texto.png',
+		'/sabias_que/sq_20_mapa_ubicacion.png',
+		'/sabias_que/sq_21_exportar_excel.png',
+		'/sabias_que/sq_22_atajos_field.png',
+		'/sabias_que/sq_23_estadisticas_uso.png',
+		'/sabias_que/sq_24_qr_cotizacion.png',
+		'/sabias_que/sq_25_historial_cambios_cotizacion.png',
 	];
 
-	let imagenActual = $state('');
+	let indice = $state(0);
+	let imagenActual = $state(IMAGENES[0]);
 	let cargando = $state(true);
-	let error = $state(false);
+	let timer: ReturnType<typeof setInterval> | null = null;
 
-	function seleccionarAleatoria() {
-		const idx = Math.floor(Math.random() * IMAGENES.length);
-		imagenActual = IMAGENES[idx];
+	function siguiente() {
+		indice = (indice + 1) % IMAGENES.length;
+		imagenActual = IMAGENES[indice];
+	}
+
+	function irA(i: number) {
+		indice = i;
+		imagenActual = IMAGENES[i];
 	}
 
 	onMount(() => {
-		seleccionarAleatoria();
 		cargando = false;
+		timer = setInterval(siguiente, 12000); // 12 s por tutorial
+		return () => {
+			if (timer) clearInterval(timer);
+		};
 	});
 </script>
 
 <div class="screen sabias-que">
 	{#if cargando}
 		<div class="cargando">Cargando tutorial...</div>
-	{:else if error}
-		<div class="vacio">Sin tutoriales disponibles</div>
 	{:else}
 		<div class="imagen-container">
-			<img src={imagenActual} alt="Sabias que..." class="tutorial-img" />
+			{#key imagenActual}
+				<img src={imagenActual} alt="Sabias que... tutorial {indice + 1} de {IMAGENES.length}" class="tutorial-img" />
+			{/key}
+		</div>
+
+		<!-- Indicador de progreso: 25 puntos, el activo en azul ECCSA -->
+		<div class="puntos" role="tablist" aria-label="Tutoriales">
+			{#each IMAGENES as _, i}
+				<button
+					class="punto"
+					class:activo={i === indice}
+					onclick={() => irA(i)}
+					aria-label="Tutorial {i + 1}"
+					title="Tutorial {i + 1}"
+				></button>
+			{/each}
 		</div>
 	{/if}
 </div>
@@ -55,14 +85,13 @@
 <style>
 	.screen { height: 100%; display: flex; flex-direction: column; }
 	.cargando { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--color-text-muted); font-size: 1.5rem; }
-	.vacio { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--color-text-muted); font-size: 1.2rem; }
 
 	.imagen-container {
 		flex: 1;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: 1rem;
+		padding: 0.5rem;
 		overflow: hidden;
 	}
 
@@ -78,5 +107,33 @@
 	@keyframes fadeIn {
 		from { opacity: 0; transform: scale(0.98); }
 		to { opacity: 1; transform: scale(1); }
+	}
+
+	.puntos {
+		display: flex;
+		gap: 6px;
+		justify-content: center;
+		align-items: center;
+		padding: 0.4rem 0 0.2rem;
+		flex-shrink: 0;
+	}
+
+	.punto {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		border: none;
+		background: rgba(255, 255, 255, 0.25);
+		cursor: pointer;
+		padding: 0;
+		transition: background 0.3s ease, transform 0.3s ease;
+		flex-shrink: 0;
+	}
+
+	.punto:hover { background: rgba(255, 255, 255, 0.5); }
+
+	.punto.activo {
+		background: #1E40AF;
+		transform: scale(1.4);
 	}
 </style>
