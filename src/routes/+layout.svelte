@@ -25,6 +25,7 @@
 	// del autor en fotos, los estados del header).
 	import '../app.css';
 	import '$lib/kiosk/kiosk.css';
+	import VoltComentario from '$lib/components/VoltComentario.svelte';
 
 	let { children } = $props();
 
@@ -73,6 +74,9 @@
 <div class="wobnimo-kiosk" bind:this={mascotContainer}>
 	<span class="mascot-fallback">🤖</span>
 </div>
+
+<!-- Comentarios aleatorios de Volt -->
+<VoltComentario />
 
 <style>
 	.wobnimo-kiosk {

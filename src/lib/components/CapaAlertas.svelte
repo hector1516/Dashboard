@@ -21,6 +21,7 @@
 <script lang="ts">
 	import type { EventoKiosko } from '$lib/kiosk/types';
 	import { lanzarConfeti } from '$lib/kiosk/fx';
+	import VoltNotificacion from './VoltNotificacion.svelte';
 
 	interface Props {
 		/** Últimos eventos a mostrar como bandas (info/alert), más nuevos primero. */
@@ -33,23 +34,9 @@
 
 	let { banda, toast, aviso, onCerrarAviso }: Props = $props();
 
-	let restantePantalla = $state(0);
-
-	// Cuenta atrás del aviso a pantalla completa, y confeti si es celebración.
+	// Confeti si es celebración.
 	$effect(() => {
-		if (!aviso) {
-			restantePantalla = 0;
-			return;
-		}
-		const seg = aviso.segundos ?? 10;
-		const t0 = Date.now();
-		const paso = () => {
-			restantePantalla = Math.max(0, seg - Math.floor((Date.now() - t0) / 1000));
-			if (restantePantalla > 0) requestAnimationFrame(paso);
-		};
-		requestAnimationFrame(paso);
-		// Confeti una sola vez al abrir el aviso (no en cada re-render).
-		if (aviso.confeti) lanzarConfeti(120);
+		if (aviso?.confeti) lanzarConfeti(120);
 	});
 </script>
 
@@ -99,38 +86,8 @@
 	llamativo y sin perder legibilidad. El blanco del texto lleva sombra porque
 	encima de un color saturado un blanco plano vibra y deja de leerse.
 -->
-{#if aviso}
-	<div class="aviso" style="--c:{colorDe('pantalla')}" role="alertdialog">
-		<div class="aviso-fondo" aria-hidden="true"></div>
-		<div class="aviso-caja">
-			<div class="aviso-modulo">
-				<span class="aviso-ic">{aviso.icono}</span>
-				{aviso.modulo ?? 'ECCSA'}
-			</div>
-
-			{#if aviso.persona}
-				<div class="aviso-persona">{aviso.persona}</div>
-			{/if}
-
-			<div class="aviso-titulo">{aviso.titulo}</div>
-			{#if aviso.texto}
-				<div class="aviso-texto">{aviso.texto}</div>
-			{/if}
-			{#if aviso.meta}
-				<div class="aviso-meta">{aviso.meta}</div>
-			{/if}
-
-			<div class="aviso-pie">
-				<div class="aviso-barra" style="--r:{restantePantalla}">
-					<span class="lleno" style="width:{restantePantalla * 10}%"></span>
-				</div>
-				<button class="aviso-cerrar" onclick={onCerrarAviso}>
-					Continuar <span class="cuenta">{restantePantalla}s</span>
-				</button>
-			</div>
-		</div>
-	</div>
-{/if}
+<!-- Reemplazado por VoltNotificacion: las notificaciones ahora las dice Volt -->
+<VoltNotificacion {aviso} onCerrar={onCerrarAviso} />
 
 
 <script lang="ts" module>
