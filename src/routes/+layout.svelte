@@ -27,6 +27,65 @@
 	import '$lib/kiosk/kiosk.css';
 
 	let { children } = $props();
+
+	// Wobnimo: mascota 3D Volt para el kiosco
+	import { mascotState } from '$lib/kiosk/mascot';
+	let mascotContainer: HTMLDivElement | null = $state(null);
+	let mascotInstance: any = null;
+	let currentState = $state('idle');
+
+	// Sync store to local state
+	$effect(() => {
+		currentState = $mascotState;
+		if (mascotInstance && typeof mascotInstance.setState === 'function') {
+			mascotInstance.setState(currentState);
+		}
+	});
+
+	// Cargar Wobnimo al montar
+	import { onMount } from 'svelte';
+	onMount(async () => {
+		try {
+			const [wobnimo, voltModule] = await Promise.all([
+				import('https://cdn.jsdelivr.net/npm/wobnimo@0.2/dist/wobnimo.js'),
+				import('https://cdn.jsdelivr.net/npm/wobnimo@0.2/dist/characters/volt.js')
+			]);
+			if (mascotContainer && voltModule.volt && wobnimo.mount) {
+				mascotInstance = wobnimo.mount(mascotContainer, voltModule.volt);
+				mascotInstance.setState(currentState);
+			}
+		} catch (e) {
+			console.error('Wobnimo load error:', e);
+		}
+	});
+
+	// Actualizar estado de la mascota
+	$effect(() => {
+		if (mascotInstance && typeof mascotInstance.setState === 'function') {
+			mascotInstance.setState(mascotState);
+		}
+	});
 </script>
 
 {@render children()}
+
+<!-- Mascota Volt (esquina inferior derecha, todas las pantallas) -->
+<div class="wobnimo-kiosk" bind:this={mascotContainer}>
+	<span class="mascot-fallback">🤖</span>
+</div>
+
+<style>
+	.wobnimo-kiosk {
+		position: fixed;
+		bottom: 20px;
+		right: 20px;
+		width: 120px;
+		height: 120px;
+		z-index: 9999;
+		pointer-events: none;
+	}
+	.wobnimo-kiosk .mascot-fallback {
+		font-size: 3rem;
+		opacity: 0.5;
+	}
+</style>

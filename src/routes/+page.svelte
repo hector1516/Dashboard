@@ -19,6 +19,7 @@
 import { onMount, onDestroy } from 'svelte';
 import { cargarSnapshot, pedirBuild, snapshotVacio } from '$lib/kiosk/api';
 import type { EventoKiosko, PantallaDef, Snapshot } from '$lib/kiosk/types';
+import { mascotState } from '$lib/kiosk/mascot';
 import { esLluvioso, esNublado, esSoleado, haceCuanto, nombreDia, nombreMes } from '$lib/kiosk/format';
 import {
 	initAudio, tocar, apagar, setVolumen, getVolumen, estaSilenciado,
@@ -296,6 +297,7 @@ async function refrescar() {
 	if (primerCarga) {
 		primerCarga = false;
 		cargando = false;
+		mascotState.set('idle');
 	}
 }
 
