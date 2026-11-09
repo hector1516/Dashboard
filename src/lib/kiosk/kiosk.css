@@ -1,73 +1,72 @@
 /*
-	kiosk.css — estilos compartidos por las 10 pantallas del kiosco.
+	kiosk.css — estilos compartidos por las pantallas del kiosco.
 
-	Va global (lo importa el layout) a propósito: las pantallas son siblings y
-	así comparten tipografía y tarjetas sin repetir 300 líneas de CSS en cada
-	componente. Los valores vienen SIEMPRE de los tokens del ECCSA-Shell
-	(`--color-*`): nada de colores literales fuera de aquí.
-
-	El diseño es sobre un escenario fijo de 1920×1080 (ver Kiosco.svelte): por
-	eso todo se mide en px y no en vh/rem. Es lo que hace que la pantalla se
-	vea igual en cualquier TV y que no aparezca scroll "oculto" como pasaba en
-	el dashboard de Field.
+	Diseño Apple-inspired: espaciado generoso, tipografía clara,
+	sombras sutiles, colores semánticos. Sobre escenario fijo 1920×1080.
 */
 
 :root {
 	--k-w: 1920px;
 	--k-h: 1080px;
-	--k-gap: 20px;
-	--k-pad: 34px;
+	--k-gap: 24px;
+	--k-pad: 40px;
+	--k-radius: 16px;
+	--k-radius-sm: 10px;
+	--k-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+	--k-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
-/* ── Rejilla de pantalla ────────────────────────────────────── */
+/* ── Rejilla de pantalla ─────────────────────────────────────────────── */
 .screen {
 	position: absolute;
 	inset: 0;
-	padding: 14px var(--k-pad) 18px;
+	padding: 20px var(--k-pad) 24px;
 	display: flex;
 	flex-direction: column;
-	gap: 14px;
+	gap: 20px;
 	overflow: hidden;
-	animation: entrarPantalla 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+	animation: entrarPantalla 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .screen.saliendo { animation: salirPantalla 0.5s ease both; }
 
 @keyframes entrarPantalla {
-	from { opacity: 0; transform: scale(0.965) translateY(14px); }
+	from { opacity: 0; transform: scale(0.97) translateY(16px); }
 	to   { opacity: 1; transform: none; }
 }
 @keyframes salirPantalla {
 	from { opacity: 1; transform: none; }
-	to   { opacity: 0; transform: scale(0.965) translateY(-14px); }
+	to   { opacity: 0; transform: scale(0.97) translateY(-16px); }
 }
 
 .screen-titulo {
-	font-size: 34px;
-	font-weight: 900;
-	color: var(--color-primary-light);
+	font-size: 40px;
+	font-weight: 800;
+	color: var(--color-text);
 	text-align: center;
 	flex-shrink: 0;
-	letter-spacing: -0.01em;
+	letter-spacing: -0.02em;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 12px;
+	gap: 14px;
 }
-.screen-titulo .ic { font-size: 38px; }
+.screen-titulo .ic { font-size: 44px; }
 .screen-sub {
-	font-size: 16px;
-	font-weight: 600;
+	font-size: 18px;
+	font-weight: 500;
 	color: var(--color-text-muted);
 	text-align: center;
 	flex-shrink: 0;
+	letter-spacing: 0.01em;
 }
 
-/* ── Tarjetas ───────────────────────────────────────────────── */
+/* ── Tarjetas ─────────────────────────────────────────────────────────── */
 .card {
-	background: rgba(255, 255, 255, 0.045);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 14px;
-	backdrop-filter: blur(6px);
+	background: rgba(255, 255, 255, 0.055);
+	border: 1px solid rgba(255, 255, 255, 0.09);
+	border-radius: var(--k-radius);
+	backdrop-filter: blur(8px);
+	box-shadow: var(--k-shadow-sm);
 }
 
 .vacio {
@@ -77,66 +76,69 @@
 	text-align: center;
 	padding: 60px 20px;
 }
-.vacio-sub { display: block; font-size: 18px; font-weight: 600; color: #334155; margin-top: 10px; }
+.vacio-sub { display: block; font-size: 18px; font-weight: 500; color: #334155; margin-top: 10px; }
 
-/* ── KPIs ───────────────────────────────────────────────────── */
-.kpis { display: grid; gap: 12px; flex-shrink: 0; }
+/* ── KPIs ─────────────────────────────────────────────────────────────── */
+.kpis { display: grid; gap: 16px; flex-shrink: 0; }
 .kpi {
 	display: flex; flex-direction: column; align-items: center; justify-content: center;
-	gap: 2px; padding: 12px 10px; border-radius: 14px; text-align: center;
+	gap: 4px; padding: 16px 12px; border-radius: var(--k-radius); text-align: center;
 	animation: entrarStagger 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+	box-shadow: var(--k-shadow-sm);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.kpi-ic { font-size: 22px; }
-.kpi-val { font-size: 34px; font-weight: 900; line-height: 1.05; color: #fff; font-variant-numeric: tabular-nums; }
-.kpi-lab { font-size: 13px; font-weight: 600; color: var(--color-text-muted); }
-.kpi-sub { font-size: 11.5px; color: #64748B; }
+.kpi:hover { transform: translateY(-2px); box-shadow: var(--k-shadow); }
+.kpi-ic { font-size: 28px; margin-bottom: 2px; }
+.kpi-val { font-size: 40px; font-weight: 900; line-height: 1.0; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.kpi-lab { font-size: 14px; font-weight: 600; color: var(--color-text-muted); margin-top: 2px; }
+.kpi-sub { font-size: 12px; color: #64748B; font-weight: 500; }
 
-.kpi.blue   { background: rgba(59,130,246,0.14);  border: 1px solid rgba(59,130,246,0.32); }
+.kpi.blue   { background: rgba(59,130,246,0.12);  border: 1px solid rgba(59,130,246,0.25); }
 .kpi.blue   .kpi-val { color: #60A5FA; }
-.kpi.green  { background: rgba(34,197,94,0.14);   border: 1px solid rgba(34,197,94,0.32); }
+.kpi.green  { background: rgba(34,197,94,0.12);   border: 1px solid rgba(34,197,94,0.25); }
 .kpi.green  .kpi-val { color: #4ADE80; }
-.kpi.gold   { background: rgba(255,174,0,0.14);   border: 1px solid rgba(255,174,0,0.32); }
+.kpi.gold   { background: rgba(255,174,0,0.12);   border: 1px solid rgba(255,174,0,0.25); }
 .kpi.gold   .kpi-val { color: #FFAE00; }
-.kpi.orange { background: rgba(255,107,0,0.14);   border: 1px solid rgba(255,107,0,0.32); }
+.kpi.orange { background: rgba(255,107,0,0.12);   border: 1px solid rgba(255,107,0,0.25); }
 .kpi.orange .kpi-val { color: #FF6B00; }
-.kpi.purple { background: rgba(168,85,247,0.14);  border: 1px solid rgba(168,85,247,0.32); }
+.kpi.purple { background: rgba(168,85,247,0.12);  border: 1px solid rgba(168,85,247,0.25); }
 .kpi.purple .kpi-val { color: #C084FC; }
-.kpi.red    { background: rgba(239,68,68,0.14);   border: 1px solid rgba(239,68,68,0.32); }
+.kpi.red    { background: rgba(239,68,68,0.12);   border: 1px solid rgba(239,68,68,0.25); }
 .kpi.red    .kpi-val { color: #F87171; }
 
-/* ── Barras horizontales ────────────────────────────────────── */
-.bar-fila { display: grid; align-items: center; gap: 10px; animation: entrarStagger 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.bar-lab { font-size: 15px; font-weight: 600; color: #CBD5E1; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bar-pista { height: 22px; background: rgba(255,255,255,0.06); border-radius: 7px; overflow: hidden; position: relative; }
+/* ── Barras horizontales ──────────────────────────────────────────────── */
+.bar-fila { display: grid; align-items: center; gap: 12px; animation: entrarStagger 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.bar-lab { font-size: 16px; font-weight: 600; color: #CBD5E1; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-pista { height: 24px; background: rgba(255,255,255,0.06); border-radius: 8px; overflow: hidden; position: relative; }
 .bar-relleno {
-	height: 100%; border-radius: 7px; width: 0;
+	height: 100%; border-radius: 8px; width: 0;
 	background: linear-gradient(90deg, #2563EB, #3B82F6 55%, #60A5FA);
-	box-shadow: 0 0 14px rgba(59,130,246,0.28);
+	box-shadow: 0 0 12px rgba(59,130,246,0.2);
 	animation: creceBarra 1s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.bar-relleno.ticket { background: linear-gradient(90deg, #D97706, #F59E0B 55%, #FBBF24); box-shadow: 0 0 14px rgba(245,158,11,0.28); }
-.bar-relleno.km     { background: linear-gradient(90deg, #15803D, #22C55E 55%, #4ADE80); box-shadow: 0 0 14px rgba(34,197,94,0.28); }
-.bar-relleno.oro    { background: linear-gradient(90deg, #B45309, #FFD700 60%, #FFAE00); box-shadow: 0 0 14px rgba(255,215,0,0.3); }
-.bar-val { font-size: 14px; font-weight: 800; color: #60A5FA; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar-relleno.ticket { background: linear-gradient(90deg, #D97706, #F59E0B 55%, #FBBF24); box-shadow: 0 0 12px rgba(245,158,11,0.2); }
+.bar-relleno.km     { background: linear-gradient(90deg, #15803D, #22C55E 55%, #4ADE80); box-shadow: 0 0 12px rgba(34,197,94,0.2); }
+.bar-relleno.oro    { background: linear-gradient(90deg, #B45309, #FFD700 60%, #FFAE00); box-shadow: 0 0 12px rgba(255,215,0,0.2); }
+.bar-val { font-size: 15px; font-weight: 800; color: #60A5FA; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .bar-val.ticket { color: #FBBF24; }
 .bar-val.km     { color: #4ADE80; }
 .bar-val.oro    { color: #FFAE00; }
-.bar-pct { font-size: 12.5px; font-weight: 700; color: #64748B; text-align: right; font-variant-numeric: tabular-nums; }
+.bar-pct { font-size: 13px; font-weight: 700; color: #64748B; text-align: right; font-variant-numeric: tabular-nums; }
 
 @keyframes creceBarra { from { width: 0 !important; } }
 @keyframes entrarStagger { from { opacity: 0; transform: translateY(18px) scale(0.97); } to { opacity: 1; transform: none; } }
 .stagger > * { animation: entrarStagger 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
-/* ── Insignias y píldoras ───────────────────────────────────── */
+/* ── Insignias y píldoras ─────────────────────────────────────────────── */
 .pill {
 	display: inline-flex; align-items: center; gap: 6px;
-	font-size: 12.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
-	background: rgba(148,163,184,0.18); color: var(--color-text-muted);
+	font-size: 13px; font-weight: 600; padding: 4px 12px; border-radius: 999px;
+	background: rgba(148,163,184,0.15); color: var(--color-text-muted);
 }
-.pill.ok   { background: rgba(34,197,94,0.18);  color: #4ADE80; }
-.pill.warn { background: rgba(245,158,11,0.18); color: #FCD34D; }
-.pill.bad  { background: rgba(239,68,68,0.18);  color: #F87171; }
-.pill.info { background: rgba(59,130,246,0.18); color: #60A5FA; }
+.pill.ok   { background: rgba(34,197,94,0.15);  color: #4ADE80; }
+.pill.warn { background: rgba(245,158,11,0.15); color: #FCD34D; }
+.pill.bad  { background: rgba(239,68,68,0.15);  color: #F87171; }
+.pill.info { background: rgba(59,130,246,0.15); color: #60A5FA; }
 
 .avatar {
 	border-radius: 50%; object-fit: cover; flex-shrink: 0;
@@ -145,14 +147,14 @@
 	color: #0F172A; font-weight: 900;
 }
 
-/* ── Sparkline (serie de 7 días) ────────────────────────────── */
+/* ── Sparkline (serie de 7 días) ──────────────────────────────────────── */
 .spark { display: block; width: 100%; }
 .spark-line { fill: none; stroke: var(--color-primary-light); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .spark-area { fill: url(#sparkGrad); opacity: 0.5; }
 .spark-pt { fill: var(--color-primary-light); }
 .spark-et { font-size: 11px; fill: #64748B; }
 
-/* ── Reduced motion: sin confeti, sin brillos, sin roam ─────── */
+/* ── Reduced motion ───────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
 	*, *::before, *::after {
 		animation-duration: 0.001ms !important;
@@ -161,18 +163,15 @@
 	}
 }
 
-/* ── Modo noche: menos brillo, menos saturación ─────────────── */
+/* ── Modo noche ───────────────────────────────────────────────────────── */
 .kiosco.modo-noche {
 	filter: brightness(0.72) saturate(0.92);
 }
 
-/* ── Modo ligero (fps bajos): fuera lo caro, se queda lo útil ─ */
+/* ── Modo ligero ───────────────────────────────────────────────────────── */
 .kiosco.modo-ligero .caro { display: none; }
 
-/* ── Modo sin animaciones (?sinanim=1) ────────────────────────────────────
-   Para las capturas de pantalla y para revisar el diseño: sin esto la foto
-   sale a medio camino de las animaciones de entrada y parece que faltan
-   elementos (tarjetas del podio, filas de la lista) que en realidad sí están. */
+/* ── Modo sin animaciones ─────────────────────────────────────────────── */
 .kiosco.sin-anim *,
 .kiosco.sin-anim *::before,
 .kiosco.sin-anim *::after {
