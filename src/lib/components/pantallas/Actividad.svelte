@@ -202,39 +202,39 @@
 </div>
 
 <style>
-	.screen { height: 100%; display: flex; flex-direction: column; gap: 0.75rem; }
-	.screen-titulo { font-size: 1.8rem; font-weight: 800; color: var(--color-text); flex-shrink: 0; }
+	.screen { height: 100%; display: flex; flex-direction: column; gap: 16px; }
+	.screen-titulo { font-size: 38px; font-weight: 800; color: var(--color-text); flex-shrink: 0; }
 
 	.kpis-bar {
-		display: flex; gap: 0.75rem; flex-shrink: 0; flex-wrap: wrap;
+		display: flex; gap: 16px; flex-shrink: 0; flex-wrap: wrap;
 	}
 	.kpi {
 		flex: 1; min-width: 90px; text-align: center;
-		padding: 0.6rem 0.75rem; border-radius: 10px;
+		padding: 14px 16px; border-radius: 14px;
 		background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);
 	}
-	.kpi-val { display: block; font-size: 1.8rem; font-weight: 800; color: var(--color-primary-light); line-height: 1; }
-	.kpi-lab { display: block; font-size: 0.75rem; color: var(--color-text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+	.kpi-val { display: block; font-size: 38px; font-weight: 800; color: var(--color-primary-light); line-height: 1; }
+	.kpi-lab { display: block; font-size: 13px; color: var(--color-text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
 
 	.contenido {
 		flex: 1; min-height: 0; display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 0.75rem; overflow: hidden;
+		gap: 16px; overflow: hidden;
 	}
-	.col-izq, .col-der { display: flex; flex-direction: column; gap: 0.75rem; min-height: 0; }
+	.col-izq, .col-der { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
 
 	.bloque {
 		flex: 1; min-height: 0;
 		background: rgba(255, 255, 255, 0.03);
 		border: 1px solid rgba(255, 255, 255, 0.06);
-		border-radius: 12px; padding: 0.75rem;
+		border-radius: 16px; padding: 0.75rem;
 		overflow: hidden; display: flex; flex-direction: column;
 	}
-	.bloque-titulo { font-size: 1rem; font-weight: 700; color: var(--color-primary-light); margin-bottom: 0.5rem; flex-shrink: 0; }
+	.bloque-titulo { font-size: 18px; font-weight: 700; color: var(--color-primary-light); margin-bottom: 0.5rem; flex-shrink: 0; }
 
 	.lista { display: flex; flex-direction: column; gap: 0.35rem; overflow: hidden; }
 	.fila {
-		display: flex; align-items: center; gap: 0.75rem;
+		display: flex; align-items: center; gap: 16px;
 		padding: 0.4rem 0.6rem; border-radius: 6px;
 		background: rgba(255, 255, 255, 0.03);
 		animation: entrarStagger 0.4s ease both;
@@ -242,7 +242,7 @@
 	.folio { font-weight: 800; font-size: 0.95rem; min-width: 70px; }
 	.folio.ticket { color: #F59E0B; }
 	.desc { flex: 1; font-size: 0.85rem; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.meta { font-size: 0.75rem; color: var(--color-text-muted); white-space: nowrap; }
+	.meta { font-size: 13px; color: var(--color-text-muted); white-space: nowrap; }
 	.fecha { font-size: 0.7rem; color: #64748b; white-space: nowrap; }
 
 	.metricas { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -269,7 +269,7 @@
 	.cot-lista { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem; }
 	.cot-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.5rem; border-radius: 6px; background: rgba(255, 255, 255, 0.03); font-size: 0.8rem; }
 	.cot-folio { font-weight: 800; font-size: 0.8rem; color: #FFAE00; min-width: 55px; }
-	.cot-cliente { flex: 1; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; }
+	.cot-cliente { flex: 1; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 	.cot-dias { font-size: 0.7rem; font-weight: 700; padding: 0.1rem 0.35rem; border-radius: 4px; background: rgba(34, 197, 94, 0.15); color: #4ade80; }
 	.cot-dias.amarillo { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 	.cot-dias.rojo { background: rgba(239, 68, 68, 0.15); color: #f87171; }
