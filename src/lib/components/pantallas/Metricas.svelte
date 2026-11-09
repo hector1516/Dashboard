@@ -211,33 +211,25 @@
 	   Glassmorphism base (sólo esta pantalla; el shell sigue intacto)
 	   ═════════════════════════════════════════════════════════════════════════ */
 	.g-screen { position: relative; z-index: 1; }
-	.g-titulo { font-size: 20px; font-weight: 800; letter-spacing: 0.04em; margin-bottom: 16px; }
+	.g-titulo { font-size: 34px; font-weight: 900; letter-spacing: -0.01em; margin-bottom: 8px; }
 	.g-titulo .ic { margin-right: 8px; }
 
 	/* KPIs */
 	.g-kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
 	.g-kpi {
 		position: relative;
-		overflow: hidden;
-		background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-		border: 1px solid rgba(255,255,255,0.08);
-		-webkit-backdrop-filter: blur(14px) saturate(1.1);
-		backdrop-filter: blur(14px) saturate(1.1);
-		border-radius: 16px;
-		padding: 12px 14px;
-		display: flex; align-items: center; gap: 10px;
+		background: rgba(255,255,255,0.06);
+		border: 1px solid rgba(255,255,255,0.1);
+		border-radius: var(--k-radius, 16px);
+		padding: 16px 14px;
+		display: flex; flex-direction: column; align-items: center; gap: 4px;
+		text-align: center;
 		animation: g-entrar 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 		transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+		box-shadow: 0 4px 16px rgba(0,0,0,0.25);
 	}
-	.g-kpi:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.25); }
-	/* Brillo lateral por color */
-	.g-kpi::before {
-		content: ''; position: absolute; inset: 0; border-radius: 16px;
-		padding: 1px; background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
-		-webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-		-webkit-mask-composite: destination-out; mask-composite: exclude;
-		pointer-events: none;
-	}
+	.g-kpi:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.2); box-shadow: 0 8px 32px rgba(0,0,0,0.35); }
+
 	.g-kpi.blue::after {
 		content: ''; position: absolute; top: -40%; left: -40%; width: 60px; height: 140px;
 		background: radial-gradient(circle, rgba(59,130,246,0.12), transparent 70%);
@@ -263,10 +255,10 @@
 		background: radial-gradient(circle, rgba(255,174,0,0.12), transparent 70%);
 		pointer-events: none;
 	}
-	.kpi-ic { font-size: 22px; flex-shrink: 0; }
-	.kpi-val { font-size: 26px; font-weight: 900; color: var(--color-primary-light); line-height: 1.1; }
+	.kpi-ic { font-size: 28px; flex-shrink: 0; margin-bottom: 2px; }
+	.kpi-val { font-size: 36px; font-weight: 900; color: var(--color-primary-light); line-height: 1.0; font-variant-numeric: tabular-nums; }
 	.kpi-lab { font-size: 13px; color: var(--color-text-muted); font-weight: 600; margin-top: 2px; }
-	.kpi-sub { font-size: 11px; color: #CBD5E1; margin-top: 2px; }
+	.kpi-sub { font-size: 11px; color: #64748B; margin-top: 2px; }
 
 	@keyframes g-entrar {
 		from { opacity: 0; transform: translateY(14px); }
@@ -279,24 +271,17 @@
 	/* Cards glass */
 	.g-card {
 		position: relative;
-		background: rgba(30, 41, 59, 0.35);
-		border: 1px solid rgba(255,255,255,0.06);
-		-webkit-backdrop-filter: blur(16px) saturate(1.2);
-		backdrop-filter: blur(16px) saturate(1.2);
-		border-radius: 20px;
-		box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+		background: rgba(255, 255, 255, 0.055);
+		border: 1px solid rgba(255,255,255,0.09);
+		border-radius: var(--k-radius, 16px);
+		box-shadow: 0 4px 16px rgba(0,0,0,0.25);
 		overflow: hidden;
 		animation: g-entrar 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 	}
 	.g-card.heat { padding: 0; display: flex; flex-direction: column; min-height: 0; }
-	.g-card.top { padding: 14px 16px; min-height: 0; }
+	.g-card.top { padding: 16px; min-height: 0; }
 
-	/* Brillo superior de las cards (efecto vidrio real) */
-	.g-card::before {
-		content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1.5px;
-		background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-		pointer-events: none;
-	}
+
 
 	.seccion-lab { font-size: 13px; font-weight: 800; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 14px 18px 8px; margin: 0; }
 
