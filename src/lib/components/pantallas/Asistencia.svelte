@@ -172,7 +172,7 @@
 
 <style>
 	.contador {
-		font-size: 20px;
+		font-size: 24px;
 		font-weight: 700;
 		color: var(--color-text-muted);
 		letter-spacing: 0;
@@ -341,14 +341,14 @@
 		border-radius: 12px;
 		background: rgba(148, 163, 184, 0.06);
 		border: 1px solid rgba(148, 163, 184, 0.12);
-		font-size: 19px;
+		font-size: 24px;
 		font-weight: 600;
 		line-height: 1.4;
 		color: #7c8ba1;
 	}
 	.nota-ic {
 		font-style: normal;
-		font-size: 20px;
+		font-size: 24px;
 		line-height: 1.3;
 		color: #64748b;
 		flex-shrink: 0;
@@ -357,7 +357,7 @@
 
 	.eventos {
 		margin-top: auto;
-		font-size: 12.5px;
+		font-size: 14px;
 		font-weight: 700;
 		color: #475569;
 		text-align: right;

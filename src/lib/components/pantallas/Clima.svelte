@@ -90,8 +90,8 @@
 	.clima-hero { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 8px; }
 	.clima-icono { font-size: 48px; }
 	.clima-temp { font-size: 64px; font-weight: 900; color: var(--color-primary-light); line-height: 1; }
-	.clima-desc { font-size: 22px; font-weight: 700; color: var(--color-text); }
-	.clima-detalles { display: flex; gap: 24px; justify-content: center; font-size: 16px; color: var(--color-text-muted); }
+	.clima-desc { font-size: 26px; font-weight: 700; color: var(--color-text); }
+	.clima-detalles { display: flex; gap: 24px; justify-content: center; font-size: 18px; color: var(--color-text-muted); }
 
 	.pronostico { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
 	.pcard {
@@ -99,11 +99,11 @@
 		background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.09);
 	}
 	.pcard.nota { background: rgba(255,107,0,0.08); border-color: rgba(255,107,0,0.22); }
-	.pdia { font-weight: 800; font-size: 16px; color: var(--color-primary-light); }
-	.ptemp { font-size: 20px; font-weight: 700; color: var(--color-text); margin: 4px 0; }
+	.pdia { font-weight: 800; font-size: 18px; color: var(--color-primary-light); }
+	.ptemp { font-size: 28px; font-weight: 700; color: var(--color-text); margin: 4px 0; }
 	.plluvia { font-size: 14px; color: #60A5FA; }
 	.pcard.nota .plluvia { color: var(--color-text-muted); }
 
 	.vacio { text-align: center; color: var(--color-text-muted); font-size: 24px; }
-	.vacio-sub { display: block; font-size: 16px; margin-top: 8px; }
+	.vacio-sub { display: block; font-size: 18px; margin-top: 8px; }
 </style>

@@ -196,7 +196,7 @@
 	}
 
 	.pie {
-		font-size: 20px;
+		font-size: 24px;
 		font-weight: 600;
 		color: rgba(255, 255, 255, 0.42);
 		text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
