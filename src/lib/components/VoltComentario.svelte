@@ -11,20 +11,20 @@
 		texto = getVoltComentario('idle');
 		visible = true;
 		mascotState.set('speaking');
-		// Ocultar después de 5 segundos
+		// Ocultar después de 12 segundos
 		setTimeout(() => {
 			visible = false;
 			mascotState.set('idle');
-		}, 10000);
-		// Programar siguiente comentario (30-60s)
-		const delay = 30000 + Math.random() * 30000;
+		}, 12000);
+		// Programar siguiente comentario (10-20s)
+		const delay = 10000 + Math.random() * 10000;
 		timer = setTimeout(mostrarComentario, delay);
 	}
 
 	import { onMount, onDestroy } from 'svelte';
 	onMount(() => {
-		// Primer comentario después de 15s
-		timer = setTimeout(mostrarComentario, 15000);
+		// Primer comentario después de 5s
+		timer = setTimeout(mostrarComentario, 5000);
 	});
 	onDestroy(() => {
 		clearTimeout(timer);
