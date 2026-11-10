@@ -15,7 +15,7 @@
 		setTimeout(() => {
 			visible = false;
 			mascotState.set('idle');
-		}, 5000);
+		}, 10000);
 		// Programar siguiente comentario (30-60s)
 		const delay = 30000 + Math.random() * 30000;
 		timer = setTimeout(mostrarComentario, delay);
@@ -43,10 +43,10 @@
 <style>
 	.volt-comentario {
 		position: fixed;
-		bottom: 150px;
-		right: 20px;
+		bottom: 260px;
+		right: 60px;
 		z-index: 50;
-		max-width: 320px;
+		max-width: 480px;
 		animation: entraComentario 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 	}
 
@@ -54,9 +54,9 @@
 		background: rgba(15, 23, 42, 0.92);
 		border: 1px solid rgba(255, 255, 255, 0.15);
 		border-radius: 16px;
-		padding: 12px 16px;
+		padding: 18px 24px;
 		color: var(--color-text);
-		font-size: 14px;
+		font-size: 18px;
 		font-style: italic;
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 		backdrop-filter: blur(8px);

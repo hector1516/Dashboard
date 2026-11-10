@@ -72,7 +72,6 @@
 
 <!-- Mascota Volt (esquina inferior derecha, todas las pantallas) -->
 <div class="wobnimo-kiosk" bind:this={mascotContainer}>
-	<span class="mascot-fallback">🤖</span>
 </div>
 
 <!-- Comentarios aleatorios de Volt -->
@@ -81,10 +80,10 @@
 <style>
 	.wobnimo-kiosk {
 		position: fixed;
-		bottom: 20px;
-		right: 20px;
-		width: 120px;
-		height: 120px;
+		bottom: 80px;
+		right: 60px;
+		width: 180px;
+		height: 180px;
 		z-index: 9999;
 		pointer-events: none;
 	}

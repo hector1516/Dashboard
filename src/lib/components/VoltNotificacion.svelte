@@ -44,7 +44,7 @@
 			mascotState.set('thinking');
 		}
 
-		const seg = aviso.segundos ?? 10;
+		const seg = aviso.segundos ?? 15;
 		const t0 = Date.now();
 		const paso = () => {
 			restante = Math.max(0, seg - Math.floor((Date.now() - t0) / 1000));
