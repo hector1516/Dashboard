@@ -20,6 +20,7 @@ import { onMount, onDestroy } from 'svelte';
 import { cargarSnapshot, pedirBuild, snapshotVacio } from '$lib/kiosk/api';
 import type { EventoKiosko, PantallaDef, Snapshot } from '$lib/kiosk/types';
 import { mascotState } from '$lib/kiosk/mascot';
+import { currentScreen } from '$lib/kiosk/currentScreen';
 import { esLluvioso, esNublado, esSoleado, haceCuanto, nombreDia, nombreMes } from '$lib/kiosk/format';
 import {
 	initAudio, tocar, apagar, setVolumen, getVolumen, estaSilenciado,
@@ -159,6 +160,11 @@ function escalar() {
 
 /* ── Derivados ────────────────────────────────────────────────── */
 const pantalla = $derived(PANTALLAS[orden[pos] ?? 0] ?? PANTALLAS[0]);
+
+// Actualizar store de pantalla actual para Volt
+$effect(() => {
+	currentScreen.set(pantalla.id);
+});
 const periodo = $derived(periodoDelDia());
 const clima = $derived(datos.clima?.actual);
 const origenBuena = $derived(clima?.temperatura != null);

@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { mascotState } from '$lib/kiosk/mascot';
-	import { getVoltComentario } from '$lib/kiosk/voltComentarios';
+	import { getVoltComentario, getVoltComentarioPantalla } from '$lib/kiosk/voltComentarios';
 	import { pauseWalking, resumeWalking, voltPosition } from '$lib/kiosk/voltWalker';
+	import { currentScreen } from '$lib/kiosk/currentScreen';
 
 	// Muestra comentarios aleatorios de Volt cada 30-60 segundos
 	let visible = $state(false);
@@ -11,10 +12,19 @@
 	let bubbleX = $state(0);
 	let bubbleY = $state(0);
 
-	const REACCIONES = ['💬', '🤔', '😊', '⚡', '🤖', '💡', '🎯', '👀', '🔥', '✨'];
+	const REACCIONES = ['💬', '🤔', '😊', '⚡', '🤖', '💡', '🎯', '👀', '🔥', '✨', '🎉', '☕'];
 
 	function mostrarComentario() {
-		texto = getVoltComentario('idle');
+		// 50% probabilidad de comentario sobre la pantalla actual, 50% idle/usuario
+		const screen = $currentScreen;
+		if (Math.random() < 0.5 && screen) {
+			texto = getVoltComentarioPantalla(screen);
+		} else {
+			// Mezclar entre idle y comentarios de usuarios
+			const tipos = ['idle', 'entrada', 'salida', 'usuario_nuevo', 'usuario_inactivo'];
+			const tipo = tipos[Math.floor(Math.random() * tipos.length)];
+			texto = getVoltComentario(tipo);
+		}
 		reaccion = REACCIONES[Math.floor(Math.random() * REACCIONES.length)];
 		visible = true;
 		pauseWalking();
