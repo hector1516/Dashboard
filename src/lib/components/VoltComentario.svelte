@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { mascotState } from '$lib/kiosk/mascot';
 	import { getVoltComentario } from '$lib/kiosk/voltComentarios';
+	import { pauseWalking, resumeWalking } from '$lib/kiosk/voltWalker';
 
 	// Muestra comentarios aleatorios de Volt cada 30-60 segundos
 	let visible = $state(false);
@@ -10,11 +11,13 @@
 	function mostrarComentario() {
 		texto = getVoltComentario('idle');
 		visible = true;
+		pauseWalking();
 		mascotState.set('speaking');
-		// Ocultar después de 12 segundos
+		// Ocultar despues de 12 segundos
 		setTimeout(() => {
 			visible = false;
 			mascotState.set('idle');
+			resumeWalking();
 		}, 12000);
 		// Programar siguiente comentario (10-20s)
 		const delay = 10000 + Math.random() * 10000;
@@ -23,7 +26,7 @@
 
 	import { onMount, onDestroy } from 'svelte';
 	onMount(() => {
-		// Primer comentario después de 5s
+		// Primer comentario despues de 5s
 		timer = setTimeout(mostrarComentario, 5000);
 	});
 	onDestroy(() => {
