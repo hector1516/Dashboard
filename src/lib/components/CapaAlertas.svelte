@@ -45,7 +45,7 @@
 	{#each banda as e (e.id)}
 		<div class="banda n-{e.nivel}" style="--c:{colorDe(e.nivel)}">
 			{#if e.imagen}
-				<img class="banda-img" src={e.imagen} alt="" />
+				<img class="banda-img" src={e.imagen} alt="" loading="lazy" />
 			{:else}
 				<span class="banda-ic">{e.icono}</span>
 			{/if}
@@ -62,7 +62,7 @@
 {#if toast}
 	<div class="toast n-{toast.nivel}" style="--c:{colorDe(toast.nivel)}">
 		{#if toast.imagen}
-			<img class="toast-img" src={toast.imagen} alt="" />
+			<img class="toast-img" src={toast.imagen} alt="" loading="lazy" />
 		{:else}
 			<span class="toast-ic">{toast.icono}</span>
 		{/if}

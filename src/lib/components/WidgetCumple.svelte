@@ -109,7 +109,7 @@
 				<div class="glow" aria-hidden="true"></div>
 				<div class="avatar">
 					{#if actual.avatar}
-						<img src={avatarSrc(actual.avatar)} alt="" />
+						<img src={avatarSrc(actual.avatar)} alt="" loading="lazy" />
 					{:else}
 						<span class="ic">{actual.icono}</span>
 					{/if}

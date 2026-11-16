@@ -63,7 +63,7 @@
 	{:else}
 		<div class="imagen-container">
 			{#key imagenActual}
-				<img src={imagenActual} alt="Sabias que... tutorial {indice + 1} de {IMAGENES.length}" class="tutorial-img" />
+				<img src={imagenActual} alt="Sabias que... tutorial {indice + 1} de {IMAGENES.length}" class="tutorial-img" loading="lazy" />
 			{/key}
 		</div>
 

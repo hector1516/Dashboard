@@ -79,7 +79,7 @@ import MovingBorder from '$lib/components/effects/MovingBorder.svelte';
 				<div class="lider-top">
 					<div class="avatar-lider" style={`--nivel-color:${lider.color_nivel || '#FFD700'}`}>
 						{#if lider.avatar}
-							<img src={avatarSrc(lider.avatar)} alt="" />
+							<img src={avatarSrc(lider.avatar)} alt="" loading="lazy" />
 						{:else}
 							{iniciales(lider.nickname || lider.nombre)}
 						{/if}
@@ -178,7 +178,7 @@ import MovingBorder from '$lib/components/effects/MovingBorder.svelte';
 
 							<div class="avatar-med" style={`--nivel-color:${r.color_nivel || '#FFD700'}`}>
 								{#if r.avatar}
-									<img src={avatarSrc(r.avatar)} alt="" />
+									<img src={avatarSrc(r.avatar)} alt="" loading="lazy" />
 								{:else}
 									{iniciales(r.nickname || r.nombre)}
 								{/if}

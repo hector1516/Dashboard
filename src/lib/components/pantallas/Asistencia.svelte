@@ -121,7 +121,7 @@
 					<div class="cabeza">
 						<div class="avatar">
 							{#if p.foto ?? p.avatar}
-								<img src={avatarSrc(p.foto ?? p.avatar)} alt="" />
+								<img src={avatarSrc(p.foto ?? p.avatar)} alt="" loading="lazy" />
 							{:else}
 								<div class="ph">{iniciales(p.nombre)}</div>
 							{/if}

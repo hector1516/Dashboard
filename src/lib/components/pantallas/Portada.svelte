@@ -39,7 +39,7 @@
 
 <div class="screen">
 	{#if img?.hay && img.ruta}
-		<img class="fondo" src={img.ruta} alt="" />
+		<img class="fondo" src={img.ruta} alt="" loading="lazy" />
 
 		<!--
 			El velo es para que el título se lea sobre CUALQUIER imagen: una foto

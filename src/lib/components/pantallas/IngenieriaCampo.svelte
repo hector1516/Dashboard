@@ -57,7 +57,7 @@
 
 <div class="campo">
 	{#if mapa}
-		<img class="mapa" src={mapa} alt="Mapa con la ubicación de los ingenieros en campo" />
+		<img class="mapa" src={mapa} alt="Mapa con la ubicación de los ingenieros en campo" loading="lazy" />
 
 		<!--
 			Capa de efectos. Va ENCIMA del mapa y NO dibuja pines: sólo anillos que

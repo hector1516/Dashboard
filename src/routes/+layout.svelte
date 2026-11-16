@@ -33,6 +33,7 @@
 	import { mascotState } from '$lib/kiosk/mascot';
 	import { voltPosition, startWalking, stopWalking, prefersReducedMotion } from '$lib/kiosk/voltWalker';
 	import { onMount, onDestroy } from 'svelte';
+	import { logError, ERROR_CODES } from '$lib/audit.js';
 
 	let mascotContainer: HTMLDivElement | null = $state(null);
 	let mascotInstance: any = null;
@@ -57,6 +58,15 @@
 
 	// Cargar Wobnimo al montar
 	onMount(async () => {
+		// Captura global de errores del kiosco (DSH-UI-001 / DSH-NET-001)
+		if (typeof window !== 'undefined') {
+			window.addEventListener('error', (ev) => {
+				try { logError(ERROR_CODES.UI_ERROR, 'layout', ev.message || 'window error', { filename: ev.filename, lineno: ev.lineno }); } catch {}
+			});
+			window.addEventListener('unhandledrejection', (ev) => {
+				try { logError(ERROR_CODES.NET_ERROR, 'layout', String(ev.reason?.message || ev.reason || 'unhandled rejection'), { reason: String(ev.reason) }); } catch {}
+			});
+		}
 		try {
 			const [wobnimo, voltModule] = await Promise.all([
 				import('https://cdn.jsdelivr.net/npm/wobnimo@0.2/dist/wobnimo.js'),

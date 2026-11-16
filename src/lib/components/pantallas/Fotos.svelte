@@ -66,7 +66,7 @@
 <div class="screen sin-padding">
 	{#if actual && visible}
 		<div class="marco">
-			<img class="foto" src={visible} alt={actual.Cliente} onload={() => precargar(idx + 1)} />
+			<img class="foto" src={visible} alt={actual.Cliente} onload={() => precargar(idx + 1)} loading="lazy" />
 			<div class="velo"></div>
 			<div class="credito">
 				<div class="cliente">{actual.Cliente}</div>

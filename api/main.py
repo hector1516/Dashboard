@@ -302,6 +302,34 @@ def healthz():
     )
 
 
+@app.post("/api/debug/log")
+async def debug_log(request: Request):
+    """Registra un error de frontend del kiosco (sin sesion)."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    try:
+        from db import get_connection
+        import json as _j
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO HUB_DebugLog (Codigo, App, Modulo, Mensaje, Contexto, Url, Usuario, Fecha) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, GETDATE())",
+            (str(body.get("codigo", ""))[:30], "DSH", str(body.get("modulo", ""))[:10],
+             str(body.get("mensaje", ""))[:500],
+             _j.dumps(body.get("contexto")) if body.get("contexto") else None,
+             str(body.get("url", ""))[:500], "dashboard"),
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:100]}
+
+
 @app.get("/")
 def raiz():
     return {
