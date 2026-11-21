@@ -1,7 +1,8 @@
 {
   "app": "dashboard",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "cambios": [
+    "⚡ Las imágenes de «sabías que» pesaban 21 MB y ahora pesan 3 MB: el tablero abre más rápido.",
     "🏆 Legends en pantalla grande: líder de la semana, top 10 y puntos de semana y temporada.",
     "💵 El ranking ahora premia el dinero que entra: cotizaciones pagadas, entregadas y cobranza.",
     "🔥 Cada persona muestra su nivel, su racha y cuántos logros lleva.",

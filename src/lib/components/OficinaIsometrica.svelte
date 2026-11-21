@@ -37,7 +37,7 @@
 <div class="isometric-scene {climaClass}">
 	<!-- Imagen real de la oficina -->
 	<div class="office-image-container">
-		<img src="/images/oficina-eccsa.png" alt="Oficina ECCSA" class="office-image" loading="lazy" />
+		<img src="/images/oficina-eccsa.webp" alt="Oficina ECCSA" class="office-image" loading="lazy" />
 	</div>
 
 	<!-- Efectos climáticos superpuestos -->
