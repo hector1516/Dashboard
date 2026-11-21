@@ -1,5 +1,9 @@
 # Dashboard ECCSA
 
+> ⚠️ **LEGACY (ServerVM `10.188.141.31`):** lo que sigue describe el host
+> viejo, que **ya no se usa**. Las apps se despliegan en WebbApps con Arcane
+> (ver `AGENTS.md` de la raíz, §2). **No ejecutes estos pasos en ServerVM.**
+
 **Centro de Operaciones de la oficina.** Pantalla de 1920×1080 en la TV del
 pasillo: 10 paneles que rotan solos, con avisos en vivo y sonido, y que
 **sigue funcionando cuando se cae la red**.

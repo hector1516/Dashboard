@@ -1,5 +1,9 @@
 # AGENTS.md · Dashboard ECCSA (kiosco de la oficina)
 
+> ⚠️ **LEGACY (ServerVM `10.188.141.31`):** lo que sigue describe el host
+> viejo, que **ya no se usa**. Las apps se despliegan en WebbApps con Arcane
+> (ver `AGENTS.md` de la raíz, §2). **No ejecutes estos pasos en ServerVM.**
+
 Pantalla de KPIs de Full HD que vive en la TV de la oficina. Es una **app
 independiente**: no depende de Field, ni de Admon, ni del HUB. Lee de
 `ECCSA_Admon` (la misma base de datos de siempre), pero lo hace **por su
