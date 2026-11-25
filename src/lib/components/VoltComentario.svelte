@@ -175,25 +175,29 @@
 		width: 40px;
 		height: 40px;
 		border-radius: 50%;
-		background: rgba(255, 107, 0, 0.2);
-		border: 2px solid rgba(255, 107, 0, 0.5);
+		/* Rojo ECCSA muy suave: el avatar pertenece al globo, no compite. */
+		background: rgba(228, 0, 43, 0.1);
+		border: 1px solid rgba(228, 0, 43, 0.18);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		font-size: 1.4rem;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+		box-shadow: 0 4px 12px rgba(18, 20, 26, 0.1);
 	}
 
+	/* Cristal como las celdas del bento: blanco translúcido, no un bloque
+	   oscuro. El texto es tinta con algo de transparencia para que se lea
+	   «encima» de la tarjeta y no pintado sobre ella. */
 	.comentario-bubble {
-		background: rgba(15, 23, 42, 0.94);
-		border: 1px solid rgba(255, 255, 255, 0.15);
-		border-radius: 16px;
+		background: rgba(255, 255, 255, 0.72);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		border: 1px solid rgba(18, 20, 26, 0.08);
+		border-radius: 18px;
 		padding: 14px 20px;
-		color: var(--color-text);
-		font-size: 16px;
-		font-style: italic;
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-		backdrop-filter: blur(8px);
+		color: #12141a;
+		font-size: 20px;
+		box-shadow: 0 10px 30px rgba(18, 20, 26, 0.1);
 		display: flex;
 		align-items: flex-start;
 		gap: 8px;
@@ -208,7 +212,8 @@
 	}
 
 	.comentario-texto {
-		line-height: 1.4;
+		line-height: 1.35;
+		opacity: 0.85;
 		animation: fundido 0.35s ease both;
 	}
 
@@ -220,9 +225,9 @@
 	.comentario-flecha {
 		width: 0;
 		height: 0;
-		border-left: 8px solid transparent;
-		border-right: 8px solid transparent;
-		border-top: 8px solid rgba(15, 23, 42, 0.94);
+		border-left: 9px solid transparent;
+		border-right: 9px solid transparent;
+		border-top: 9px solid rgba(255, 255, 255, 0.72);
 		margin-top: -1px;
 	}
 

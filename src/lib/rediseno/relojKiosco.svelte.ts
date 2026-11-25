@@ -22,7 +22,7 @@
 import { haceCuanto, nombreDia, nombreMes } from '$lib/kiosk/format';
 
 export interface RelojEntrada {
-	/** Hora `HH:MM` ya formateada. */
+	/** Hora en 12 h ya formateada (`5:34 p.m.`). */
 	reloj?: string;
 	/** Fecha larga (`miércoles 25 de noviembre`). */
 	fecha?: string;
@@ -34,9 +34,13 @@ export interface RelojEntrada {
 
 const dos = (n: number) => String(n).padStart(2, '0');
 
-/** «14:09». */
+/** «5:34 p.m.». 12 h con a.m./p.m., como se lee un reloj de pared; la
+ *  medianoche es `12:00 a.m.` y el mediodía `12:00 p.m.`. */
 function horaCorta(d: Date): string {
-	return `${dos(d.getHours())}:${dos(d.getMinutes())}`;
+	const h24 = d.getHours();
+	const h = h24 % 12 === 0 ? 12 : h24 % 12;
+	const sufijo = h24 < 12 ? 'a.m.' : 'p.m.';
+	return `${h}:${dos(d.getMinutes())} ${sufijo}`;
 }
 
 /** «miércoles 25 de noviembre». Se arma a mano: `toLocaleDateString`

@@ -222,7 +222,7 @@
 	reloj={k.hora}
 	fecha={k.fecha}
 	antiguedad={k.antiguedad}
-	sinFoto={datos?.pendientes?.vales ?? null}
+	temperatura={datos?.clima?.actual?.temperatura}
 	posicion={posicion ?? '—'}
 	volt={linea}
 	degradado={datos?.degradado ?? []}

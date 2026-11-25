@@ -13,14 +13,14 @@
 	interface Props {
 		/** Nombre de la pantalla que se está viendo. */
 		titulo: string;
-		/** Hora del kiosco, ya formateada (`12:29`). */
+		/** Hora del kiosco, ya formateada en 12 h (`5:34 p.m.`). */
 		reloj: string;
 		/** Fecha larga, ya formateada (`miércoles 25 de noviembre`). */
 		fecha: string;
 		/** Cuánto hace que se generó el snapshot (`datos de hace 1 min`). */
 		antiguedad: string;
-		/** Vales sin foto. `null` = no se sabe (snapshot sin el bloque). */
-		sinFoto: number | null;
+		/** Temperatura de ahora, a la derecha del reloj. Sin dato no se pinta. */
+		temperatura?: number | null;
 		/** Posición en la rotación (`1/9`). */
 		posicion: string;
 		/** Bloques degradados del snapshot (`['bd']`, `['clima']`…). */
@@ -34,7 +34,7 @@
 		reloj,
 		fecha,
 		antiguedad,
-		sinFoto,
+		temperatura = null,
 		posicion,
 		degradado = [],
 		volt = '',
@@ -61,7 +61,10 @@
 <div class="marco">
 	<header class="top">
 		<div class="marca">
-			<img src="/icon-192x192.png" alt="" width="38" height="38" />
+			<!-- La marca, no el icono de la app: el engranaje ECCSA a 56 px,
+			     sin marco redondeado, y el nombre al lado. Los
+			     `icon-*.png` del proyecto siguen siendo placeholders. -->
+			<img src="/eccsa-mark.svg" alt="ECCSA" width="56" height="56" />
 			<b>ECCSA</b>
 		</div>
 		<span class="sep"></span>
@@ -69,15 +72,16 @@
 			<div class="pant">{titulo}</div>
 			<div class="fecha">{fecha}</div>
 		</div>
-		<div class="reloj">{reloj}</div>
+		<div class="centro">
+			<div class="reloj">{reloj}</div>
+			{#if temperatura != null && Number.isFinite(temperatura)}
+				<span class="sep-temp"></span>
+				<div class="temp">{temperatura}°</div>
+			{/if}
+		</div>
 		<div class="der">
 			<div class="chip punto" class:ambar={hayDegradado || viejo}>
 				{antiguedad}
-			</div>
-			<!-- Rojo solo si hay algo pendiente. Con `null` (bloque ausente) la
-			     píldora dice «—» y no se pinta: no es un cero. -->
-			<div class="chip" class:rojo={sinFoto != null && sinFoto > 0}>
-				{sinFoto == null ? '—' : sinFoto} sin foto
 			</div>
 			<div class="chip borde">{posicion}</div>
 		</div>
@@ -125,9 +129,10 @@
 		gap: 12px;
 	}
 	.marca img {
-		width: 38px;
-		height: 38px;
-		border-radius: 11px;
+		width: 56px;
+		height: 56px;
+		/* Sin marco redondeado: es la marca, no el icono de una app. */
+		object-fit: contain;
 	}
 	.marca b {
 		font-size: 22px;
@@ -160,16 +165,38 @@
 		opacity: 0.5;
 	}
 
-	.reloj {
+	.centro {
 		position: absolute;
 		left: 50%;
 		top: 12px;
 		transform: translateX(-50%);
+		display: flex;
+		align-items: baseline;
+		gap: 16px;
+	}
+	.reloj {
 		font-size: 48px;
 		font-weight: 900;
 		line-height: 1.1;
 		letter-spacing: -1.5px;
 		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	/* Separador fino entre la hora y la temperatura. */
+	.sep-temp {
+		align-self: center;
+		width: 1px;
+		height: 30px;
+		background: rgba(18, 20, 26, 0.18);
+	}
+	.temp {
+		font-size: 34px;
+		font-weight: 800;
+		line-height: 1.1;
+		letter-spacing: -1px;
+		font-variant-numeric: tabular-nums;
+		opacity: 0.85;
+		white-space: nowrap;
 	}
 
 	.der {
@@ -190,12 +217,6 @@
 		white-space: nowrap;
 		background: rgba(18, 20, 26, 0.06);
 		color: var(--k-tinta);
-	}
-	/* Rojo solo cuando hay algo pendiente: «0 sin foto» es una buena
-	   noticia y no se pinta como alarma. */
-	.chip.rojo {
-		background: var(--k-rojo);
-		color: #fff;
 	}
 	.chip.borde {
 		background: transparent;
