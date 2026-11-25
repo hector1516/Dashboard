@@ -1084,12 +1084,14 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 						{#key pantalla.id}
 							<!-- Con `?bento=1` estas dos pantallas usan el rediseño; el resto del
 							     kiosco sigue igual hasta la Fase 4. Sin el flag, `comprobantes`
-							     no está en la rotación (no tiene versión vieja que montar). -->
+							     no está en la rotación (no tiene versión vieja que montar), y sus
+							     dos ramas exigen `pantallaBento`: el día que el id entre sin el
+							     flag, la pantalla no se monta con la cabecera de producción. -->
 							{#if pantalla.id === 'clima'}<Clima {datos} />
 							{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
 							{:else if pantalla.id === 'combustible' && pantallaBento}<CombustibleBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'combustible'}<Combustible {datos} />
-							{:else if pantalla.id === 'comprobantes'}<ComprobantesBento {datos} posicion={posicionRotacion} />
+							{:else if pantalla.id === 'comprobantes' && pantallaBento}<ComprobantesBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'actividad'}<Actividad {datos} />
 							{:else if pantalla.id === 'tickets'}<Tickets {datos} />
 							{:else if pantalla.id === 'equipo'}<Equipo {datos} />
