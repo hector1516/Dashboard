@@ -7,6 +7,10 @@
 <script lang="ts">
 	import { recortar, num } from '$lib/kiosk/format';
 	import type { Snapshot, Ticket } from '$lib/kiosk/types';
+	// La tarjeta de ticket vive en `effects/` desde el rediseño; sin este import
+	// la pantalla vieja reventaba («TicketCard is not defined») y es la que se
+	// sigue viendo con `?clasico=1`.
+	import TicketCard from '$lib/components/effects/TicketCard.svelte';
 
 	interface Props { datos: Snapshot }
 	let { datos }: Props = $props();

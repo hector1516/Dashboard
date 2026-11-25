@@ -11,7 +11,6 @@ export const SCREEN_LABELS: Record<string, string> = {
 	equipo: 'Equipo',
 	portada: 'Portada',
 	uso_apps: 'Uso de Apps',
-	sabias_que: 'Sabias Que',
 	combustible: 'Combustible',
 	legends: 'Legends',
 	reportes: 'Reportes',

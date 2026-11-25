@@ -36,9 +36,10 @@ import CapaSalida from '$lib/components/CapaSalida.svelte';
 import CuentaRotacion from '$lib/components/CuentaRotacion.svelte';
 import WidgetCumple from '$lib/components/WidgetCumple.svelte';
 import Combustible from '$lib/components/pantallas/Combustible.svelte';
-// Rediseño bento (Fase 3): cada pantalla trae su propio `<Marco>`. Se montan
-// sólo con `datos` y con `?bento=1`; el reloj, la fecha y la antigüedad los
-// resuelve `relojKiosco` dentro del componente.
+// Rediseño bento: cada pantalla trae su propio `<Marco>`. Es el diseño por
+// defecto desde la 2.0; `?clasico=1` monta las pantallas viejas durante la
+// marcha atrás. El reloj, la fecha y la antigüedad los resuelve `relojKiosco`
+// dentro del componente.
 import CombustibleBento from '$lib/components/pantallas/bento/Combustible.svelte';
 import ComprobantesBento from '$lib/components/pantallas/bento/Comprobantes.svelte';
 import AsistenciaBento from '$lib/components/pantallas/bento/Asistencia.svelte';
@@ -63,7 +64,6 @@ import Actividad from '$lib/components/pantallas/Actividad.svelte';
 import Equipo from '$lib/components/pantallas/Equipo.svelte';
 import Portada from '$lib/components/pantallas/Portada.svelte';
 import UsoApps from '$lib/components/pantallas/UsoApps.svelte';
-import SabiasQue from '$lib/components/pantallas/SabiasQue.svelte';
 import SwarmRebuild from '$lib/components/SwarmRebuild.svelte';
 import LogoTraceLoader from '$lib/components/effects/LogoTraceLoader.svelte';
 
@@ -88,35 +88,42 @@ const SALIDA_AVISO_S = 10;       // cuenta regresiva de 10 s
 const SALIDA_POST_S = 45;        // el cartel de "18:30" dura 45 s
 
 /**
- * `?bento=1`: enciende las pantallas del rediseño (combustible y comprobantes).
- * Va detrás de un flag hasta la Fase 4, cuando el bento sustituya a todo el
- * kiosco: sin él, la pantalla se ve exactamente como antes.
+ * El bento es el diseño por defecto desde la 2.0: sin parámetros, las nueve
+ * pantallas de la rotación se pintan con su versión bento.
+ *
+ * `?clasico=1` deja el diseño viejo durante la semana de marcha atrás, y
+ * `?bento` se sigue aceptando como alias de «sin clásico» (es el flag con el
+ * que se revisó todo el rediseño): si vienen los dos, gana el bento. Un
+ * `?clasico=0` explícito no enciende el diseño viejo (en una dirección guardada
+ * en la TV no queremos que un 0 devuelva el kiosco de antes por sorpresa).
  *
  * Se lee la URL aquí y no en `leerParams()` porque la lista de pantallas se
  * arma justo abajo y necesita saber si entra «comprobantes».
  */
-const BENTO =
-	typeof location !== 'undefined' && new URLSearchParams(location.search).has('bento');
+const CONSULTA_URL =
+	typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
+const PEDIDO_CLASICO = CONSULTA_URL?.get('clasico') ?? null;
+const CLASICO =
+	(PEDIDO_CLASICO === '' || PEDIDO_CLASICO === '1') && !CONSULTA_URL?.has('bento');
 
 /**
- * Las pantallas de la rotación. Con `?bento=1` son 10: entra «Faltan
- * comprobantes», que todavía no tiene versión vieja. Sin el flag quedan las 9
- * de siempre —el bento no se publica fuera del flag—, así que `comprobantes`
- * sólo existe en la rotación cuando está encendido.
+ * Las pantallas de la rotación. Con el bento son 9: entra «Faltan
+ * comprobantes», que sólo tiene versión nueva. Con `?clasico=1` quedan 8 —las
+ * de siempre menos «Sabías que», retirada en la 2.0—, así que `comprobantes`
+ * sólo existe en la rotación cuando el bento está encendido.
  */
 const PANTALLAS: PantallaDef[] = [
 	{ id: 'asistencia', icono: '👥', label: 'Asistencia de hoy' },
 	{ id: 'clima', icono: '🌤️', label: 'Clima' },
 	{ id: 'combustible', icono: '⛽', label: 'Combustible y vales' },
-	...(BENTO
-		? [{ id: 'comprobantes', icono: '🧾', label: 'Faltan comprobantes' }]
-		: []),
+	...(CLASICO
+		? []
+		: [{ id: 'comprobantes', icono: '🧾', label: 'Faltan comprobantes' }]),
 	{ id: 'portada', icono: '📸', label: 'Portada del mes' },
 	{ id: 'actividad', icono: '📊', label: 'Actividad' },
 	{ id: 'tickets', icono: '🧾', label: 'Tickets OxxoGas' },
 	{ id: 'equipo', icono: '👥', label: 'Equipo' },
-	{ id: 'uso_apps', icono: '📱', label: 'Uso de Apps' },
-	{ id: 'sabias_que', icono: '💡', label: 'Sabías que...' }
+	{ id: 'uso_apps', icono: '📱', label: 'Uso de Apps' }
 ];
 
 /* ── Estado ───────────────────────────────────────────────────── */
@@ -190,28 +197,26 @@ function escalar() {
 
 /* ── Derivados ────────────────────────────────────────────────── */
 const pantalla = $derived(PANTALLAS[orden[pos] ?? 0] ?? PANTALLAS[0]);
-/** La posición en la rotación (`6/10`), la misma para el header y el bento. */
+/** La posición en la rotación (`6/9`), la misma para el header y el bento. */
 const posicionRotacion = $derived(`${Math.min(pos + 1, orden.length)}/${orden.length}`);
 /**
- * `?bento=1` en una de las pantallas rediseñadas (combustible, comprobantes,
- * asistencia, equipo, actividad, tickets, clima, portada y uso de apps). Cada
- * una trae su propio `<Marco>`, que ya pinta marca, título, reloj y chips: la
- * barra de producción (`HdrKiosco`) NO se monta, o se verían dos cabeceras. Es
- * la MISMA condición la que decide el componente y la cabecera, para que nunca
- * haya una pantalla sin barra y con contenido viejo (ni al revés).
+ * Todas las pantallas de la rotación tienen versión bento. La lista se deja
+ * explícita —y no `!CLASICO` a secas— para que un id nuevo sin componente no
+ * herede el `Marco` del bento ni una pantalla vieja quede con dos cabeceras:
+ * es la MISMA condición la que decide el componente, la cabecera y el pie.
  */
-const pantallaBento = $derived(
-	BENTO &&
-		(pantalla.id === 'combustible' ||
-			pantalla.id === 'comprobantes' ||
-			pantalla.id === 'asistencia' ||
-			pantalla.id === 'equipo' ||
-			pantalla.id === 'actividad' ||
-			pantalla.id === 'tickets' ||
-			pantalla.id === 'clima' ||
-			pantalla.id === 'portada' ||
-			pantalla.id === 'uso_apps')
-);
+const CON_BENTO = new Set([
+	'asistencia',
+	'clima',
+	'combustible',
+	'comprobantes',
+	'portada',
+	'actividad',
+	'tickets',
+	'equipo',
+	'uso_apps'
+]);
+const pantallaBento = $derived(!CLASICO && CON_BENTO.has(pantalla.id));
 
 // Actualizar store de pantalla actual para Volt
 $effect(() => {
@@ -1071,8 +1076,8 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 		<!-- Escenario fijo 1920×1080 escalado al viewport. Determinista. -->
 		<div class="escenario" bind:this={escenarioRef}>
 			<div class="pantalla-caja" class:saliendo class:entrando={!saliendo}>
-				<!-- Las pantallas del rediseño traen su propio marco: con ellas no
-				     se monta la barra de producción (serían dos cabeceras). -->
+				<!-- Las pantallas bento traen su propio marco: con ellas no se monta
+				     la barra de producción (serían dos cabeceras). -->
 				{#if !pantallaBento}
 					<HdrKiosco
 						pantallaIcono={pantalla.icono}
@@ -1099,11 +1104,13 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 						</div>
 					{:else}
 						{#key pantalla.id}
-							<!-- Con `?bento=1` estas pantallas usan el rediseño; el resto del
-							     kiosco sigue igual hasta la Fase 4. Sin el flag, `comprobantes`
-							     no está en la rotación (no tiene versión vieja que montar), y sus
-							     dos ramas exigen `pantallaBento`: el día que el id entre sin el
-							     flag, la pantalla no se monta con la cabecera de producción. -->
+							<!-- Cada pantalla de la rotación tiene sus dos versiones: la
+							     bento —la de por defecto— y la vieja, que sólo se monta con
+							     `?clasico=1`. `comprobantes` sólo existe en la rotación con
+							     el bento, así que aquí no necesita rama vieja. El `else`
+							     final no es decorativo: si un id se agregara a `PANTALLAS`
+							     sin rama, la pantalla lo diría en vez de quedarse en blanco
+							     (una TV en negro parece un kiosco caído). -->
 							{#if pantalla.id === 'clima' && pantallaBento}<ClimaBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'clima'}<Clima {datos} />
 							{:else if pantalla.id === 'asistencia' && pantallaBento}<AsistenciaBento {datos} posicion={posicionRotacion} />
@@ -1121,7 +1128,10 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 							{:else if pantalla.id === 'portada'}<Portada {datos} />
 							{:else if pantalla.id === 'uso_apps' && pantallaBento}<UsoAppsBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'uso_apps'}<UsoApps />
-							{:else if pantalla.id === 'sabias_que'}<SabiasQue />
+							{:else}
+								<div class="sin-pantalla">
+									Sin pantalla para «{pantalla.label}».
+								</div>
 							{/if}
 						{/key}
 					{/if}
@@ -1223,6 +1233,15 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 	}
 
 	.negro { position: fixed; inset: 0; background: #000; z-index: 999; }
+
+	/* Guarda de la rotación: una pantalla sin rama se anuncia (letra grande,
+	   sin scroll) en vez de dejar el área en blanco, que en la TV se lee como
+	   un kiosco caído. */
+	.sin-pantalla {
+		display: flex; align-items: center; justify-content: center;
+		height: 100%; padding: 0 24px; text-align: center;
+		font-size: 28px; font-weight: 600; color: #94a3b8;
+	}
 
 	.cargando { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; color: #475569; animation: fadeIn 0.3s ease; }
 	.cargando-texto { font-size: 1.2rem; font-weight: 600; color: #94a3b8; }

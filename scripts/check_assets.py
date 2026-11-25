@@ -1,8 +1,9 @@
 """Comprueba que las imágenes de Dashboard no se vayan de peso.
 
-- **Falla** si una imagen de `sabias_que/` o `images/` pasa de MAX_KB, si queda
-  un `.png` en esas carpetas o si la lista de `SabiasQue.svelte` apunta a un
-  archivo que no existe.
+- **Falla** si una imagen de `sabias_que/` o `images/` pasa de MAX_KB o si queda
+  un `.png` en esas carpetas.
+- Mientras exista `SabiasQue.svelte` (la pantalla se retiró en la 2.0, el
+  archivo no), también falla si su lista apunta a un archivo que no existe.
 
 Uso:  python scripts/check_assets.py     (sale con 1 si falla)
 """
@@ -21,6 +22,9 @@ CONTROLADAS = ("sabias_que", "images")
 
 
 def rutas_de_sabiasque():
+    """Rutas que lista la pantalla retirada. Sin el archivo no hay lista."""
+    if not os.path.isfile(SABIASQUE):
+        return None
     texto = io.open(SABIASQUE, encoding="utf-8").read()
     return re.findall(r"'(/sabias_que/[^']+)'", texto)
 
@@ -43,11 +47,12 @@ def main():
                 problemas.append(f"{carpeta}/{f}: quedó el PNG original")
 
     rutas = rutas_de_sabiasque()
-    if not rutas:
-        problemas.append("no pude leer la lista de imágenes de SabiasQue.svelte")
-    for ruta in rutas:
-        if not os.path.isfile(os.path.join(STATIC, ruta.lstrip("/"))):
-            problemas.append(f"SabiasQue.svelte apunta a {ruta}, que no existe")
+    if rutas is not None:
+        if not rutas:
+            problemas.append("no pude leer la lista de imágenes de SabiasQue.svelte")
+        for ruta in rutas:
+            if not os.path.isfile(os.path.join(STATIC, ruta.lstrip("/"))):
+                problemas.append(f"SabiasQue.svelte apunta a {ruta}, que no existe")
 
     for p in problemas:
         print(f"[PESO ] {p}")

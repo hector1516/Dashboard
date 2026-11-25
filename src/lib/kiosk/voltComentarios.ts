@@ -215,15 +215,6 @@ const COMENTARIOS: Record<string, string[]> = {
 		'Uso de aplicaciones. El cafe app no cuenta... pero deberia.',
 	],
 
-	screen_sabias_que: [
-		'Sabias que... probablemente no. Pero ahora si.',
-		'Dato curioso: como el cafe, pero para el cerebro.',
-		'Sabias que... el cafe es mejor que los datos curiosos. Pero aun asi.',
-		'Dato del dia. Para presumir en la comida.',
-		'Sabias que... yo se todo. Pero solo comparto un poco.',
-		'Dato curioso: porque el conocimiento es poder... y cafe.',
-	],
-
 	screen_combustible: [
 		'Combustible: el auto come mas que yo... y eso es mucho decir.',
 		'Combustible registrado. El auto es feliz. Yo no tanto.',
