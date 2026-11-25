@@ -159,11 +159,11 @@
 					<div class="sub">sin datos del snapshot</div>
 				{:else}
 					<div class="cifra ancla"><Numero valor={participantes} formato={entero} /></div>
-					<div class="sub"><b>en ECCSA Legends</b> esta semana</div>
+					<div class="sub"><b>en ECCSA Legends</b></div>
 					{#if puntos != null && puntos > 0}
-						<div class="delta">▲ {miles(puntos)} pts <span>entre todos</span></div>
+						<div class="delta">▲ {miles(puntos)} pts <span>esta semana</span></div>
 					{:else}
-						<div class="delta neutro"><span>sin puntos registrados esta semana</span></div>
+						<div class="delta neutro"><span>sin puntos esta semana</span></div>
 					{/if}
 				{/if}
 			</div>
