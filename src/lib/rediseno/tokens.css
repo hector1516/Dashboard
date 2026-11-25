@@ -1,0 +1,20 @@
+/* Tokens del rediseño bento. Valores copiados de la maqueta aprobada:
+   docs/superpowers/specs/2026-11-25-dashboard-rediseno-bento-mockup.html
+   Archivo de solo variables: no importa ni pisa el CSS del ECCSA-Shell. */
+:root {
+	--k-base: #e9ecf1;
+	--k-sup: #ffffff;
+	--k-tinta: #12141a;
+	--k-tinta-suave: rgba(18, 20, 26, 0.62);
+	--k-rojo: #e4002b;
+	--k-verde: #0e8f7e;
+	--k-ambar: #d99a00;
+	--k-radio: 20px;
+	--k-gap: 24px;
+	--k-marco: 76px;
+	--k-pie: 42px;
+	--k-f-strip: 14px;
+	--k-f-fila: 28px;
+	--k-f-cifra: 96px;
+	--k-f-ancla: 214px;
+}
