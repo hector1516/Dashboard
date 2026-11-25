@@ -94,7 +94,7 @@ Sin base de datos no hay nada que ver: la pantalla muestra "sin datos". Para
 desarrollar con datos, `KIOSKO_DATA=/tmp/kiosko` + `python worker/snapshotter.py
 --una-vez` (ver `AGENTS.md`).
 
-Parámetros útiles: `?pantalla=legends` (una pantalla fija), `?sinanim=1` (sin
+Parámetros útiles: `?clasico=1` (vuelve al diseño anterior), `?pantalla=<id>` (una pantalla fija), `?sinanim=1` (sin
 animaciones, para capturas), `?debug=1` (geometría de la pantalla en el DOM).
 
 ## Documentación

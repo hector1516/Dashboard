@@ -122,6 +122,10 @@ Efectos caros (confeti, ken-burns) se apagan solos si los fps caen de 40
 
 | Parámetro | Qué hace |
 |---|---|
+| `?clasico=1` | vuelve al diseño anterior (marcha atrás temporal) |
+
+| Parámetro | Qué hace |
+|---|---|
 | `?pantalla=legends` | deja esa pantalla fija, sin rotación |
 | `?sinrotacion=1` | quita la rotación, se queda en la primera |
 | `?sinanim=1` | sin animaciones de entrada (para capturas) |

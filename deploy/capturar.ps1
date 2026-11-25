@@ -36,7 +36,7 @@ $Banderas = @(
 )
 
 $Pantallas = if ($Pantalla) { @($Pantalla) } else {
-    @("pulso","combustible","legends","reportes","tickets","celebraciones","metricas","fotos","clima","notas")
+    @("asistencia","clima","combustible","comprobantes","portada","actividad","tickets","equipo","uso_apps")
 }
 
 foreach ($p in $Pantallas) {
