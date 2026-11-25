@@ -42,6 +42,16 @@ class ArmarTest(unittest.TestCase):
         self.assertIsNone(r["ultimos"][0]["monto"])
         self.assertEqual(r["monto"], 0)
 
+    def test_monto_agregado_nulo_se_queda_none(self):
+        """`SUM(CASE ... THEN MontoEmitido END)` da NULL si nadie tiene monto.
+
+        Ese NULL tiene que sobrevivir al bloque: convertirlo a 0 haría que el
+        ancla pintara «$0» cuando en realidad no hay ningún monto emitido.
+        """
+        r = armar_pendientes({"n": 3, "monto": None}, [], "2026-11-23")
+        self.assertIsNone(r["monto"])
+        self.assertEqual(r["vales"], 3)
+
     def test_sin_pendientes(self):
         r = armar_pendientes({}, [], "2026-11-23")
         self.assertEqual(r["vales"], 0)

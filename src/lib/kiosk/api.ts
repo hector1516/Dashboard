@@ -52,7 +52,9 @@ export function snapshotVacio(build = 'dev'): Snapshot {
 			tasa_firma: 0
 		},
 		asistencia: { personas: [], total: 0, dentro: 0, salieron: 0 },
-		pendientes: { vales: 0, monto: 0, desde: '', ultimos: [] },
+		// `pendientes` NO se rellena aquí a propósito: un objeto con ceros haría
+		// que el ancla dijera «Todo al día» sin saber nada. El tipo lo declara
+		// opcional y las pantallas lo pintan «—» cuando falta.
 		cotizaciones_lista: {
 			total: 0,
 			verdes: 0,

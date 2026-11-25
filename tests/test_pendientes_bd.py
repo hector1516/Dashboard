@@ -23,7 +23,9 @@ os.environ.setdefault("HUB_DB_PASSWORD", "pruebas")
 
 try:
     import datos
-except Exception as _exc:          # sin pymssql / sin entorno: se salta
+except ModuleNotFoundError as _exc:   # solo se salta si falta pymssql
+    if _exc.name != "pymssql":
+        raise
     datos = None
     _MOTIVO = str(_exc)
 

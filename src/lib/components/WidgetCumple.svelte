@@ -24,8 +24,17 @@
 	import { avatarSrc } from '$lib/kiosk/api';
 	import type { Cumpleanero, Aniversariero, Snapshot } from '$lib/kiosk/types';
 
-	interface Props { datos: Snapshot }
-	let { datos }: Props = $props();
+	interface Props {
+		datos: Snapshot;
+		/**
+		 * En las pantallas bento el `Marco` ocupa todo el alto, así que el
+		 * widget a 66 px tapaba el rótulo del ancla (la esquina de arriba a la
+		 * izquierda). Ahí se pinta compacto —avatar y nombre, sin título ni
+		 * detalle— y baja a la banda vacía sobre la cifra del ancla.
+		 */
+		bento?: boolean;
+	}
+	let { datos, bento = false }: Props = $props();
 
 	const ROTAR_MS = 15_000;
 
@@ -103,7 +112,7 @@
 </script>
 
 {#if actual}
-	<div class="widget {actual.clase}" class:visible aria-hidden="true">
+	<div class="widget {actual.clase}" class:visible class:bento aria-hidden="true">
 		{#key actual.clave}
 			<div class="caja">
 				<div class="glow" aria-hidden="true"></div>
@@ -115,12 +124,16 @@
 					{/if}
 				</div>
 				<div class="txt">
-					<div class="titulo">
-						<span class="ic-mini">{actual.icono}</span>{actual.titulo}
-					</div>
+					{#if !bento}
+						<div class="titulo">
+							<span class="ic-mini">{actual.icono}</span>{actual.titulo}
+						</div>
+					{/if}
 					<div class="nombre">{actual.nombre}</div>
 				</div>
-				<div class="detalle">{actual.detalle}</div>
+				{#if !bento}
+					<div class="detalle">{actual.detalle}</div>
+				{/if}
 			</div>
 		{/key}
 	</div>
@@ -144,6 +157,20 @@
 		transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 	}
 	.widget.visible { opacity: 1; transform: none; }
+
+	/* Bento: el Marco arranca en 0 y su barra mide --k-marco. El widget baja a
+	   la banda libre sobre la cifra del ancla y se queda en avatar + nombre. */
+	.widget.bento {
+		top: calc(var(--k-marco, 76px) + 52px);
+		left: 32px;
+	}
+	.bento .caja {
+		gap: 10px;
+		padding: 6px 14px 6px 8px;
+	}
+	.bento .avatar { width: 40px; height: 40px; }
+	.bento .ic { font-size: 20px; }
+	.bento .nombre { font-size: 20px; max-width: 260px; }
 
 	.caja {
 		position: relative;

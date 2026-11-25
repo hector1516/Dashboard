@@ -84,7 +84,9 @@ def _sin_datos() -> dict:
                   "manana": {"max": None, "min": None, "prob_lluvia": None},
                   "leido_en": None},
         "asistencia": {"personas": [], "total": 0, "dentro": 0, "salieron": 0},
-        "pendientes": {"vales": 0, "monto": 0, "desde": "", "ultimos": []},
+        # `pendientes` se omite a propósito: un bloque con ceros se leería como
+        # «Todo al día» cuando en realidad no se sabe nada. El front lo trata
+        # como opcional y pinta «—».
         "imagen": {"hay": False},
         "fondos": [],
         "eventos": [],

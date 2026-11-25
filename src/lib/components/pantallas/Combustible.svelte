@@ -46,6 +46,11 @@
 
 	const dinero = (n: any) =>
 		n == null ? '—' : Number(n).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+	/** `2026-11-23` → «23». La ventana de «sin comprobante» es la temporada. */
+	const desdeCorto = $derived((() => {
+		const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(r.sin_comprobante_desde ?? ''));
+		return m ? String(Number(m[3])) : '';
+	})());
 	const decimal = (n: any, d = 1) =>
 		n == null ? '—' : Number(n).toLocaleString('es-MX', { minimumFractionDigits: d, maximumFractionDigits: d });
 
@@ -85,7 +90,7 @@
 		<span>Peor caso: <b>{tiempos.pedir_generar_peor_min ?? '—'} min</b></span>
 		<span>Tickets con factura: <b>{calidad.tickets ? Math.round((calidad.tickets_con_vale / calidad.tickets) * 100) : 0} %</b></span>
 		<span>Con foto: <b>{calidad.tickets ? Math.round((calidad.tickets_con_foto / calidad.tickets) * 100) : 0} %</b></span>
-		<span class="tira-push">Sin comprobante: <b>{dinero(r.sin_comprobante_monto)}</b></span>
+		<span class="tira-push">Sin comprobante{desdeCorto ? ` · desde el ${desdeCorto}` : ''}: <b>{dinero(r.sin_comprobante_monto)}</b></span>
 	</div>
 
 	<main class="rejilla">
@@ -126,9 +131,9 @@
 		<!-- Sin comprobante + calidad del registro en la misma ranura: son la
 		     misma pregunta ("¿qué falta por comprobar?"). -->
 		<section class="slot a-sin tinta" style="--i:3">
-			<div class="slot-hd alerta">Dinero sin comprobante</div>
+			<div class="slot-hd alerta">Dinero sin comprobante{desdeCorto ? ` · desde el ${desdeCorto}` : ''}</div>
 			<div class="slot-bd">
-				<div class="num">${dinero(r.sin_comprobante_monto)}</div>
+				<div class="num">{#if r.sin_comprobante_monto == null}—{:else}${dinero(r.sin_comprobante_monto)}{/if}</div>
 				<div class="pie">{r.sin_comprobante_n ?? 0} vale(s) emitidos sin foto del ticket</div>
 				<div class="calidad">
 					<div class="cal-fila"><span>Sin código</span><b class:malo={calidad.sin_codigo > 0}>{calidad.sin_codigo ?? 0}</b></div>

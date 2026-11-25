@@ -62,7 +62,10 @@
 	// «—» y se dice que el snapshot no lo trae (regla: nunca ceros falsos).
 	const sinDatos = $derived(!p);
 	const vales = $derived(Math.max(0, Math.round(Number(p?.vales ?? 0) || 0)));
-	const monto = $derived(Number(p?.monto ?? 0) || 0);
+	/** `null` = ningún vale emitido tiene monto: no es «$0». */
+	const monto = $derived(
+		p?.monto == null || !Number.isFinite(Number(p.monto)) ? null : Number(p.monto)
+	);
 	const desde = $derived(typeof p?.desde === 'string' ? p.desde : '');
 	const filas = $derived(
 		(Array.isArray(p?.ultimos) ? (p.ultimos as Fila[]) : []).slice(0, 6)
@@ -108,9 +111,10 @@
 	reloj={k.hora}
 	fecha={k.fecha}
 	antiguedad={k.antiguedad}
-	sinFoto={sinDatos ? null : vales}
+	sinFoto={datos?.pendientes?.vales ?? null}
 	posicion={posicion ?? '—'}
 	volt={linea}
+	degradado={datos?.degradado ?? []}
 >
 	<Bento>
 		<!-- Ancla 2×2: el número más grande de la pantalla. -->
@@ -122,7 +126,7 @@
 				{:else if vales > 0}
 					<div class="cifra ancla"><Numero valor={vales} formato={entero} /></div>
 					<div class="sub">
-						<b>{dinero(monto)}</b>{#if corte} · desde el {corte}{/if}
+						<b>{monto == null ? 'sin monto' : dinero(monto)}</b>{#if corte} · desde el {corte}{/if}
 					</div>
 					{#if masViejo > 0}
 						<div class="delta">

@@ -1118,7 +1118,10 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 				no salgan con cromo de verificación.
 			-->
 			{#if !sinAnim}
-				<WidgetCumple datos={params?.cumple ? datosDeEjemplo(datos, params) : datos} />
+				<WidgetCumple
+					datos={params?.cumple ? datosDeEjemplo(datos, params) : datos}
+					bento={pantallaBento}
+				/>
 			{/if}
 
 			<!--
@@ -1131,16 +1134,21 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 				<CuentaRotacion restante={restanteRotacion} />
 			{/if}
 
-			<footer class="pie">
-				<span>ECCSA · Centro de Operaciones · v{APP_VERSION} · shell {SHELL_VERSION}</span>
-				<span>
-					{#if datos.degradado?.length}
-						⚠️ {datos.degradado.join(' · ')} · mostrando el último snapshot
-					{:else}
-						● datos al día
-					{/if}
-				</span>
-			</footer>
+			<!-- Pie de producción: en bento no se pinta. El Marco ya trae su
+			     propio pie (PieVolt) con la versión y el estado, y dos pies
+			     encimados con letra de 12.5 px no aportan nada. -->
+			{#if !pantallaBento}
+				<footer class="pie">
+					<span>ECCSA · Centro de Operaciones · v{APP_VERSION} · shell {SHELL_VERSION}</span>
+					<span>
+						{#if datos.degradado?.length}
+							⚠️ {datos.degradado.join(' · ')} · mostrando el último snapshot
+						{:else}
+							● datos al día
+						{/if}
+					</span>
+				</footer>
+			{/if}
 		</div>
 	</div>
 {/if}

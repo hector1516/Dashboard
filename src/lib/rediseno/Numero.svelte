@@ -8,7 +8,13 @@
 	let mostrado = $state(valor);
 	$effect(() => {
 		if (typeof window === 'undefined') return;
-		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { mostrado = valor; return; }
+		// `?sinanim=1` es el interruptor de capturas: el número tiene que salir
+		// en su valor final y no a medio contar.
+		const sinAnim = new URLSearchParams(window.location.search).get('sinanim') === '1';
+		if (sinAnim || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			mostrado = valor;
+			return;
+		}
 		const t0 = performance.now();
 		let raf = 0;
 		const paso = (t: number) => {

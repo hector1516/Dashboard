@@ -273,7 +273,8 @@ export interface Snapshot {
 	 */
 	pendientes?: {
 		vales: number;
-		monto: number;
+		/** `null` = ningún vale de la temporada tiene monto emitido (no es $0). */
+		monto: number | null;
 		desde: string;
 		ultimos: {
 			nombre: string;

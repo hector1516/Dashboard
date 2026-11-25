@@ -14,10 +14,16 @@ def corte_temporada(valor: str | None) -> str:
 
 
 def armar_pendientes(totales: dict, ultimos: list[dict], desde: str) -> dict:
-    """Forma del bloque. `monto` NULL se queda None: no es cero."""
+    """Forma del bloque. `monto` NULL se queda None: no es cero.
+
+    El `SUM` de la consulta usa `CASE WHEN MontoEmitido IS NOT NULL` (sin el
+    `ELSE 0`): si ningún vale emitido tiene monto, SQL devuelve NULL y aquí se
+    conserva como None para que el ancla diga «sin monto» en vez de «$0».
+    """
+    monto = (totales or {}).get("monto")
     return {
         "vales": int((totales or {}).get("n") or 0),
-        "monto": float((totales or {}).get("monto") or 0),
+        "monto": (float(monto) if monto is not None else None),
         "desde": desde,
         "ultimos": [
             {

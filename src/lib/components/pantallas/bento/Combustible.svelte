@@ -85,6 +85,11 @@
 	// ── sin comprobante / saldo ───────────────────────────────────
 	const sinCompMonto = $derived(aNumero(r?.sin_comprobante_monto));
 	const sinCompN = $derived(aNumero(r?.sin_comprobante_n));
+	/** `2026-11-23` → «23»: la ventana de «sin comprobante» es la temporada. */
+	const desdeCorto = $derived.by(() => {
+		const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(r?.sin_comprobante_desde ?? ''));
+		return m ? String(Number(m[3])) : '';
+	});
 	const saldo = $derived(aNumero(r?.saldo));
 	const alcanza = $derived(aNumero(r?.alcanza_vales));
 
@@ -217,9 +222,10 @@
 	reloj={k.hora}
 	fecha={k.fecha}
 	antiguedad={k.antiguedad}
-	sinFoto={sinDatos ? null : sinCompN}
+	sinFoto={datos?.pendientes?.vales ?? null}
 	posicion={posicion ?? '—'}
 	volt={linea}
+	degradado={datos?.degradado ?? []}
 >
 	<Bento>
 		<!-- Ancla 2×2: el gasto del mes con sus vales y el promedio. -->
@@ -256,7 +262,7 @@
 		</Celda>
 
 		<!-- Cifra 1×1: el dinero emitido que todavía no tiene foto de ticket. -->
-		<Celda area="1/3/2/4" rotulo="Sin comprobante" i={1}>
+		<Celda area="1/3/2/4" rotulo={desdeCorto ? `Sin comprobante · desde el ${desdeCorto}` : 'Sin comprobante'} i={1}>
 			<div class="cuerpo">
 				<div class="cifra {escalaSin}" class:sin={sinCompMonto == null}>
 					{#if sinCompMonto == null}—{:else}{pesos(sinCompMonto)}{/if}

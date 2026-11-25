@@ -214,8 +214,7 @@ def ciclo() -> dict:
             "combustible": combustible,
             "volt_avisos": _bloque(D.volt_avisos, previo.get("volt_avisos") or [], 8),
             "pendientes": _bloque(
-                D.pendientes_snapshot,
-                previo.get("pendientes") or {"vales": 0, "monto": 0, "desde": "", "ultimos": []}),
+                D.pendientes_snapshot, previo.get("pendientes")),
             "legends": _bloque(D.legends, previo.get("legends") or _forma("legends")),
             "notas": _bloque(D.notas, previo.get("notas") or []),
             "celebraciones": _bloque(D.celebraciones, previo.get("celebraciones") or _forma("celebraciones")),
@@ -316,7 +315,9 @@ def ciclo() -> dict:
     # La foto de los últimos vales sale del mismo mapa que la asistencia. Si el
     # bloque cayó y se reusó la lista anterior (que ya venía sin `id_usuario`),
     # se conserva la ruta que traía: un ciclo fallido no borra la foto.
-    for _v in bloques["pendientes"].get("ultimos", []):
+    # `pendientes` puede ser `None` (primer ciclo tras un deploy y sin bloque
+    # previo): no se fabrica una lista vacía, simplemente no hay fotos que pegar.
+    for _v in (bloques["pendientes"] or {}).get("ultimos") or []:
         _v["foto"] = rutas_foto.get(_v.pop("id_usuario", None)) or _v.get("foto")
 
     # Avatares: en el ranking de Legends y en TODOS los cumpleaños/aniversarios

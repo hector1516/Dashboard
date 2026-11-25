@@ -1332,12 +1332,15 @@ def combustible(sunday: str, hoy: str) -> dict:
             (corte_cfg[0].get("Valor") if corte_cfg else None))
         sin_comp = q("""
             SELECT COUNT(*) AS n,
-                   SUM(CASE WHEN MontoEmitido IS NOT NULL THEN MontoEmitido ELSE 0 END) AS monto
+                   SUM(CASE WHEN MontoEmitido IS NOT NULL THEN MontoEmitido END) AS monto
             FROM HUB_SolicitudVales
             WHERE Estatus IN ('GENERADO', 'CONSUMIDO') AND IdTicketCierre IS NULL
               AND FechaSolicitud >= %s
         """, (desde_sin_comp,)) or [{}]
         sin_comp = sin_comp[0]
+        # NULL (ninguno con monto emitido) se queda None: no es «$0».
+        sin_comp_monto = (float(sin_comp["monto"])
+                          if sin_comp.get("monto") is not None else None)
 
         saldo_fila = q("SELECT Valor FROM HUB_Config WHERE Clave = 'govale_saldo'")
         saldo = None
@@ -1356,7 +1359,7 @@ def combustible(sunday: str, hoy: str) -> dict:
             "promedio": float(act.get("prom") or 0),
             "vales_sin_monto": int(act.get("sin_monto") or 0),
             "sin_comprobante_n": int(sin_comp.get("n") or 0),
-            "sin_comprobante_monto": float(sin_comp.get("monto") or 0),
+            "sin_comprobante_monto": sin_comp_monto,
             # Ventana del número de arriba: es la temporada, no el histórico.
             "sin_comprobante_desde": desde_sin_comp,
             "saldo": saldo,
@@ -1596,11 +1599,14 @@ def pendientes_snapshot() -> dict:
         cur = conn.cursor(as_dict=True)
         cur.execute(
             """SELECT COUNT(*) AS n,
-                      SUM(CASE WHEN MontoEmitido IS NOT NULL THEN MontoEmitido ELSE 0 END) AS monto
+                      SUM(CASE WHEN MontoEmitido IS NOT NULL THEN MontoEmitido END) AS monto
                FROM HUB_SolicitudVales
                WHERE Estatus IN ('GENERADO','CONSUMIDO') AND IdTicketCierre IS NULL
                  AND FechaSolicitud >= %s""", (desde,))
         totales = cur.fetchone() or {}
+        # La lista se llena con los cerrados recientes y los pendientes de la
+        # temporada: sin el filtro de fecha se colaban deudas de antes del corte
+        # que no cuentan en el total de arriba y la pantalla se contradecía.
         cur.execute(
             """SELECT TOP 6 S.IdSolicitante AS id_usuario,
                       ISNULL(U.Nombre, '—') AS persona, S.Placa,
@@ -1610,6 +1616,7 @@ def pendientes_snapshot() -> dict:
                FROM HUB_SolicitudVales S
                LEFT JOIN HUB_Users U ON U.Id = S.IdSolicitante
                WHERE S.Estatus IN ('GENERADO','CONSUMIDO','CERRADO')
-               ORDER BY S.FechaSolicitud DESC""")
+                 AND (S.IdTicketCierre IS NOT NULL OR S.FechaSolicitud >= %s)
+               ORDER BY S.FechaSolicitud DESC""", (desde,))
         ultimos = cur.fetchall()
     return armar_pendientes(totales, ultimos, desde)

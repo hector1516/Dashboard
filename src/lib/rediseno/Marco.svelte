@@ -23,12 +23,39 @@
 		sinFoto: number | null;
 		/** Posición en la rotación (`1/9`). */
 		posicion: string;
+		/** Bloques degradados del snapshot (`['bd']`, `['clima']`…). */
+		degradado?: string[];
 		/** La frase de Volt del pie. Sin ella el pie queda en «— Volt». */
 		volt?: string;
 		children: Snippet;
 	}
-	let { titulo, reloj, fecha, antiguedad, sinFoto, posicion, volt = '', children }: Props =
-		$props();
+	let {
+		titulo,
+		reloj,
+		fecha,
+		antiguedad,
+		sinFoto,
+		posicion,
+		degradado = [],
+		volt = '',
+		children
+	}: Props = $props();
+
+	/**
+	 * ¿El snapshot tiene más de ~10 min? Se lee del texto ya armado («datos de
+	 * hace 12 min»): el marco no consulta el reloj ni `generado_en`. A partir de
+	 * ahí el chip de antigüedad se pinta ámbar, porque un tablero de hace un
+	 * cuarto de hora ya no es «la oficina ahora mismo».
+	 */
+	const viejo = $derived.by(() => {
+		const m = /(\d+)\s*(min|h|d)/i.exec(antiguedad ?? '');
+		if (!m) return false;
+		const n = Number(m[1]);
+		const u = m[2].toLowerCase();
+		return u === 'h' || u === 'd' || (u === 'min' && n >= 10);
+	});
+	/** El punto solo es verde si no hay nada degradado: ámbar cuando sí. */
+	const hayDegradado = $derived((degradado ?? []).length > 0);
 </script>
 
 <div class="marco">
@@ -44,7 +71,9 @@
 		</div>
 		<div class="reloj">{reloj}</div>
 		<div class="der">
-			<div class="chip punto">{antiguedad}</div>
+			<div class="chip punto" class:ambar={hayDegradado || viejo}>
+				{antiguedad}
+			</div>
 			<!-- Rojo solo si hay algo pendiente. Con `null` (bloque ausente) la
 			     píldora dice «—» y no se pinta: no es un cero. -->
 			<div class="chip" class:rojo={sinFoto != null && sinFoto > 0}>
@@ -178,6 +207,14 @@
 		height: 9px;
 		border-radius: 50%;
 		background: var(--k-verde);
+	}
+	/* Snapshots degradados o viejos: el punto deja de ser verde y el chip se
+	   tiñe de ámbar. El verde es «todo bien», y eso no se finge. */
+	.chip.punto.ambar {
+		background: rgba(217, 154, 0, 0.18);
+	}
+	.chip.punto.ambar::before {
+		background: var(--k-ambar);
 	}
 
 	/* ── contenido ─────────────────────────────────────────────── */
