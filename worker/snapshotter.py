@@ -134,6 +134,27 @@ def _bloque(fn, defecto, *args, **kwargs):
         return defecto
 
 
+def _forma(clave: str) -> dict:
+    """Bloque vacío con la forma que espera el resto del ciclo.
+
+    Con la red de seguridad por bloque, un ciclo puede seguir con `{}` y el
+    código de después (avatares, rankings, celebraciones) revienta al indexar.
+    Estas formas son las mismas de `api/main.py::_sin_datos()`.
+    """
+    if clave == "legends":
+        return {"ranking": [], "ganador_semana": None, "total_puntos": 0,
+                "reset_en_segundos": 0, "participantes": 0,
+                "semana": {"inicio": "", "fin": "", "reset_en_segundos": 0},
+                "temporada": {"clave": "", "nombre": "", "corto": "",
+                              "inicio": "", "fin": "", "dias_restantes": 0}}
+    if clave == "asistencia":
+        return {"personas": [], "total": 0, "dentro": 0, "salieron": 0}
+    if clave == "celebraciones":
+        return {"cumpleanos": {"hoy": [], "del_mes": []},
+                "aniversarios": {"hoy": [], "del_mes": []}}
+    return {}
+
+
 def ciclo() -> dict:
     """Un vuelta completa. Devuelve el snapshot (para el log y las pruebas)."""
     C.asegurar_directorios()
@@ -173,20 +194,25 @@ def ciclo() -> dict:
             combustible_en = ahora if nuevo else hecho
 
         bloques = {
-            "cotizaciones_lista": D.cotizaciones_lista_facturar(),
-            "reportes": D.reportes(sunday, hoy_s),
-            "kilometros": D.kilometros(sunday, hoy_s),
-            "tickets": D.tickets(sunday),
+            # Cada bloque con su red de seguridad: si uno tarda más de la
+            # cuenta y el SQL lo mata, se queda el valor del snapshot anterior
+            # y los demás siguen. Un tablero con un dato de hace 10 min es
+            # mejor que un tablero congelado entero.
+            "cotizaciones_lista": _bloque(
+                D.cotizaciones_lista_facturar, previo.get("cotizaciones_lista") or []),
+            "reportes": _bloque(D.reportes, previo.get("reportes") or {}, sunday, hoy_s),
+            "kilometros": _bloque(D.kilometros, previo.get("kilometros") or {}, sunday, hoy_s),
+            "tickets": _bloque(D.tickets, previo.get("tickets") or {}, sunday),
             "combustible": combustible,
-            "volt_avisos": D.volt_avisos(),
-            "legends": D.legends(),
-            "notas": D.notas(),
-            "celebraciones": D.celebraciones(),
-            "metricas": D.metricas(sunday),
-            "asistencia": D.asistencia_hoy(),
-            "ubicaciones": D.ubicaciones_hoy(),
-            "imagen": D.imagen_pantalla("PORTADA"),
-            "tema": D.tema_mes(),
+            "volt_avisos": _bloque(D.volt_avisos, previo.get("volt_avisos") or [], 8),
+            "legends": _bloque(D.legends, previo.get("legends") or _forma("legends")),
+            "notas": _bloque(D.notas, previo.get("notas") or []),
+            "celebraciones": _bloque(D.celebraciones, previo.get("celebraciones") or _forma("celebraciones")),
+            "metricas": _bloque(D.metricas, previo.get("metricas") or {}, sunday),
+            "asistencia": _bloque(D.asistencia_hoy, previo.get("asistencia") or _forma("asistencia")),
+            "ubicaciones": _bloque(D.ubicaciones_hoy, previo.get("ubicaciones") or {}),
+            "imagen": _bloque(D.imagen_pantalla, previo.get("imagen") or {"hay": False}, "PORTADA"),
+            "tema": _bloque(D.tema_mes, previo.get("tema") or {}),
         }
     except Exception as exc:
         # La base no responde: se conserva el snapshot anterior.
@@ -249,7 +275,7 @@ def ciclo() -> dict:
         _log(f"WARN temas del año: {exc}")
 
     # 4) Medios ------------------------------------------------------------
-    fotos = D.fotos(C.FOTOS_CARRUSEL)
+    fotos = _bloque(D.fotos, previo.get("fotos") or {"ids": []}, C.FOTOS_CARRUSEL)
     thumbs_fotos, fotos_ok = M.thumbs_de_fotos(fotos["ids"])
     # Los tickets van SIN foto (2026-09-28): no se generan sus thumbs. Antes sí,
     # y además había que rescatarlos de los 15 bytes basura con los que vienen

@@ -82,8 +82,10 @@ const SALIDA_POST_S = 45;        // el cartel de "18:30" dura 45 s
 const PANTALLAS: PantallaDef[] = [
 	{ id: 'asistencia', icono: '👥', label: 'Asistencia de hoy' },
 	{ id: 'clima', icono: '🌤️', label: 'Clima' },
+	{ id: 'combustible', icono: '⛽', label: 'Combustible y vales' },
 	{ id: 'portada', icono: '📸', label: 'Portada del mes' },
 	{ id: 'actividad', icono: '📊', label: 'Actividad' },
+	{ id: 'tickets', icono: '🧾', label: 'Tickets OxxoGas' },
 	{ id: 'equipo', icono: '👥', label: 'Equipo' },
 	{ id: 'uso_apps', icono: '📱', label: 'Uso de Apps' },
 	{ id: 'sabias_que', icono: '💡', label: 'Sabías que...' }
@@ -1042,14 +1044,16 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 							<div class="cargando-sub">Conectando con el servidor</div>
 						</div>
 					{:else}
-						{#key pantalla.id}
-																																																							{#if pantalla.id === 'clima'}<Clima {datos} />
-													{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
-													{:else if pantalla.id === 'actividad'}<Actividad {datos} />
-	{:else if pantalla.id === 'equipo'}<Equipo {datos} />
-	{:else if pantalla.id === 'portada'}<Portada {datos} />
-{:else if pantalla.id === 'uso_apps'}<UsoApps />
-{:else if pantalla.id === 'sabias_que'}<SabiasQue />
+{#key pantalla.id}
+							{#if pantalla.id === 'clima'}<Clima {datos} />
+							{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
+							{:else if pantalla.id === 'combustible'}<Combustible {datos} />
+							{:else if pantalla.id === 'actividad'}<Actividad {datos} />
+							{:else if pantalla.id === 'tickets'}<Tickets {datos} />
+							{:else if pantalla.id === 'equipo'}<Equipo {datos} />
+							{:else if pantalla.id === 'portada'}<Portada {datos} />
+							{:else if pantalla.id === 'uso_apps'}<UsoApps />
+							{:else if pantalla.id === 'sabias_que'}<SabiasQue />
 							{/if}
 						{/key}
 					{/if}
