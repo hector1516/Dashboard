@@ -120,6 +120,12 @@ def _con_caras(personas: list, avatares: dict, fotos: dict) -> list:
     return personas
 
 
+# Bloques que fallaron en este ciclo. Se resetea al empezar y, si hay alguno,
+# el snapshot queda marcado como degradado: la pantalla puede seguir mostrando
+# lo anterior, pero el healthz no puede decir que todo está bien.
+_FALLOS = {"n": 0}
+
+
 def _bloque(fn, defecto, *args, **kwargs):
     """Corre un bloque de datos sin tumbar el resto del snapshot.
 
@@ -131,6 +137,7 @@ def _bloque(fn, defecto, *args, **kwargs):
         return fn(*args, **kwargs)
     except Exception as exc:
         _log(f"bloque {getattr(fn, '__name__', '?')} falló: {str(exc)[:160]}")
+        _FALLOS["n"] += 1
         return defecto
 
 
@@ -159,6 +166,7 @@ def ciclo() -> dict:
     """Un vuelta completa. Devuelve el snapshot (para el log y las pruebas)."""
     C.asegurar_directorios()
     degradado = []
+    _FALLOS["n"] = 0
 
     # 1) Clima -------------------------------------------------------------
     clima, clima_ok = M.leer_clima()
@@ -387,6 +395,11 @@ def ciclo() -> dict:
         for r in ranking:
             r["puesto_anterior"] = None
     legends["ranking"] = ranking
+
+    # Un bloque caído deja el dato anterior en pantalla, pero el snapshot se
+    # declara degradado: healthz 503 y el header avisa de dónde viene el dato.
+    if _FALLOS["n"]:
+        degradado.append("bd")
 
     snapshot = {
         "schema_version": C.SCHEMA_VERSION,
