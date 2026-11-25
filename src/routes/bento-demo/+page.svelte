@@ -1,9 +1,12 @@
 <script lang="ts">
 	// Banco de pruebas del sistema bento. NO es una pantalla de producción:
-	// sirve para ver tokens, rejilla, celda y número sobre el escenario exacto
-	// del kiosco.
+	// sirve para ver las pantallas montadas sobre el escenario exacto del
+	// kiosco, con datos de ejemplo tomados de la maqueta aprobada.
 	//
 	//   /bento-demo                     → Combustible (maqueta aprobada)
+	//   /bento-demo?p=combustible       → lo mismo, explícito
+	//   /bento-demo?sincombustible=1    → snapshot viejo: sin bloque `combustible`
+	//   /bento-demo?grande=1            → cifras de seis dígitos y nombres largos
 	//   /bento-demo?p=comprobantes      → Comprobantes con los datos del snapshot
 	//   /bento-demo?vacio=1             → Comprobantes sin pendientes ni vales
 	//   /bento-demo?edades=1            → Comprobantes con los tres colores de edad
@@ -13,13 +16,109 @@
 	//                                     (por defecto se ocultan para capturar limpio)
 	import { onMount } from 'svelte';
 	import '$lib/rediseno/tokens.css';
-	import Bento from '$lib/rediseno/Bento.svelte';
-	import Celda from '$lib/rediseno/Celda.svelte';
-	import Marco from '$lib/rediseno/Marco.svelte';
-	import Numero from '$lib/rediseno/Numero.svelte';
 	import Comprobantes from '$lib/components/pantallas/bento/Comprobantes.svelte';
-	import { dinero } from '$lib/rediseno/formato';
+	import Combustible from '$lib/components/pantallas/bento/Combustible.svelte';
 
+	// ── Combustible: los números de la maqueta (2026-11-25) ──────────
+	// Misma forma que `datos.combustible` en el snapshot: `resumen`,
+	// `semanas`, `por_auto`, `estaciones`, `horas`, `precio_l` y `litros`.
+	// `variacion_pct` negativa = se gastó menos que el mes anterior.
+	const COMBUSTIBLE = {
+		combustible: {
+			resumen: {
+				gasto_mes: 2000,
+				gasto_mes_anterior: 2273,
+				variacion_pct: -12,
+				vales_mes: 23,
+				promedio: 500,
+				vales_sin_monto: 3,
+				sin_comprobante_n: 6,
+				sin_comprobante_monto: 1000,
+				sin_comprobante_desde: '2026-11-23',
+				saldo: 4209,
+				alcanza_vales: 8
+			},
+			semanas: [
+				{ anio: 2026, semana: 45, vales: 6, monto: 0 },
+				{ anio: 2026, semana: 46, vales: 7, monto: 0 },
+				{ anio: 2026, semana: 47, vales: 8, monto: 0 },
+				{ anio: 2026, semana: 48, vales: 2, monto: 2000 }
+			],
+			por_auto: [
+				{
+					id: 3,
+					marca: 'Honda City',
+					placas: 'RWS675B',
+					vales: 8,
+					monto: 1000,
+					km: 2112,
+					costo_km: 0.47,
+					litros: null
+				},
+				{
+					id: 7,
+					marca: 'Nissan Versa',
+					placas: 'RYL615A',
+					vales: 6,
+					monto: 0,
+					km: 1840,
+					costo_km: 0,
+					litros: null
+				}
+			],
+			estaciones: [
+				{ estacion: 'Aeropuerto Ramos SLW', tickets: 6 },
+				{ estacion: 'Apasco SLW', tickets: 2 },
+				{ estacion: 'Acapulco MTY', tickets: 2 },
+				{ estacion: 'Libramiento 2 MTY', tickets: 1 },
+				{ estacion: 'Las Quintas MTC', tickets: 1 }
+			],
+			horas: [0, 0, 0, 0, 0, 0, 1, 3, 9, 7, 5, 4, 6, 8, 5, 3, 2, 1, 0, 0, 0, 0, 0, 0],
+			precio_l: 21.29,
+			litros: 874
+		}
+	};
+
+	// ── Combustible: números grandes (para probar que nada se recorta) ──
+	// Seis dígitos en el ancla, un modelo con nombre largo y más tickets por
+	// estación: la cifra se encoge sola y los nombres se cortan con puntos.
+	const GRANDE = {
+		combustible: {
+			...COMBUSTIBLE.combustible,
+			resumen: {
+				...COMBUSTIBLE.combustible.resumen,
+				gasto_mes: 124500,
+				gasto_mes_anterior: 98230,
+				variacion_pct: 26.7,
+				vales_mes: 249,
+				promedio: 500,
+				sin_comprobante_n: 12,
+				sin_comprobante_monto: 6000,
+				saldo: 84209,
+				alcanza_vales: 168
+			},
+			por_auto: [
+				{
+					id: 9,
+					marca: 'Nissan NP-300 Doble Cabina 2021',
+					placas: 'TDX-777-B',
+					vales: 148,
+					monto: 74000,
+					km: 21840,
+					costo_km: 3.39
+				}
+			],
+			estaciones: [
+				{ estacion: 'Aeropuerto Internacional Ramos Arizpe SLW', tickets: 146 },
+				{ estacion: 'Apasco SLW', tickets: 82 },
+				{ estacion: 'Acapulco MTY', tickets: 42 },
+				{ estacion: 'Libramiento 2 MTY', tickets: 21 },
+				{ estacion: 'Las Quintas MTC', tickets: 11 }
+			]
+		}
+	};
+
+	// ── Comprobantes ────────────────────────────────────────────────
 	// Datos reales del snapshot del 2026-11-25 (los mismos de la maqueta).
 	// `monto: null` es un vale sin monto emitido: se pinta «sin monto», no $0.
 	const REAL = {
@@ -80,6 +179,8 @@
 	let pantalla = $state<'combustible' | 'comprobantes'>('combustible');
 	let vacio = $state(false);
 	let sinBloque = $state(false);
+	let sinCombustible = $state(false);
+	let grande = $state(false);
 	let edades = $state(false);
 	let fotos = $state(false);
 	let conVolt = $state(false);
@@ -89,8 +190,11 @@
 		vacio = q.get('vacio') === '1';
 		edades = q.get('edades') === '1';
 		fotos = q.get('fotos') === '1';
-		// Snapshot viejo: aún no trae `pendientes`. No debe reventar ni fingir.
+		grande = q.get('grande') === '1';
+		// Snapshots viejos: aún no traen `pendientes` ni `combustible`. No deben
+		// reventar ni fingir un cero.
 		sinBloque = q.get('sinbloque') === '1';
+		sinCombustible = q.get('sincombustible') === '1';
 		pantalla =
 			vacio || edades || fotos || sinBloque || q.get('p') === 'comprobantes'
 				? 'comprobantes'
@@ -102,31 +206,11 @@
 		document.documentElement.classList.toggle('bento-con-volt', conVolt);
 		return () => document.documentElement.classList.remove('bento-con-volt');
 	});
-
-	// Valores de ejemplo tomados de la maqueta (datos del 2026-11-25).
-	const semanas = [
-		{ s: 45, v: 0 },
-		{ s: 46, v: 0 },
-		{ s: 47, v: 0 },
-		{ s: 48, v: 2000 }
-	];
-	const estaciones: Array<[string, number]> = [
-		['Aeropuerto Ramos SLW', 6],
-		['Apasco SLW', 2],
-		['Acapulco MTY', 2],
-		['Libramiento 2 MTY', 1],
-		['Las Quintas MTC', 1]
-	];
-	const horas = [0, 0, 0, 0, 0, 0, 1, 3, 9, 7, 5, 4, 6, 8, 5, 3, 2, 1, 0, 0, 0, 0, 0, 0];
-
-	// El ancla lleva el signo de pesos aparte, más chico, como en la maqueta.
-	const miles = (n: number) => Number(n).toLocaleString('es-MX');
-	const conHora = (n: number) => `${n} h`;
 </script>
 
 <div class="stage">
 	{#if pantalla === 'comprobantes'}
-		<!-- La pantalla trae su propio marco: se monta con solo `datos`. -->
+		<!-- Cada pantalla trae su propio marco: se monta con solo `datos`. -->
 		<Comprobantes
 			datos={sinBloque ? {} : edades ? EDADES : fotos ? FOTOS : vacio ? VACIO : REAL}
 			reloj="12:29"
@@ -135,93 +219,13 @@
 			posicion="6/10"
 		/>
 	{:else}
-		<Marco
-			titulo="Prueba"
+		<Combustible
+			datos={sinCombustible ? {} : grande ? GRANDE : COMBUSTIBLE}
 			reloj="12:29"
 			fecha="miércoles 25 de noviembre"
 			antiguedad="datos de hace 1 min"
-			sinFoto={2}
 			posicion="1/9"
-			volt="El gasto va bien; lo que se acumula son los comprobantes."
-		>
-			<Bento>
-				<Celda area="1/1/3/3" tono="dark" rotulo="Gasto del mes" i={0}>
-					<div class="cuerpo centro">
-						<div class="cifra ancla"><span class="cur">$</span><Numero valor={2000} formato={miles} /></div>
-						<div class="sub oscuro"><b>23 vales</b> · promedio $500</div>
-						<div class="delta down">▼ 12 % <span>vs mes anterior</span></div>
-					</div>
-				</Celda>
-
-				<Celda area="1/3/2/4" rotulo="Sin comprobante" i={1}>
-					<div class="cuerpo">
-						<div class="cifra"><Numero valor={1000} formato={dinero} /></div>
-						<div class="sub"><b>6 vales</b> · 3 sin monto</div>
-					</div>
-				</Celda>
-
-				<Celda area="1/4/2/5" rotulo="Saldo Go Vale" i={2}>
-					<div class="cuerpo">
-						<div class="cifra"><Numero valor={4209} formato={dinero} /></div>
-						<div class="sub">alcanza <b>8 vales</b></div>
-					</div>
-				</Celda>
-
-				<Celda area="2/3/3/5" rotulo="Gasto por semana" i={3}>
-					<div class="cuerpo">
-						<div class="barras">
-							{#each semanas as x}
-								<div class="bcol">
-									<div class="bval">{x.v ? dinero(x.v) : '$0'}</div>
-									<div class="bbar" style="height:{x.v ? 120 : 6}px"></div>
-									<div class="bpiso">sem {x.s}</div>
-								</div>
-							{/each}
-						</div>
-					</div>
-				</Celda>
-
-				<Celda area="3/1/4/3" rotulo="Precio del litro · dónde cargan" i={4}>
-					<div class="cuerpo arriba">
-						<div class="linea">
-							<div class="cifra md verde">$21.29</div>
-							<div class="sub">por litro · <b>874 L</b> en 4 semanas</div>
-						</div>
-						<div class="estaciones">
-							{#each estaciones as [nombre, vales]}
-								<div class="est-row">
-									<b>{nombre}</b>
-									<div class="est-pista"><i style="width:{(vales / 6) * 100}%"></i></div>
-									<span>{vales}</span>
-								</div>
-							{/each}
-						</div>
-					</div>
-				</Celda>
-
-				<Celda area="3/3/4/4" rotulo="Auto que más pide" i={5}>
-					<div class="cuerpo">
-						<div class="auto">
-							<img src="/autos/honda-city-blanco.webp" alt="Honda City" />
-							<div class="datos"><b>Honda City</b><span>8 vales · $1,000</span></div>
-						</div>
-						<div class="sub">2,112 km · $0.47 / km</div>
-					</div>
-				</Celda>
-
-				<Celda area="3/4/4/5" rotulo="A qué hora cargan" i={6}>
-					<div class="cuerpo">
-						<div class="cifra"><Numero valor={9} formato={conHora} /></div>
-						<div class="mini24">
-							{#each horas as v}
-								<i style="height:{Math.max(4, (v / 9) * 58)}px"></i>
-							{/each}
-						</div>
-						<div class="sub">pico entre 8 y 10</div>
-					</div>
-				</Celda>
-			</Bento>
-		</Marco>
+		/>
 	{/if}
 </div>
 
@@ -244,142 +248,4 @@
 	:global(html:not(.bento-con-volt) .volt-comentario) {
 		display: none !important;
 	}
-
-	.cuerpo {
-		flex: 1;
-		min-height: 0;
-		display: flex;
-		flex-direction: column;
-		justify-content: flex-end;
-		gap: 10px;
-	}
-	.cuerpo.centro { justify-content: center; }
-	.cuerpo.arriba { justify-content: flex-start; }
-
-	.cifra {
-		font-size: var(--k-f-cifra);
-		font-weight: 900;
-		line-height: 0.92;
-		letter-spacing: -4px;
-		font-variant-numeric: tabular-nums;
-		margin-bottom: 6px;
-	}
-	.cifra.ancla {
-		font-size: var(--k-f-ancla);
-		letter-spacing: -10px;
-	}
-	.cifra.md {
-		font-size: 76px;
-		letter-spacing: -2.5px;
-		margin-bottom: 0;
-	}
-	.cur {
-		font-size: 0.5em;
-		vertical-align: 0.26em;
-		margin-right: 6px;
-		font-weight: 800;
-		letter-spacing: 0;
-	}
-	.verde { color: var(--k-verde); }
-
-	.sub {
-		font-size: 21px;
-		font-weight: 600;
-		opacity: 0.62;
-	}
-	.sub b { font-weight: 800; opacity: 1; }
-	.sub.oscuro { opacity: 0.8; }
-
-	.delta {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		font-size: 20px;
-		font-weight: 800;
-	}
-	.delta.down { color: #7fe3cf; }
-	.delta span { font-weight: 600; opacity: 0.6; }
-
-	/* serie de barras */
-	.barras {
-		display: flex;
-		align-items: flex-end;
-		gap: 28px;
-		height: 100%;
-	}
-	.bcol {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: flex-end;
-		gap: 8px;
-		height: 100%;
-	}
-	.bval { font-size: 20px; font-weight: 800; }
-	.bbar {
-		width: 100%;
-		max-width: 78px;
-		border-radius: 8px 8px 0 0;
-		background: var(--k-verde);
-	}
-	.bpiso { font-size: 20px; font-weight: 700; opacity: 0.45; }
-
-	/* mini serie de 24 horas */
-	.mini24 {
-		display: flex;
-		align-items: flex-end;
-		gap: 3px;
-		height: 58px;
-	}
-	.mini24 i {
-		flex: 1;
-		background: var(--k-rojo);
-		border-radius: 2px 2px 0 0;
-		opacity: 0.9;
-	}
-
-	/* lista de estaciones */
-	.linea {
-		display: flex;
-		align-items: baseline;
-		gap: 14px;
-		margin-bottom: 6px;
-	}
-	.estaciones { display: flex; flex-direction: column; gap: 4px; }
-	.est-row {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		font-size: 20px;
-	}
-	.est-row b {
-		flex: 1;
-		font-weight: 600;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-	.est-row span { font-weight: 900; font-variant-numeric: tabular-nums; }
-	.est-pista {
-		width: 90px;
-		height: 6px;
-		border-radius: 3px;
-		background: rgba(18, 20, 26, 0.08);
-		overflow: hidden;
-	}
-	.est-pista i { display: block; height: 100%; background: var(--k-verde); }
-
-	/* auto */
-	.auto { display: flex; align-items: center; gap: 16px; }
-	.auto img {
-		width: 132px;
-		height: 84px;
-		border-radius: 14px;
-		object-fit: cover;
-		background: #e6ddcd;
-	}
-	.auto .datos { display: flex; flex-direction: column; }
-	.auto .datos b { font-size: 26px; font-weight: 800; letter-spacing: -0.4px; }
-	.auto .datos span { font-size: 20px; font-weight: 600; opacity: 0.6; }
 </style>
