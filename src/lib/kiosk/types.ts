@@ -265,8 +265,13 @@ export interface Snapshot {
 	 * Vales de la temporada en curso sin foto de ticket, más los últimos vales
 	 * (la lista que nunca se vacía). El corte sale de
 	 * `HUB_Config.comprobantes_desde`; el cálculo puro, de `api/pendientes.py`.
+	 *
+	 * OPCIONAL a propósito: el snapshot se sirve desde `/data/snapshot.json` y,
+	 * tras un deploy, hasta el primer ciclo del snapshotter el archivo todavía
+	 * no trae este campo. Quien lo lea debe usar `?.` / `??` y no dar por hecho
+	 * que existe (o subir `schema_version` cuando el cambio deje de ser aditivo).
 	 */
-	pendientes: {
+	pendientes?: {
 		vales: number;
 		monto: number;
 		desde: string;

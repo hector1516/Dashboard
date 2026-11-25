@@ -21,6 +21,9 @@ from tz_mx import TZ_MX as _TZ_MX
 
 import temas
 from db import get_connection
+# Cálculo puro del bloque `pendientes` (sin BD): su corte de temporada lo usan
+# también `combustible()` y `pendientes_snapshot()` para no tener dos ventanas.
+from pendientes import armar_pendientes, corte_temporada
 
 DIAS_SEMANA = 7
 
@@ -1315,13 +1318,25 @@ def combustible(sunday: str, hoy: str) -> dict:
         gasto = float(act.get("gasto") or 0)
         gasto_ant = float(ant.get("gasto") or 0)
 
-        # Dinero sin comprobante: vale emitido sin ticket.
+        # Dinero sin comprobante: vale emitido sin ticket. MISMA VENTANA que el
+        # bloque `pendientes` del kiosco (temporada en curso): el corte sale de
+        # `HUB_Config.comprobantes_desde` y se normaliza con `corte_temporada`,
+        # igual que allí. Antes esta consulta no tenía cota de fecha y el
+        # tablero de combustible y el bloque `pendientes` daban dos números
+        # distintos del mismo concepto (todo el histórico vs. la temporada).
+        # El ajuste se lee con el cursor que ya está abierto: no se abre otra
+        # conexión.
+        corte_cfg = q("SELECT Valor FROM HUB_Config WHERE Clave = %s",
+                      ("comprobantes_desde",))
+        desde_sin_comp = corte_temporada(
+            (corte_cfg[0].get("Valor") if corte_cfg else None))
         sin_comp = q("""
             SELECT COUNT(*) AS n,
                    SUM(CASE WHEN MontoEmitido IS NOT NULL THEN MontoEmitido ELSE 0 END) AS monto
             FROM HUB_SolicitudVales
             WHERE Estatus IN ('GENERADO', 'CONSUMIDO') AND IdTicketCierre IS NULL
-        """) or [{}]
+              AND FechaSolicitud >= %s
+        """, (desde_sin_comp,)) or [{}]
         sin_comp = sin_comp[0]
 
         saldo_fila = q("SELECT Valor FROM HUB_Config WHERE Clave = 'govale_saldo'")
@@ -1342,6 +1357,8 @@ def combustible(sunday: str, hoy: str) -> dict:
             "vales_sin_monto": int(act.get("sin_monto") or 0),
             "sin_comprobante_n": int(sin_comp.get("n") or 0),
             "sin_comprobante_monto": float(sin_comp.get("monto") or 0),
+            # Ventana del número de arriba: es la temporada, no el histórico.
+            "sin_comprobante_desde": desde_sin_comp,
             "saldo": saldo,
             "alcanza_vales": (int(saldo // 500) if saldo is not None else None),
         }
@@ -1566,32 +1583,33 @@ def _config(clave: str, defecto=None):
 
 
 def pendientes_snapshot() -> dict:
-    """Pendientes de la temporada + últimos vales (la lista que nunca se vacía)."""
-    from pendientes import armar_pendientes, corte_temporada
+    """Pendientes de la temporada + últimos vales (la lista que nunca se vacía).
+
+    OJO: aquí NO hay `try/except`, a diferencia de `volt_avisos`. Un fallo de la
+    base tiene que llegar a `_bloque` en el snapshotter, que reusa el bloque del
+    snapshot anterior y marca el ciclo como degradado (healthz 503). Si se
+    atrapara aquí y se devolviera la forma vacía, la pantalla enseñaría «0
+    vales» —un cero falso— y además nadie se enteraría del fallo.
+    """
     desde = corte_temporada(_config("comprobantes_desde"))
-    vacio = armar_pendientes({}, [], desde)
-    try:
-        with get_connection() as conn:
-            cur = conn.cursor(as_dict=True)
-            cur.execute(
-                """SELECT COUNT(*) AS n,
-                          SUM(CASE WHEN MontoEmitido IS NOT NULL THEN MontoEmitido ELSE 0 END) AS monto
-                   FROM HUB_SolicitudVales
-                   WHERE Estatus IN ('GENERADO','CONSUMIDO') AND IdTicketCierre IS NULL
-                     AND FechaSolicitud >= %s""", (desde,))
-            totales = cur.fetchone() or {}
-            cur.execute(
-                """SELECT TOP 6 S.IdSolicitante AS id_usuario,
-                          ISNULL(U.Nombre, '—') AS persona, S.Placa,
-                          S.MontoEmitido AS monto,
-                          DATEDIFF(day, S.FechaSolicitud, GETDATE()) AS dias,
-                          CASE WHEN S.IdTicketCierre IS NULL THEN 0 ELSE 1 END AS cerrado
-                   FROM HUB_SolicitudVales S
-                   LEFT JOIN HUB_Users U ON U.Id = S.IdSolicitante
-                   WHERE S.Estatus IN ('GENERADO','CONSUMIDO','CERRADO')
-                   ORDER BY S.FechaSolicitud DESC""")
-            ultimos = cur.fetchall()
-        return armar_pendientes(totales, ultimos, desde)
-    except Exception as e:
-        print(f"[datos.pendientes] {str(e)[:160]}")
-        return vacio
+    with get_connection() as conn:
+        cur = conn.cursor(as_dict=True)
+        cur.execute(
+            """SELECT COUNT(*) AS n,
+                      SUM(CASE WHEN MontoEmitido IS NOT NULL THEN MontoEmitido ELSE 0 END) AS monto
+               FROM HUB_SolicitudVales
+               WHERE Estatus IN ('GENERADO','CONSUMIDO') AND IdTicketCierre IS NULL
+                 AND FechaSolicitud >= %s""", (desde,))
+        totales = cur.fetchone() or {}
+        cur.execute(
+            """SELECT TOP 6 S.IdSolicitante AS id_usuario,
+                      ISNULL(U.Nombre, '—') AS persona, S.Placa,
+                      S.MontoEmitido AS monto,
+                      DATEDIFF(day, S.FechaSolicitud, GETDATE()) AS dias,
+                      CASE WHEN S.IdTicketCierre IS NULL THEN 0 ELSE 1 END AS cerrado
+               FROM HUB_SolicitudVales S
+               LEFT JOIN HUB_Users U ON U.Id = S.IdSolicitante
+               WHERE S.Estatus IN ('GENERADO','CONSUMIDO','CERRADO')
+               ORDER BY S.FechaSolicitud DESC""")
+        ultimos = cur.fetchall()
+    return armar_pendientes(totales, ultimos, desde)
