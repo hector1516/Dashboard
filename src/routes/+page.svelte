@@ -185,6 +185,16 @@ function escalar() {
 const pantalla = $derived(PANTALLAS[orden[pos] ?? 0] ?? PANTALLAS[0]);
 /** La posición en la rotación (`6/10`), la misma para el header y el bento. */
 const posicionRotacion = $derived(`${Math.min(pos + 1, orden.length)}/${orden.length}`);
+/**
+ * `?bento=1` en una de las dos pantallas rediseñadas. Cada una trae su propio
+ * `<Marco>`, que ya pinta marca, título, reloj y chips: la barra de producción
+ * (`HdrKiosco`) NO se monta, o se verían dos cabeceras. Es la MISMA condición
+ * la que decide el componente y la cabecera, para que nunca haya una pantalla
+ * sin barra y con contenido viejo (ni al revés).
+ */
+const pantallaBento = $derived(
+	BENTO && (pantalla.id === 'combustible' || pantalla.id === 'comprobantes')
+);
 
 // Actualizar store de pantalla actual para Volt
 $effect(() => {
@@ -1044,20 +1054,24 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 		<!-- Escenario fijo 1920×1080 escalado al viewport. Determinista. -->
 		<div class="escenario" bind:this={escenarioRef}>
 			<div class="pantalla-caja" class:saliendo class:entrando={!saliendo}>
-				<HdrKiosco
-					pantallaIcono={pantalla.icono}
-					pantallaLabel={pantalla.label}
-					{reloj}
-					{fecha}
-					posicion={posicionRotacion}
-					degradado={datos.degradado ?? []}
-					generadoEn={datos.generado_en}
-					{antiguedad}
-					{silenciado}
-					{bloqueado}
-					onSilenciar={alternarSilencio}
-					onAudioDesbloquear={() => { desbloquear(); bloqueado = audioBloqueado(); }}
-				/>
+				<!-- Las pantallas del rediseño traen su propio marco: con ellas no
+				     se monta la barra de producción (serían dos cabeceras). -->
+				{#if !pantallaBento}
+					<HdrKiosco
+						pantallaIcono={pantalla.icono}
+						pantallaLabel={pantalla.label}
+						{reloj}
+						{fecha}
+						posicion={posicionRotacion}
+						degradado={datos.degradado ?? []}
+						generadoEn={datos.generado_en}
+						{antiguedad}
+						{silenciado}
+						{bloqueado}
+						onSilenciar={alternarSilencio}
+						onAudioDesbloquear={() => { desbloquear(); bloqueado = audioBloqueado(); }}
+					/>
+				{/if}
 
 				<div class="area">
 					{#if cargando}
@@ -1073,7 +1087,7 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 							     no está en la rotación (no tiene versión vieja que montar). -->
 							{#if pantalla.id === 'clima'}<Clima {datos} />
 							{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
-							{:else if pantalla.id === 'combustible' && BENTO}<CombustibleBento {datos} posicion={posicionRotacion} />
+							{:else if pantalla.id === 'combustible' && pantallaBento}<CombustibleBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'combustible'}<Combustible {datos} />
 							{:else if pantalla.id === 'comprobantes'}<ComprobantesBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'actividad'}<Actividad {datos} />
