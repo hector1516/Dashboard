@@ -204,8 +204,9 @@
 						{#if sinDatos}
 							<span>sin datos del snapshot</span>
 						{:else}
-							<!-- «de la lista»: `ultimos` es un TOP 6 sin filtro de fecha,
-							     así que no se puede afirmar «esta semana». -->
+							<!-- «de la lista»: `ultimos` es un TOP 6 de la temporada
+							     (cerrados recientes + pendientes desde el corte), no
+							     la semana; por eso no se puede afirmar «esta semana». -->
 							<b>de la lista</b>
 							<span>
 								{filas.length

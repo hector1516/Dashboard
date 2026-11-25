@@ -158,10 +158,15 @@
 	}
 	.widget.visible { opacity: 1; transform: none; }
 
-	/* Bento: el Marco arranca en 0 y su barra mide --k-marco. El widget baja a
-	   la banda libre sobre la cifra del ancla y se queda en avatar + nombre. */
+	/* Bento: el Marco arranca en 0 y su barra mide --k-marco. Debajo van el
+	   padding de la rejilla (--k-gap, 24 px), el de la celda (24 px) y el
+	   rótulo: 20 px de letra con line-height 1.5 = 30 px de caja, o sea que el
+	   rótulo ocupa 124–154. El widget arranca en --k-marco + 24 + 24 + 36 =
+	   160 px (6 px de aire) y su caja de 54 px queda en 160–214, en la banda
+	   libre sobre la cifra. Medido en Chromium con `?cumple=1&bento=1`: antes,
+	   con 152, tocaba el rótulo por 2 px. */
 	.widget.bento {
-		top: calc(var(--k-marco, 76px) + 52px);
+		top: calc(var(--k-marco, 76px) + var(--k-gap, 24px) + 24px + 36px);
 		left: 32px;
 	}
 	.bento .caja {
