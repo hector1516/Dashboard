@@ -36,6 +36,10 @@ from lugar import lugar_de
 
 app = FastAPI(title="Dashboard ECCSA", version="1.0.0")
 
+# Caché del resumen de uso (60 s). La consulta agrega 32 mil filas y el kiosco
+# la pide cada minuto; sin esto el primer pintado paga la cuenta entera.
+_USO_CACHE = {"t": 0.0, "datos": None}
+
 _cache = {"datos": None, "ts": 0.0}
 _CACHE_TTL = 5.0        # segundos: el snapshot cambia cada 2 min
 
@@ -197,7 +201,18 @@ def version():
 
 @app.get("/api/uso/resumen")
 def uso_resumen():
-    """Resumen de uso de las apps (Admon y Field)."""
+    """Resumen de uso de las apps (Admon y Field).
+
+    Se cachea 60 s en memoria: es una consulta agregada sobre 32 mil filas y el
+    kiosco la pide cada minuto. Sin caché, el primer pintado siempre paga la
+    cuenta completa.
+
+    (2026-11-25: dos consultas de este endpoint tardaban 30-80 s y lo tumbaban
+    con 504; ver los comentarios de `por_dia_semana` e `inactivos`.)
+    """
+    ahora = time.time()
+    if _USO_CACHE["datos"] and (ahora - _USO_CACHE["t"]) < 60:
+        return JSONResponse(_USO_CACHE["datos"], headers={"Cache-Control": "no-store"})
     try:
         from db import get_connection
         conn = get_connection()
@@ -291,19 +306,23 @@ def uso_resumen():
             """)
             top_usuarios = [{"usuario": r["Usuario"], "llamadas": r["llamadas"]} for r in (cur.fetchall() or [])]
 
-            # Usuarios inactivos (no usaron en 7 días)
+            # Usuarios inactivos (no usaron en 7 días).
+            #
+            # Antes esto era un NOT IN con subconsulta sobre HUB_ApiUsage y
+            # tardaba 10-30 s (el endpoint entero se caía). El conjunto de
+            # activos es pequeño, así que se trae y la resta se hace aquí.
             cur.execute("""
-                SELECT u.Nombre
-                FROM HUB_Users u
-                WHERE u.Activo = 1 AND u.Id NOT IN (
-                    SELECT DISTINCT Usuario FROM HUB_ApiUsage
-                    WHERE Fecha >= DATEADD(day, -7, GETDATE()) AND Usuario IS NOT NULL
-                )
+                SELECT DISTINCT Usuario
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE()) AND Usuario IS NOT NULL
             """)
-            inactivos = [r["Nombre"] for r in (cur.fetchall() or [])]
+            activos = {str(r["Usuario"]) for r in (cur.fetchall() or [])}
+            cur.execute("SELECT Id, Nombre FROM HUB_Users WHERE Activo = 1")
+            inactivos = [r["Nombre"] for r in (cur.fetchall() or [])
+                         if str(r["Id"]) not in activos]
 
         conn.close()
-        return JSONResponse({
+        payload = {
             "activos_7d": activos_7d,
             "total_7d": total_7d,
             "por_app": por_app,
@@ -313,7 +332,10 @@ def uso_resumen():
             "top_endpoints": top_endpoints,
             "top_usuarios": top_usuarios,
             "inactivos": inactivos,
-        }, headers={"Cache-Control": "no-store"})
+        }
+        _USO_CACHE["datos"] = payload
+        _USO_CACHE["t"] = time.time()
+        return JSONResponse(payload, headers={"Cache-Control": "no-store"})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
