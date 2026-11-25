@@ -249,15 +249,27 @@ def uso_resumen():
             """)
             por_hora = [{"hora": r["hora"], "llamadas": r["llamadas"]} for r in (cur.fetchall() or [])]
 
-            # Días de la semana (últimos 30 días)
+            # Días de la semana (últimos 30 días).
+            #
+            # OJO: aquí estaba DATENAME(weekday, Fecha) y tardaba 33 s (el
+            # endpoint entero se caía con 504). DATENAME depende del idioma de
+            # la sesión y con el SQL sin memoria hace un plan malísimo.
+            # El día de la semana se saca con aritmética de fechas: 1900-01-07
+            # fue domingo, así que el módulo 7 da 0=domingo … 6=sábado, igual
+            # en cualquier idioma y sin función por fila.
             cur.execute("""
-                SELECT DATENAME(weekday, Fecha) as dia_semana, COUNT(*) as llamadas
+                SELECT (DATEDIFF(day, '19000107', CAST(Fecha AS date)) % 7) AS dow,
+                       COUNT(*) as llamadas
                 FROM HUB_ApiUsage
                 WHERE Fecha >= DATEADD(day, -30, GETDATE())
-                GROUP BY DATENAME(weekday, Fecha)
+                GROUP BY (DATEDIFF(day, '19000107', CAST(Fecha AS date)) % 7)
                 ORDER BY llamadas DESC
             """)
-            por_dia_semana = [{"dia": r["dia_semana"], "llamadas": r["llamadas"]} for r in (cur.fetchall() or [])]
+            DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
+            por_dia_semana = [
+                {"dia": DIAS[int(r["dow"]) % 7], "llamadas": r["llamadas"]}
+                for r in (cur.fetchall() or [])
+            ]
 
             # Top 10 endpoints (últimos 7 días)
             cur.execute("""
