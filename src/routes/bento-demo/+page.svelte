@@ -7,6 +7,7 @@
 	//   /bento-demo?p=combustible       → lo mismo, explícito
 	//   /bento-demo?sincombustible=1    → snapshot viejo: sin bloque `combustible`
 	//   /bento-demo?grande=1            → cifras de seis dígitos y nombres largos
+	//   /bento-demo?auto=vales          → el auto con más vales no es el que más gasta
 	//   /bento-demo?p=comprobantes      → Comprobantes con los datos del snapshot
 	//   /bento-demo?vacio=1             → Comprobantes sin pendientes ni vales
 	//   /bento-demo?edades=1            → Comprobantes con los tres colores de edad
@@ -76,6 +77,39 @@
 			horas: [0, 0, 0, 0, 0, 0, 1, 3, 9, 7, 5, 4, 6, 8, 5, 3, 2, 1, 0, 0, 0, 0, 0, 0],
 			precio_l: 21.29,
 			litros: 874
+		}
+	};
+
+	// ── Combustible: el que más pide NO es el que más gasta ──────────
+	// `por_auto` llega ordenado por monto (`datos.py`), así que el primero de
+	// la lista es el que más GASTA. Aquí el de más vales va segundo a
+	// propósito: el rótulo «Auto que más pide» tiene que enseñar el Nissan
+	// (8 vales), no el Honda (3 vales y $1,500).
+	const AUTO_VALES = {
+		combustible: {
+			...COMBUSTIBLE.combustible,
+			por_auto: [
+				{
+					id: 3,
+					marca: 'Honda City',
+					placas: 'RWS675B',
+					vales: 3,
+					monto: 1500,
+					km: 820,
+					costo_km: 1.83,
+					litros: null
+				},
+				{
+					id: 7,
+					marca: 'Nissan Versa',
+					placas: 'RYL615A',
+					vales: 8,
+					monto: 500,
+					km: 2112,
+					costo_km: 0.24,
+					litros: null
+				}
+			]
 		}
 	};
 
@@ -184,6 +218,7 @@
 	let edades = $state(false);
 	let fotos = $state(false);
 	let conVolt = $state(false);
+	let autoVales = $state(false);
 
 	onMount(() => {
 		const q = new URLSearchParams(location.search);
@@ -203,6 +238,7 @@
 		// si se ven. Con `?volt=1` se revisa que el rincón reservado no tape
 		// ninguna celda.
 		conVolt = q.get('volt') === '1';
+		autoVales = q.get('auto') === 'vales';
 		document.documentElement.classList.toggle('bento-con-volt', conVolt);
 		return () => document.documentElement.classList.remove('bento-con-volt');
 	});
@@ -220,7 +256,7 @@
 		/>
 	{:else}
 		<Combustible
-			datos={sinCombustible ? {} : grande ? GRANDE : COMBUSTIBLE}
+			datos={sinCombustible ? {} : autoVales ? AUTO_VALES : grande ? GRANDE : COMBUSTIBLE}
 			reloj="12:29"
 			fecha="miércoles 25 de noviembre"
 			antiguedad="datos de hace 1 min"

@@ -19,14 +19,14 @@
 	// arma desde SQL cada 10 minutos. El bloque es OPCIONAL (snapshot viejo o
 	// primer ciclo después de un deploy): todo se lee con `?.` y lo que no
 	// viene se pinta «—» con su porqué, nunca un cero fingido.
-	import { onMount } from 'svelte';
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Celda from '$lib/rediseno/Celda.svelte';
 	import Numero from '$lib/rediseno/Numero.svelte';
 	import Marco from '$lib/rediseno/Marco.svelte';
 	import '$lib/rediseno/tokens.css';
 	import { dinero } from '$lib/rediseno/formato';
-	import { haceCuanto, iniciales, nombreDia, nombreMes } from '$lib/kiosk/format';
+	import { relojKiosco } from '$lib/rediseno/relojKiosco.svelte';
+	import { iniciales } from '$lib/kiosk/format';
 
 	interface Semana {
 		anio?: number;
@@ -85,7 +85,6 @@
 	// ── sin comprobante / saldo ───────────────────────────────────
 	const sinCompMonto = $derived(aNumero(r?.sin_comprobante_monto));
 	const sinCompN = $derived(aNumero(r?.sin_comprobante_n));
-	const sinMonto = $derived(aNumero(r?.vales_sin_monto));
 	const saldo = $derived(aNumero(r?.saldo));
 	const alcanza = $derived(aNumero(r?.alcanza_vales));
 
@@ -117,9 +116,22 @@
 	);
 
 	// ── el auto top ───────────────────────────────────────────────
-	// `por_auto` viene ordenado por monto: el primero es el que más gasta.
+	// El rótulo manda: «el que más pide» es el que más VALES pide, no el que
+	// más gasta. `datos.py` entrega `por_auto` ordenado por monto, y con la
+	// mayoría de los vales sin monto emitido (19 de 23 el 2026-11-25) el que
+	// más gasta puede no ser el que más pide. Se ordena aquí —desempate por
+	// monto— sin tocar el backend ni el orden del snapshot, que otras
+	// pantallas usan tal cual.
 	const autos = $derived(Array.isArray(c?.por_auto) ? (c.por_auto as Auto[]) : []);
-	const top = $derived(autos.length ? autos[0] : null);
+	const top = $derived(
+		autos.length === 0
+			? null
+			: [...autos].sort(
+					(a, b) =>
+						(aNumero(b?.vales) ?? 0) - (aNumero(a?.vales) ?? 0) ||
+						(aNumero(b?.monto) ?? 0) - (aNumero(a?.monto) ?? 0)
+				)[0]
+	);
 	const foto = $derived(fotoAuto(top?.marca));
 
 	/**
@@ -187,36 +199,9 @@
 	);
 
 	// ── reloj, fecha y antigüedad ─────────────────────────────────
-	// Se escriben después de hidratar: si no, el HTML estático llevaría la
-	// hora del build.
-	let ahora = $state<Date | null>(null);
-	onMount(() => {
-		ahora = new Date();
-		const t = setInterval(() => (ahora = new Date()), 1000);
-		return () => clearInterval(t);
-	});
-
-	const hora = $derived(
-		reloj ??
-			(ahora
-				? `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`
-				: '--:--')
-	);
-	const diaLargo = $derived(
-		fecha ??
-			(ahora
-				? `${nombreDia(ahora).toLowerCase()} ${ahora.getDate()} de ${nombreMes(ahora).toLowerCase()}`
-				: '')
-	);
-	const edad = $derived(antiguedad ?? antiguedadDe(datos?.generado_en, ahora));
-
-	function antiguedadDe(iso: string | undefined, cuando: Date | null): string {
-		if (!cuando) return '';
-		const h = haceCuanto(iso, cuando.getTime());
-		if (h === '—') return 'sin datos';
-		if (h === 'ahora') return 'datos al día';
-		return `datos de ${h}`;
-	}
+	// El mismo módulo que usa Comprobantes: la prop manda y, si no viene, se
+	// arma del navegador y de `datos.generado_en`.
+	const k = relojKiosco(() => ({ reloj, fecha, antiguedad, generadoEn: datos?.generado_en }));
 
 	const linea = $derived(volt ?? frase());
 	function frase(): string {
@@ -229,9 +214,9 @@
 
 <Marco
 	titulo="Combustible"
-	reloj={hora}
-	fecha={diaLargo}
-	antiguedad={edad}
+	reloj={k.hora}
+	fecha={k.fecha}
+	antiguedad={k.antiguedad}
 	sinFoto={sinDatos ? null : sinCompN}
 	posicion={posicion ?? '—'}
 	volt={linea}
@@ -277,11 +262,13 @@
 					{#if sinCompMonto == null}—{:else}{pesos(sinCompMonto)}{/if}
 				</div>
 				<div class="sub">
+					<!-- Solo el conteo de la temporada. Los «sin monto» que traía
+					     la maqueta son otra ventana (el mes) y otro concepto: juntos
+					     se leían como si 19 cupieran en 6. -->
 					{#if sinCompN == null}
 						{sinDatos ? 'el snapshot no trae el bloque' : 'sin desglose del snapshot'}
 					{:else}
-						<b>{entero(sinCompN)} {sinCompN === 1 ? 'vale' : 'vales'}</b>
-						{#if sinMonto != null} · {entero(sinMonto)} sin monto{/if}
+						<b>{entero(sinCompN)} {sinCompN === 1 ? 'vale' : 'vales'}</b> sin comprobar
 					{/if}
 				</div>
 			</div>

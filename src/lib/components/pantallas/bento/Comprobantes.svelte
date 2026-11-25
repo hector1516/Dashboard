@@ -20,14 +20,14 @@
 	// Los datos salen del snapshot (`datos.pendientes`). El bloque es
 	// OPCIONAL: tras un deploy, el primer ciclo del snapshotter todavía no lo
 	// trae. Todo se lee con `?.` y con valores por defecto.
-	import { onMount } from 'svelte';
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Celda from '$lib/rediseno/Celda.svelte';
 	import Numero from '$lib/rediseno/Numero.svelte';
 	import Marco from '$lib/rediseno/Marco.svelte';
 	import '$lib/rediseno/tokens.css';
 	import { colorEdad, dinero } from '$lib/rediseno/formato';
-	import { haceCuanto, iniciales, nombreDia, nombreMes } from '$lib/kiosk/format';
+	import { relojKiosco } from '$lib/rediseno/relojKiosco.svelte';
+	import { iniciales, nombreDia } from '$lib/kiosk/format';
 
 	interface Fila {
 		nombre?: string;
@@ -91,37 +91,9 @@
 		return `${nombreDia(d).toLowerCase()} ${d.getDate()}`;
 	}
 
-	// El marco es tonto a propósito: el reloj y la fecha se arman aquí para
-	// que la pantalla se pueda montar con solo `datos`. Se escriben después
-	// de hidratar (si no, el HTML estático llevaría la hora del build).
-	let ahora = $state<Date | null>(null);
-	onMount(() => {
-		ahora = new Date();
-		const t = setInterval(() => (ahora = new Date()), 1000);
-		return () => clearInterval(t);
-	});
-
-	const hora = $derived(
-		reloj ??
-			(ahora
-				? `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`
-				: '--:--')
-	);
-	const diaLargo = $derived(
-		fecha ??
-			(ahora
-				? `${nombreDia(ahora).toLowerCase()} ${ahora.getDate()} de ${nombreMes(ahora).toLowerCase()}`
-				: '')
-	);
-	const edad = $derived(antiguedad ?? antiguedadDe(datos?.generado_en, ahora));
-
-	function antiguedadDe(iso: string | undefined, cuando: Date | null): string {
-		if (!cuando) return '';
-		const h = haceCuanto(iso, cuando.getTime());
-		if (h === '—') return 'sin datos';
-		if (h === 'ahora') return 'datos al día';
-		return `datos de ${h}`;
-	}
+	// Reloj, fecha y antigüedad: el mismo módulo en todas las pantallas bento
+	// (se escriben después de hidratar; la prop manda si viene).
+	const k = relojKiosco(() => ({ reloj, fecha, antiguedad, generadoEn: datos?.generado_en }));
 
 	const linea = $derived(volt ?? frase(sinDatos, vales));
 	function frase(sin: boolean, n: number): string {
@@ -133,9 +105,9 @@
 
 <Marco
 	titulo="Faltan comprobantes"
-	reloj={hora}
-	fecha={diaLargo}
-	antiguedad={edad}
+	reloj={k.hora}
+	fecha={k.fecha}
+	antiguedad={k.antiguedad}
 	sinFoto={sinDatos ? null : vales}
 	posicion={posicion ?? '—'}
 	volt={linea}
