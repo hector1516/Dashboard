@@ -7,6 +7,7 @@
 	//   /bento-demo?p=comprobantes      → Comprobantes con los datos del snapshot
 	//   /bento-demo?vacio=1             → Comprobantes sin pendientes ni vales
 	//   /bento-demo?edades=1            → Comprobantes con los tres colores de edad
+	//   /bento-demo?fotos=1             → Comprobantes con foto real y con foto rota
 	//   /bento-demo?sinbloque=1         → snapshot viejo, sin bloque `pendientes`
 	//   &volt=1                         → muestra la placa y el globo reales de Volt
 	//                                     (por defecto se ocultan para capturar limpio)
@@ -57,20 +58,41 @@
 		}
 	};
 
+	// Fotos de persona: el snapshot las deja resueltas en `/media/usuarios/u<Id>.jpg`.
+	// En el banco no hay `/media`, así que una fila lleva una imagen local que sí
+	// existe y otra una ruta rota a propósito: se ven los dos caminos (foto e
+	// iniciales de respaldo).
+	const FOTOS = {
+		pendientes: {
+			...REAL.pendientes,
+			ultimos: REAL.pendientes.ultimos.map((v, i) => ({
+				...v,
+				foto:
+					i === 0
+						? '/images/oficina-eccsa.webp'
+						: i === 1
+							? '/media/usuarios/no-existe.jpg'
+							: null
+			}))
+		}
+	};
+
 	let pantalla = $state<'combustible' | 'comprobantes'>('combustible');
 	let vacio = $state(false);
 	let sinBloque = $state(false);
 	let edades = $state(false);
+	let fotos = $state(false);
 	let conVolt = $state(false);
 
 	onMount(() => {
 		const q = new URLSearchParams(location.search);
 		vacio = q.get('vacio') === '1';
 		edades = q.get('edades') === '1';
+		fotos = q.get('fotos') === '1';
 		// Snapshot viejo: aún no trae `pendientes`. No debe reventar ni fingir.
 		sinBloque = q.get('sinbloque') === '1';
 		pantalla =
-			vacio || edades || sinBloque || q.get('p') === 'comprobantes'
+			vacio || edades || fotos || sinBloque || q.get('p') === 'comprobantes'
 				? 'comprobantes'
 				: 'combustible';
 		// La placa y el globo de Volt viven en el layout: aquí solo se decide
@@ -106,7 +128,7 @@
 	{#if pantalla === 'comprobantes'}
 		<!-- La pantalla trae su propio marco: se monta con solo `datos`. -->
 		<Comprobantes
-			datos={sinBloque ? {} : edades ? EDADES : vacio ? VACIO : REAL}
+			datos={sinBloque ? {} : edades ? EDADES : fotos ? FOTOS : vacio ? VACIO : REAL}
 			reloj="12:29"
 			fecha="miércoles 25 de noviembre"
 			antiguedad="datos de hace 1 min"

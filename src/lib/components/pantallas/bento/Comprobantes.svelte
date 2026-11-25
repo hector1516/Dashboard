@@ -36,6 +36,9 @@
 		monto?: number | null;
 		dias?: number;
 		cerrado?: boolean;
+		/** Foto real de la persona (`/media/usuarios/u<Id>.jpg`); el
+		 *  snapshotter la resuelve y no la pone si el archivo no existe. */
+		foto?: string | null;
 	}
 
 	interface Props {
@@ -133,7 +136,7 @@
 	reloj={hora}
 	fecha={diaLargo}
 	antiguedad={edad}
-	sinFoto={vales}
+	sinFoto={sinDatos ? null : vales}
 	posicion={posicion ?? '—'}
 	volt={linea}
 >
@@ -176,7 +179,19 @@
 				{:else}
 					{#each filas as f}
 						<div class="fila" class:ok={f.cerrado}>
-							<div class="ava" aria-hidden="true">{iniciales(f.nombre)}</div>
+							<!-- Foto real y, debajo, las iniciales: si el archivo se
+							     perdió (ruta vieja) la imagen se quita sola y queda el
+							     círculo con iniciales. -->
+							<div class="ava" aria-hidden="true">
+								{#if f.foto}
+									<img
+										src={f.foto}
+										alt=""
+										onerror={(e) => (e.currentTarget as HTMLImageElement).remove()}
+									/>
+								{/if}
+								<span>{iniciales(f.nombre)}</span>
+							</div>
 							<div class="quien">
 								<b>{f.nombre || 'Sin nombre'}</b>
 								<span>
@@ -213,7 +228,9 @@
 						{#if sinDatos}
 							<span>sin datos del snapshot</span>
 						{:else}
-							<b>esta semana</b>
+							<!-- «de la lista»: `ultimos` es un TOP 6 sin filtro de fecha,
+							     así que no se puede afirmar «esta semana». -->
+							<b>de la lista</b>
 							<span>
 								{filas.length
 									? `de los últimos ${filas.length} vales`
@@ -340,6 +357,7 @@
 		opacity: 0.55;
 	}
 	.ava {
+		position: relative;
 		width: 62px;
 		height: 62px;
 		flex: 0 0 62px;
@@ -349,9 +367,18 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		overflow: hidden;
 		font-size: 24px;
 		font-weight: 900;
 		letter-spacing: 0.5px;
+	}
+	.ava img {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		border-radius: 50%;
 	}
 	.quien {
 		flex: 1;

@@ -19,8 +19,8 @@
 		fecha: string;
 		/** Cuánto hace que se generó el snapshot (`datos de hace 1 min`). */
 		antiguedad: string;
-		/** Vales sin foto. Solo el número, nunca el monto. */
-		sinFoto: number;
+		/** Vales sin foto. `null` = no se sabe (snapshot sin el bloque). */
+		sinFoto: number | null;
 		/** Posición en la rotación (`1/9`). */
 		posicion: string;
 		/** La frase de Volt del pie. Sin ella el pie queda en «— Volt». */
@@ -45,7 +45,11 @@
 		<div class="reloj">{reloj}</div>
 		<div class="der">
 			<div class="chip punto">{antiguedad}</div>
-			<div class="chip" class:rojo={sinFoto > 0}>{sinFoto} sin foto</div>
+			<!-- Rojo solo si hay algo pendiente. Con `null` (bloque ausente) la
+			     píldora dice «—» y no se pinta: no es un cero. -->
+			<div class="chip" class:rojo={sinFoto != null && sinFoto > 0}>
+				{sinFoto == null ? '—' : sinFoto} sin foto
+			</div>
 			<div class="chip borde">{posicion}</div>
 		</div>
 	</header>
