@@ -122,8 +122,6 @@
 				/>
 				<div class="velo" aria-hidden="true"></div>
 
-				<span class="rotulo-celda">Portada del mes</span>
-
 				<div class="rotulo">
 					<div class="mes-linea">
 						<span class="mes">{mesAnio.mes}</span>
@@ -133,8 +131,6 @@
 					{#if subida}<div class="pie">{fechaSubida(subida)}</div>{/if}
 				</div>
 			{:else}
-				<span class="rotulo-celda">Portada del mes</span>
-
 				<div class="sin-portada">
 					<div class="mes-linea">
 						<span class="mes">{mesAnio.mes}</span>
@@ -201,20 +197,9 @@
 		);
 	}
 
-	/* Etiqueta de la celda, como en las demás pantallas, pero sobre la foto:
-	   el dato es el mes, no la etiqueta. */
-	.rotulo-celda {
-		position: absolute;
-		top: 26px;
-		left: 32px;
-		font-size: var(--k-f-strip);
-		font-weight: 800;
-		letter-spacing: 1.7px;
-		text-transform: uppercase;
-		color: #fff;
-		opacity: 0.66;
-		text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
-	}
+	/* El rótulo de la celda NO se pinta: el título «Portada del mes» ya está en
+	   la barra del marco y repetirlo aquí era ruido sobre la foto. El dato de la
+	   escena es el mes, que va abajo en grande. */
 
 	/* El rótulo del mes: abajo a la izquierda y cortado antes del rincón de
 	   Volt (448 px de ancho en el borde derecho). */
@@ -297,10 +282,6 @@
 	}
 	.escena.sin-foto .anio {
 		opacity: 0.55;
-	}
-	.escena.sin-foto .rotulo-celda {
-		opacity: 0.5;
-		text-shadow: none;
 	}
 	.aviso {
 		display: flex;

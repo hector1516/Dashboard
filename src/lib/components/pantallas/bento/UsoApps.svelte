@@ -157,12 +157,51 @@
 
 	/**
 	 * Cómo se llama el «no hay dato»: no es lo mismo un resumen que todavía no
-	 * llega que uno que no responde. La pantalla lo dice con el verbo correcto.
+	 * llega que uno que no responde. La pantalla lo dice con el verbo correcto
+	 * (y, cuando falla, avisa de que lo vuelve a intentar).
 	 */
 	const tituloSinUso = $derived(fallo ? 'Sin respuesta' : 'Sin datos todavía');
 	const motivoSinUso = $derived(
-		fallo ? 'El resumen de uso no responde.' : 'El resumen de uso no ha llegado.'
+		fallo ? 'Sin respuesta del servidor · reintentando.' : 'El resumen de uso no ha llegado.'
 	);
+
+	/**
+	 * Texto del bloque de barras cuando `por_app` no trae nada. Tres casos que
+	 * NO son el mismo: el resumen no llegó, el periodo sí tuvo 0 llamadas, o
+	 * hay total pero el desglose por app viene vacío. Antes los dos últimos
+	 * decían «Sin llamadas» y contradecían al ancla.
+	 */
+	const sinBarras = $derived.by(() => {
+		if (sinDatos) return { t: tituloSinUso, s: motivoSinUso };
+		if (total === 0) {
+			return { t: 'Sin llamadas', s: 'Ni Admon ni Field registraron llamadas en 7 días.' };
+		}
+		if (total == null) {
+			return { t: 'Sin desglose por app', s: 'El resumen no trae llamadas por app.' };
+		}
+		return {
+			t: 'Sin desglose por app',
+			s: `El resumen trae ${cuenta(total)} llamadas pero no el desglose.`
+		};
+	});
+
+	/**
+	 * Texto de la lista cuando no hay usuarios. Igual que las barras: un total
+	 * con desglose vacío no es «nadie usó las apps».
+	 */
+	const sinUsuarios = $derived.by(() => {
+		if (sinDatos) return { t: tituloSinUso, s: motivoSinUso };
+		if (total === 0) {
+			return { t: 'Sin actividad', s: 'Nadie ha hecho llamadas en los últimos 7 días.' };
+		}
+		if (total == null) {
+			return { t: 'Sin desglose', s: 'El resumen no trae los usuarios de los últimos 7 días.' };
+		}
+		return {
+			t: 'Sin desglose',
+			s: `El resumen trae ${cuenta(total)} llamadas pero no los usuarios.`
+		};
+	});
 
 	/** La parte del total que se lleva un usuario («12%» o «<1%»). */
 	function parte(n: number | null): string | null {
@@ -179,9 +218,11 @@
 		if (sinDatos) {
 			return cargando
 				? 'Todavía no llega el resumen de uso de las apps.'
-				: 'El resumen de uso no responde; el kiosco no inventa ceros.';
+				: 'Sin respuesta del servidor; el kiosco no inventa ceros y lo vuelve a intentar.';
 		}
-		if (!total) return 'Nadie ha usado Admon ni Field en los últimos 7 días.';
+		// `total` ausente NO es 0: solo un 0 del resumen autoriza a decir «nadie».
+		if (total === 0) return 'Nadie ha usado Admon ni Field en los últimos 7 días.';
+		if (total == null) return 'El resumen de uso no trae el total de los últimos 7 días.';
 		if (!topApp) return `${cuenta(total)} llamadas en 7 días, sin desglose por app.`;
 		const cola =
 			inactivos && inactivos > 0
@@ -212,14 +253,18 @@
 				{#if sinDatos}
 					<div class="cifra sin sobre-tinta">—</div>
 					<div class="sub">
-						{cargando ? 'leyendo el uso de las apps' : 'el resumen de uso no responde'}
+						{cargando ? 'leyendo el uso de las apps' : 'Sin respuesta del servidor · reintentando'}
 					</div>
-				{:else if !total}
+				{:else if total === 0}
 					<div class="cifra sin-uso sobre-tinta">Sin uso</div>
 					<div class="sub">0 llamadas en 7 días</div>
+				{:else if total == null}
+					<div class="cifra sin sobre-tinta">—</div>
+					<div class="sub">el resumen no trae el total de 7 días</div>
 				{:else if !topApp}
 					<div class="cifra ancla"><span class="texto">—</span></div>
 					<div class="sub">sin desglose por app</div>
+					<div class="delta">{cuenta(total)} llamadas en 7 días</div>
 				{:else}
 					<div class="cifra ancla"><span class="texto">{topApp.nombre}</span></div>
 					<div class="sub">
@@ -227,7 +272,7 @@
 					</div>
 					<div class="delta">
 						{#if parteTop != null && parteTop !== 100}
-							{parteTop}% de las {cuenta(total)} del periodo
+							{parteTop}% de las {cuenta(total)} llamadas
 						{:else}
 							con {cuenta(activos)} usuarios activos
 						{/if}
@@ -241,10 +286,8 @@
 			<div class="lista">
 				{#if topUsuarios.length === 0}
 					<div class="sin-filas">
-						<b>{sinDatos ? tituloSinUso : 'Sin actividad'}</b>
-						<span>
-							{sinDatos ? motivoSinUso : 'Nadie ha hecho llamadas en los últimos 7 días.'}
-						</span>
+						<b>{sinUsuarios.t}</b>
+						<span>{sinUsuarios.s}</span>
 					</div>
 				{:else}
 					{#each topUsuarios as u, i (u?.usuario ?? i)}
@@ -266,10 +309,8 @@
 			<div class="cuerpo">
 				{#if apps.length === 0}
 					<div class="sin-dato">
-						<b>{sinDatos ? tituloSinUso : 'Sin llamadas'}</b>
-						<span>
-							{sinDatos ? motivoSinUso : 'Ni Admon ni Field registraron llamadas en 7 días.'}
-						</span>
+						<b>{sinBarras.t}</b>
+						<span>{sinBarras.s}</span>
 					</div>
 				{:else}
 					<div class="barras">
@@ -285,9 +326,9 @@
 					</div>
 					<div class="sub">
 						{#if total != null}
-							<b>{cuenta(total)} llamadas</b> en total
+							<b>{cuenta(total)} llamadas</b> en 7 días
 						{:else}
-							sin total del periodo
+							el resumen no trae el total de 7 días
 						{/if}
 						{#if fallo}· última lectura buena{/if}
 					</div>
@@ -300,7 +341,9 @@
 			<div class="cuerpo">
 				{#if activos == null}
 					<div class="cifra sin">—</div>
-					<div class="sub">{sinDatos ? 'sin datos del resumen' : 'sin dato de usuarios'}</div>
+					<div class="sub">
+						{sinDatos ? (fallo ? 'sin respuesta del servidor' : 'sin datos del resumen') : 'sin dato de usuarios'}
+					</div>
 				{:else}
 					<div class="cifra">{cuenta(activos)}</div>
 					<div class="sub">en los últimos 7 días</div>
@@ -384,7 +427,6 @@
 	}
 	.fila {
 		flex: 1 1 0;
-		max-height: 116px;
 		min-height: 0;
 		display: flex;
 		align-items: center;
