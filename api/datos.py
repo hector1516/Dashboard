@@ -1370,11 +1370,13 @@ def combustible(sunday: str, hoy: str) -> dict:
                 km_auto[f["id"]] = max(0, float(f["km_max"]) - float(f["km_min"]))
 
         for a in autos:
+            # El litro por auto no existe: la factura no guarda el vehículo.
+            # Se deja en None y la pantalla muestra «—» en vez de inventar.
             litros = litros_auto.get(a["id"], 0.0)
             km = km_auto.get(a["id"], 0.0)
-            a["litros"] = round(litros, 1)
+            a["litros"] = round(litros, 1) if litros else None
             a["km"] = round(km, 1)
-            a["km_l"] = round(km / litros, 2) if litros > 0 else None
+            a["km_l"] = None
             a["costo_km"] = round(float(a["monto"] or 0) / km, 2) if km > 0 else None
             a["monto"] = float(a["monto"] or 0)
         res["por_auto"] = autos
@@ -1389,17 +1391,32 @@ def combustible(sunday: str, hoy: str) -> dict:
             ORDER BY vales DESC
         """, (hace_28.isoformat(),))
 
-        # ── Estaciones: precio por litro real ──
+        # ── Estaciones: visitas por ticket ──
+        #
+        # El CFDI NO trae la gasolinera (XmlEstacion es la razón social, repetida
+        # en todas) ni el vehículo, así que el precio POR estación no se puede
+        # calcular. Lo que sí es real: cuántas veces se carga en cada estación.
         res["estaciones"] = q("""
-            SELECT XmlEstacion AS estacion, COUNT(*) AS tickets,
-                   SUM(XmlLitros) AS litros, SUM(Monto) AS monto,
-                   CASE WHEN SUM(XmlLitros) > 0 THEN SUM(Monto) / SUM(XmlLitros) END AS precio_l
-            FROM HUB_OxxoGasVales
-            WHERE Fecha >= %s AND XmlEstacion IS NOT NULL
-              AND LTRIM(RTRIM(XmlEstacion)) <> '' AND XmlLitros > 0
-            GROUP BY XmlEstacion
-            ORDER BY precio_l
+            SELECT TOP 8 ISNULL(NULLIF(LTRIM(RTRIM(Estacion)), ''), 'Sin estación') AS estacion,
+                   COUNT(*) AS tickets
+            FROM HUB_OxxoGasTickets
+            WHERE FechaRegistro >= %s
+            GROUP BY ISNULL(NULLIF(LTRIM(RTRIM(Estacion)), ''), 'Sin estación')
+            ORDER BY tickets DESC
         """, (hace_28.isoformat(),))
+
+        # Precio por litro del periodo: solo facturas con litros reales.
+        # Muchas vienen con XmlLitros = 1 (dato malo del CFDI): incluirlas daba
+        # $431 el litro. Con litros > 1 el número es creíble (~$21-26).
+        pl = q("""
+            SELECT SUM(Monto) AS monto, SUM(XmlLitros) AS litros, COUNT(*) AS facturas
+            FROM HUB_OxxoGasVales
+            WHERE Fecha >= %s AND XmlLitros > 1
+        """, (hace_28.isoformat(),)) or [{}]
+        monto_l = float(pl[0].get("monto") or 0)
+        litros_l = float(pl[0].get("litros") or 0)
+        res["precio_l"] = round(monto_l / litros_l, 2) if litros_l > 0 else None
+        res["litros"] = round(litros_l, 1)
 
         # ── Clientes más visitados ──
         res["clientes"] = q("""

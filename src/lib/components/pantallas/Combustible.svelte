@@ -24,8 +24,8 @@
 	const tiempos = $derived(c?.tiempos ?? {});
 	const calidad = $derived(c?.calidad ?? {});
 
-	const baratas = $derived(estaciones.slice(0, 3));
-	const caras = $derived([...estaciones].slice(-3).reverse());
+	const precioL = $derived(c?.precio_l ?? null);
+	const litrosC = $derived(c?.litros ?? null);
 	const maxSemana = $derived(Math.max(1, ...semanas.map((s: any) => s.monto || 0)));
 	const maxAuto = $derived(Math.max(1, ...autos.map((a: any) => a.monto || 0)));
 	const maxUsuario = $derived(Math.max(1, ...usuarios.map((u: any) => u.vales || 0)));
@@ -148,29 +148,23 @@
 			</div>
 		</section>
 
-		<!-- Estaciones -->
+		<!-- Estaciones y precio del litro -->
 		<section class="slot ancho-4 alto-2 menta" style="--i:5">
-			<div class="slot-hd">Precio por litro · estaciones</div>
-			<div class="slot-bd dos-col">
-				<div>
-					<div class="sub-h">Más baratas</div>
-					{#each baratas as e (e.estacion)}
-						<div class="fila-precio">
-							<span class="est">{e.estacion}</span>
-							<span class="precio bien">${decimal(e.precio_l, 2)}</span>
-						</div>
-					{/each}
-					{#if !baratas.length}<div class="vacio">Sin facturas</div>{/if}
+			<div class="slot-hd">Gasolineras y precio del litro</div>
+			<div class="slot-bd">
+				<div class="precio-global">
+					<span class="pg-n">${decimal(precioL, 2)}</span>
+					<span class="pg-l">por litro<br />{litrosC != null ? `${dinero(litrosC)} L en 4 semanas` : ''}</span>
 				</div>
-				<div>
-					<div class="sub-h">Más caras</div>
-					{#each caras as e (e.estacion)}
-						<div class="fila-precio">
-							<span class="est">{e.estacion}</span>
-							<span class="precio mal">${decimal(e.precio_l, 2)}</span>
-						</div>
-					{/each}
-				</div>
+				<div class="sub-h" style="margin-top:6px">Dónde cargan más</div>
+				{#each estaciones as e, i (e.estacion)}
+					<div class="fila-precio">
+						<span class="puesto">{i + 1}</span>
+						<span class="est">{e.estacion}</span>
+						<span class="cuenta">{e.tickets}</span>
+					</div>
+				{/each}
+				{#if !estaciones.length}<div class="vacio">Sin tickets</div>{/if}
 			</div>
 		</section>
 
@@ -190,7 +184,7 @@
 						</div>
 						<div class="auto-cifras">
 							<b>${dinero(a.monto)}</b>
-							<span>{a.vales} vale(s){a.km_l ? ` · ${a.km_l} km/L` : ''}</span>
+							<span>{a.vales} vale(s){a.km ? ` · ${dinero(a.km)} km` : ''}{a.costo_km ? ` · $${decimal(a.costo_km, 2)}/km` : ''}</span>
 						</div>
 					</div>
 				{/each}
@@ -384,6 +378,11 @@
 	.barra-top { font-size: 12px; font-weight: 800; }
 	.barra { width: 44px; background: #007a4d; border: 2px solid #141414; border-radius: 6px 6px 0 0; }
 	.barra-l { font-size: 11px; font-weight: 700; color: #666; }
+
+	/* Precio global del litro */
+	.precio-global { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+	.pg-n { font-size: 40px; font-weight: 900; color: #00a88e; line-height: 1; font-variant-numeric: tabular-nums; }
+	.pg-l { font-size: 11.5px; font-weight: 700; color: #555; line-height: 1.25; }
 
 	/* Precios */
 	.dos-col { flex-direction: row; gap: 16px; }
