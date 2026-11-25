@@ -541,7 +541,7 @@
 	}
 	.ico.out {
 		background: rgba(217, 154, 0, 0.16);
-		color: #b07c00;
+		color: var(--k-ambar);
 	}
 	.nom {
 		flex: 1;

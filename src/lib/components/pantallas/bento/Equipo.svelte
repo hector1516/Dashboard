@@ -84,7 +84,7 @@
 			: []
 		).filter(Boolean)
 	);
-	const anivs = $derived(
+	const todosAnivs = $derived(
 		(hayBloque && Array.isArray(datos.aniversarios.del_mes)
 			? (datos.aniversarios.del_mes as Aniv[])
 			: []
@@ -95,19 +95,52 @@
 	 * llegan con `anos: 0` porque su `FechaIngreso` cae en el mes en curso; es
 	 * el mismo dato que el backend ya calcula, no se inventa un conteo nuevo.
 	 */
-	const nuevos = $derived(anivs.filter((a) => a?.anos != null && Number(a.anos) === 0));
+	const nuevos = $derived(
+		todosAnivs.filter((a) => a?.anos != null && Number(a.anos) === 0)
+	);
+	/**
+	 * Un ingreso de este mes NO es un aniversario: `anos: 0` es su primer mes,
+	 * no un año cumplido. Si contara aquí, la misma persona saldría dos veces
+	 * («3 aniversarios» con una fila «nuevo» al lado). Se queda solo en
+	 * «Nuevos del mes».
+	 */
+	const anivs = $derived(
+		todosAnivs.filter((a) => a?.anos != null && Number(a.anos) > 0)
+	);
 
-	// El mes y el día se leen de un reloj que avanza cada minuto: una TV puede
-	// estar encendida semanas y la pantalla no se vuelve a montar. Con un
-	// `new Date()` dentro de un `$derived` el «noviembre» se congelaría al
-	// montar y el día 1 la pantalla seguiría hablando del mes anterior.
-	let ahora = $state(new Date());
-	$effect(() => {
-		const t = setInterval(() => (ahora = new Date()), 60_000);
-		return () => clearInterval(t);
-	});
-	const mes = $derived(nombreMes(ahora).toLowerCase());
-	const mesCorto = $derived(nombreMes(ahora).slice(0, 3).toLowerCase());
+	/**
+	 * El mes y el día salen del MISMO instante que el bloque: `generado_en`.
+	 * La lista la calcula SQL con el reloj del servidor al armar el snapshot;
+	 * con el reloj del navegador, el día 1 (o con un snapshot viejo) la
+	 * pantalla rotularía «diciembre» sobre la lista de noviembre.
+	 */
+	const sello = $derived(instanteDeSnapshot(datos?.generado_en, datos?.cumpleanos?.del_mes));
+
+	function instanteDeSnapshot(
+		iso: unknown,
+		cumples: unknown
+	): { mes: number | null; dia: number | null } {
+		const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? ''));
+		if (m) {
+			const mes = Number(m[2]);
+			const dia = Number(m[3]);
+			if (mes >= 1 && mes <= 12) return { mes, dia: dia >= 1 && dia <= 31 ? dia : null };
+		}
+		// Sin `generado_en` legible (snapshot manipulado en pruebas): el mes de
+		// los propios cumpleaños es el del bloque; el día no se puede afirmar.
+		const deLista = Array.isArray(cumples) ? Number((cumples[0] as Cumple)?.mes) : NaN;
+		return {
+			mes: Number.isFinite(deLista) && deLista >= 1 && deLista <= 12 ? deLista : null,
+			dia: null
+		};
+	}
+
+	const mes = $derived(
+		sello.mes ? nombreMes(new Date(2026, sello.mes - 1, 1)).toLowerCase() : ''
+	);
+	const mesCorto = $derived(mes.slice(0, 3));
+	/** «en noviembre» o «este mes» si el snapshot no deja afirmar cuál es. */
+	const enMes = $derived(mes ? `en ${mes}` : 'este mes');
 
 	const enLista = $derived(cumples.slice(0, 4));
 	const masCumples = $derived(Math.max(0, cumples.length - enLista.length));
@@ -117,9 +150,9 @@
 	const entero = (n: number) => String(Math.round(n));
 	const miles = (n: number) => Math.round(n).toLocaleString('es-MX');
 
-	/** `dia` del snapshot (1-31) contra el día de hoy: solo para el rótulo. */
+	/** `dia` del bloque contra el día del snapshot: solo para el rótulo «hoy». */
 	function esHoy(dia: unknown): boolean {
-		return dia != null && Number(dia) === ahora.getDate();
+		return dia != null && sello.dia != null && Number(dia) === sello.dia;
 	}
 
 	// Reloj, fecha y antigüedad: el mismo módulo en todas las pantallas bento.
@@ -131,10 +164,10 @@
 		const c = cumples.length;
 		const nv = nuevos.length;
 		const partes: string[] = [];
-		if (c) partes.push(c === 1 ? `un cumpleaños en ${mes}` : `${c} cumpleaños en ${mes}`);
+		if (c) partes.push(c === 1 ? `un cumpleaños ${enMes}` : `${c} cumpleaños ${enMes}`);
 		if (nv) partes.push(nv === 1 ? 'un ingreso nuevo' : `${nv} ingresos nuevos`);
 		if (!partes.length) {
-			return `Sin cumpleaños ni ingresos en ${mes}; ${participantes} en ECCSA Legends.`;
+			return `Sin cumpleaños ni ingresos ${enMes}; ${participantes} en ECCSA Legends.`;
 		}
 		return `${partes.join(' y ')}; ${participantes} en ECCSA Legends.`;
 	}
@@ -161,7 +194,7 @@
 					<div class="cifra ancla"><Numero valor={participantes} formato={entero} /></div>
 					<div class="sub"><b>en ECCSA Legends</b></div>
 					{#if puntos != null && puntos > 0}
-						<div class="delta">▲ {miles(puntos)} pts <span>esta semana</span></div>
+						<div class="delta">{miles(puntos)} pts <span>esta semana</span></div>
 					{:else}
 						<div class="delta neutro"><span>sin puntos esta semana</span></div>
 					{/if}
@@ -170,11 +203,11 @@
 		</Celda>
 
 		<!-- Lista 2×2: los cumpleaños del mes, con foto y día. -->
-		<Celda area="1/3/3/5" rotulo="Cumpleaños · {mes}" i={1}>
+		<Celda area="1/3/3/5" rotulo={mes ? `Cumpleaños · ${mes}` : 'Cumpleaños'} i={1}>
 			<div class="lista">
 				{#if enLista.length === 0}
 					<div class="sin-filas">
-						<b>{hayBloque ? `Sin cumpleaños en ${mes}` : 'Sin datos todavía'}</b>
+						<b>{hayBloque ? `Sin cumpleaños ${enMes}` : 'Sin datos todavía'}</b>
 						<span>
 							{hayBloque
 								? 'El snapshot no trae cumpleaños este mes.'
@@ -213,14 +246,14 @@
 						</div>
 					{/each}
 					{#if masCumples > 0}
-						<div class="mas-fila">+{masCumples} más en {mes}</div>
+						<div class="mas-fila">+{masCumples} más {enMes}</div>
 					{/if}
 				{/if}
 			</div>
 		</Celda>
 
-		<!-- Aniversarios 2×1: cuántos son y quiénes, con sus años. -->
-		<Celda area="3/1/4/3" rotulo="Aniversarios · {mes}" i={2}>
+		<!-- Aniversarios 2×1: cuántos años cumplen y quiénes (solo `anos > 0`). -->
+		<Celda area="3/1/4/3" rotulo={mes ? `Aniversarios · ${mes}` : 'Aniversarios'} i={2}>
 			<div class="cuerpo">
 				{#if !hayBloque}
 					<div class="cifra sin">—</div>
@@ -231,24 +264,22 @@
 							<div class="cifra">{anivs.length}</div>
 							<div class="sub">
 								{#if anivs.length === 1}
-									aniversario en {mes}
+									aniversario {enMes}
 								{:else}
-									aniversarios en {mes}
+									aniversarios {enMes}
 								{/if}
 							</div>
 						</div>
 						<div class="aniv-lista">
 							{#if anivLista.length === 0}
-								<div class="sin-aniv">nadie cumple años en ECCSA este mes</div>
+								<div class="sin-aniv">sin aniversarios este mes</div>
 							{:else}
 								{#each anivLista as a, i (i)}
 									<div class="mini">
 										<b>{a?.Nombre || 'Sin nombre'}</b>
 										<span>
 											{a?.dia ?? '—'} {mesCorto}{#if a?.anos != null}
-												· <em class:cero={Number(a.anos) === 0}
-													>{Number(a.anos) === 0 ? 'nuevo' : `${a.anos} años`}</em
-												>{/if}
+												· <em>{a.anos} años</em>{/if}
 										</span>
 									</div>
 								{/each}
@@ -272,11 +303,11 @@
 					<div class="cifra">{nuevos.length}</div>
 					<div class="sub">
 						{#if nuevos.length === 0}
-							sin ingresos en {mes}
+							sin ingresos {enMes}
 						{:else if nuevos.length === 1}
-							ingreso en {mes}
+							ingreso {enMes}
 						{:else}
-							ingresos en {mes}
+							ingresos {enMes}
 						{/if}
 					</div>
 				{/if}
@@ -323,7 +354,7 @@
 	.sub {
 		font-size: 21px;
 		font-weight: 600;
-		opacity: 0.62;
+		opacity: 0.82;
 	}
 	.sub b {
 		font-weight: 800;
@@ -513,9 +544,6 @@
 		font-style: normal;
 		font-weight: 800;
 		opacity: 1;
-	}
-	.mini em.cero {
-		color: var(--k-verde);
 	}
 	.sin-aniv {
 		font-size: 21px;
