@@ -45,6 +45,9 @@ import AsistenciaBento from '$lib/components/pantallas/bento/Asistencia.svelte';
 import EquipoBento from '$lib/components/pantallas/bento/Equipo.svelte';
 import ActividadBento from '$lib/components/pantallas/bento/Actividad.svelte';
 import TicketsBento from '$lib/components/pantallas/bento/Tickets.svelte';
+import ClimaBento from '$lib/components/pantallas/bento/Clima.svelte';
+import PortadaBento from '$lib/components/pantallas/bento/Portada.svelte';
+import UsoAppsBento from '$lib/components/pantallas/bento/UsoApps.svelte';
 import Legends from '$lib/components/pantallas/Legends.svelte';
 import Reportes from '$lib/components/pantallas/Reportes.svelte';
 import Tickets from '$lib/components/pantallas/Tickets.svelte';
@@ -191,11 +194,11 @@ const pantalla = $derived(PANTALLAS[orden[pos] ?? 0] ?? PANTALLAS[0]);
 const posicionRotacion = $derived(`${Math.min(pos + 1, orden.length)}/${orden.length}`);
 /**
  * `?bento=1` en una de las pantallas rediseñadas (combustible, comprobantes,
- * asistencia, equipo, actividad y tickets). Cada una trae su propio `<Marco>`,
- * que ya pinta marca, título, reloj y chips: la barra de producción
- * (`HdrKiosco`) NO se monta, o se verían dos cabeceras. Es la MISMA condición la
- * que decide el componente y la cabecera, para que nunca haya una pantalla sin
- * barra y con contenido viejo (ni al revés).
+ * asistencia, equipo, actividad, tickets, clima, portada y uso de apps). Cada
+ * una trae su propio `<Marco>`, que ya pinta marca, título, reloj y chips: la
+ * barra de producción (`HdrKiosco`) NO se monta, o se verían dos cabeceras. Es
+ * la MISMA condición la que decide el componente y la cabecera, para que nunca
+ * haya una pantalla sin barra y con contenido viejo (ni al revés).
  */
 const pantallaBento = $derived(
 	BENTO &&
@@ -204,7 +207,10 @@ const pantallaBento = $derived(
 			pantalla.id === 'asistencia' ||
 			pantalla.id === 'equipo' ||
 			pantalla.id === 'actividad' ||
-			pantalla.id === 'tickets')
+			pantalla.id === 'tickets' ||
+			pantalla.id === 'clima' ||
+			pantalla.id === 'portada' ||
+			pantalla.id === 'uso_apps')
 );
 
 // Actualizar store de pantalla actual para Volt
@@ -1098,7 +1104,8 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 							     no está en la rotación (no tiene versión vieja que montar), y sus
 							     dos ramas exigen `pantallaBento`: el día que el id entre sin el
 							     flag, la pantalla no se monta con la cabecera de producción. -->
-							{#if pantalla.id === 'clima'}<Clima {datos} />
+							{#if pantalla.id === 'clima' && pantallaBento}<ClimaBento {datos} posicion={posicionRotacion} />
+							{:else if pantalla.id === 'clima'}<Clima {datos} />
 							{:else if pantalla.id === 'asistencia' && pantallaBento}<AsistenciaBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
 							{:else if pantalla.id === 'combustible' && pantallaBento}<CombustibleBento {datos} posicion={posicionRotacion} />
@@ -1110,7 +1117,9 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 							{:else if pantalla.id === 'tickets'}<Tickets {datos} />
 							{:else if pantalla.id === 'equipo' && pantallaBento}<EquipoBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'equipo'}<Equipo {datos} />
+							{:else if pantalla.id === 'portada' && pantallaBento}<PortadaBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'portada'}<Portada {datos} />
+							{:else if pantalla.id === 'uso_apps' && pantallaBento}<UsoAppsBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'uso_apps'}<UsoApps />
 							{:else if pantalla.id === 'sabias_que'}<SabiasQue />
 							{/if}
