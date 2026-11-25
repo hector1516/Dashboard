@@ -31,5 +31,5 @@
 	@media (prefers-reduced-motion: reduce) { .cell { animation: none; } }
 	.cell.dark { background: var(--k-tinta); color: #f7f3ea; }
 	.cell.red { background: var(--k-rojo); color: #fff; }
-	.lbl { font-size: 14px; font-weight: 800; letter-spacing: 1.7px; text-transform: uppercase; opacity: .55; }
+	.lbl { font-size: var(--k-f-strip); font-weight: 800; letter-spacing: 1.7px; text-transform: uppercase; opacity: .55; }
 </style>

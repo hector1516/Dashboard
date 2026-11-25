@@ -123,11 +123,11 @@
 		font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
 	}
 
-	/* El banco no monta el dock ni el globo de Volt: el marco (Task 3) pone
-	   su rincón reservado. Sin esto, el dock tapa la celda de abajo a la
-	   derecha y ensucia las capturas del sistema. */
-	:global(.volt-dock),
-	:global(.volt-comentario) {
+	/* Solo para el banco de pruebas: el dock fijo de Volt taparía la celda
+	   de abajo a la derecha y ensuciaría las capturas del sistema. En
+	   producción el rincón se RESERVA, no se tapa (Task 4). El globo de
+	   Volt no se toca: no afecta la retícula. */
+	:global(.volt-dock) {
 		display: none !important;
 	}
 
@@ -202,14 +202,14 @@
 		gap: 8px;
 		height: 100%;
 	}
-	.bval { font-size: 19px; font-weight: 800; }
+	.bval { font-size: 20px; font-weight: 800; }
 	.bbar {
 		width: 100%;
 		max-width: 78px;
 		border-radius: 8px 8px 0 0;
 		background: var(--k-verde);
 	}
-	.bpiso { font-size: 17px; font-weight: 700; opacity: 0.45; }
+	.bpiso { font-size: 20px; font-weight: 700; opacity: 0.45; }
 
 	/* mini serie de 24 horas */
 	.mini24 {
@@ -237,7 +237,7 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		font-size: 19px;
+		font-size: 20px;
 	}
 	.est-row b {
 		flex: 1;
@@ -267,5 +267,5 @@
 	}
 	.auto .datos { display: flex; flex-direction: column; }
 	.auto .datos b { font-size: 26px; font-weight: 800; letter-spacing: -0.4px; }
-	.auto .datos span { font-size: 18px; font-weight: 600; opacity: 0.6; }
+	.auto .datos span { font-size: 20px; font-weight: 600; opacity: 0.6; }
 </style>
