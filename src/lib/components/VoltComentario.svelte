@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { mascotState } from '$lib/kiosk/mascot';
 	import { getVoltComentario, getVoltComentarioPantalla } from '$lib/kiosk/voltComentarios';
-	import { pauseWalking, resumeWalking, voltPosition } from '$lib/kiosk/voltWalker';
+	import { pauseWalking, resumeWalking } from '$lib/kiosk/voltWalker';
 	import { currentScreen } from '$lib/kiosk/currentScreen';
 
 	// Muestra comentarios aleatorios de Volt cada 30-60 segundos
@@ -9,8 +9,6 @@
 	let texto = $state('');
 	let reaccion = $state('💬');
 	let timer: ReturnType<typeof setTimeout>;
-	let bubbleX = $state(0);
-	let bubbleY = $state(0);
 
 	const REACCIONES = ['💬', '🤔', '😊', '⚡', '🤖', '💡', '🎯', '👀', '🔥', '✨', '🎉', '☕'];
 
@@ -40,14 +38,6 @@
 		timer = setTimeout(mostrarComentario, delay);
 	}
 
-	// Seguir la posicion de Volt
-	$effect(() => {
-		const pos = $voltPosition;
-		// Posicionar el globo encima de Volt (180px de ancho)
-		bubbleX = pos.x + 90; // centro de Volt
-		bubbleY = pos.y - 20; // encima de Volt
-	});
-
 	import { onMount, onDestroy } from 'svelte';
 	onMount(() => {
 		// Primer comentario despues de 5s
@@ -59,7 +49,7 @@
 </script>
 
 {#if visible}
-	<div class="volt-comentario" style="left: {bubbleX}px; top: {bubbleY}px; transform: translate(-50%, -100%);">
+	<div class="volt-comentario">
 		<div class="comentario-avatar">
 			<span class="avatar-icon">🤖</span>
 		</div>
@@ -72,16 +62,19 @@
 {/if}
 
 <style>
+	/* El globo vive ENCIMA de la placa de Volt, pegado a la esquina: no sigue a
+	   nadie y no puede caer sobre el centro de la pantalla. */
 	.volt-comentario {
 		position: fixed;
-		z-index: 50;
-		max-width: 480px;
+		right: 18px;
+		bottom: 142px;
+		z-index: 401;
+		max-width: 360px;
 		pointer-events: none;
-		transition: left 0.1s linear, top 0.1s linear;
 		animation: entraComentario 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 		display: flex;
 		flex-direction: column;
-		align-items: center;
+		align-items: flex-end;
 		gap: 4px;
 	}
 
@@ -134,7 +127,7 @@
 	}
 
 	@keyframes entraComentario {
-		from { opacity: 0; transform: translate(-50%, -80%) scale(0.9); }
-		to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+		from { opacity: 0; transform: translateY(10px) scale(0.94); }
+		to { opacity: 1; transform: none; }
 	}
 </style>

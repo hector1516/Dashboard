@@ -31,15 +31,13 @@
 
 	// Wobnimo: mascota 3D Volt para el kiosco
 	import { mascotState } from '$lib/kiosk/mascot';
-	import { voltPosition, startWalking, stopWalking, prefersReducedMotion } from '$lib/kiosk/voltWalker';
+	import { stopWalking } from '$lib/kiosk/voltWalker';
 	import { onMount, onDestroy } from 'svelte';
 	import { logError, ERROR_CODES } from '$lib/audit.js';
 
 	let mascotContainer: HTMLDivElement | null = $state(null);
 	let mascotInstance: any = null;
 	let currentState = $state('idle');
-	let walkerX = $state(0);
-	let walkerY = $state(0);
 
 	// Sync store to local state
 	$effect(() => {
@@ -47,13 +45,6 @@
 		if (mascotInstance && typeof mascotInstance.setState === 'function') {
 			mascotInstance.setState(currentState);
 		}
-	});
-
-	// Sync walker position to CSS transform
-	$effect(() => {
-		const pos = $voltPosition;
-		walkerX = pos.x;
-		walkerY = pos.y;
 	});
 
 	// Cargar Wobnimo al montar
@@ -80,10 +71,9 @@
 			console.error('Wobnimo load error:', e);
 		}
 
-		// Iniciar caminata si no hay preferencia de movimiento reducido
-		if (!prefersReducedMotion()) {
-			startWalking();
-		}
+		// Volt NO camina: vive en su esquina, siempre en el mismo lugar, para no
+		// tapar datos ni obligar a nadie a seguirlo con la vista.
+		stopWalking();
 	});
 
 	onDestroy(() => {
@@ -100,21 +90,50 @@
 
 {@render children()}
 
-<!-- Mascota Volt (camina por la pantalla) -->
-<div class="wobnimo-kiosk" bind:this={mascotContainer} style="transform: translate({walkerX}px, {walkerY}px);">
+<!-- Volt: fijo en su esquina, en su placa. Nunca se mueve ni se superpone
+     con el contenido porque tiene un fondo sólido propio. -->
+<div class="volt-dock" aria-hidden="true">
+	<div class="wobnimo-kiosk" bind:this={mascotContainer}></div>
+	<div class="volt-fallback">⚡</div>
 </div>
 
 <!-- Comentarios aleatorios de Volt -->
 <VoltComentario />
 
 <style>
-	.wobnimo-kiosk {
+	/* La placa de Volt: ocupa su rincón y tapa lo que haya debajo con fondo
+	   sólido, en vez de mezclarse con el dato. */
+	.volt-dock {
 		position: fixed;
-		top: 0;
-		left: 0;
-		width: 180px;
-		height: 180px;
-		z-index: 9999;
+		right: 18px;
+		bottom: 18px;
+		width: 112px;
+		height: 112px;
+		z-index: 400;
+		border-radius: 22px;
+		background: #fffdf8;
+		border: 2px solid #141414;
+		box-shadow: 4px 4px 0 #141414;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		pointer-events: none;
+	}
+	.volt-fallback {
+		position: absolute;
+		font-size: 44px;
+		line-height: 1;
+		opacity: 0;
+	}
+	/* Sin el personaje 3D (sin internet), Volt sigue ahí como rayo. */
+	.wobnimo-kiosk:empty + .volt-fallback { opacity: 1; }
+	.wobnimo-kiosk {
+		position: absolute;
+		inset: 0;
+		width: 112px;
+		height: 112px;
+		z-index: 1;
 		pointer-events: none;
 		transition: transform 0.05s linear;
 		will-change: transform;

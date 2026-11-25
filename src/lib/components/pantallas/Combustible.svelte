@@ -237,7 +237,7 @@
 		</section>
 
 		<!-- Calidad -->
-		<section class="slot ancho-3 tinta" style="--i:10">
+		<section class="slot ancho-2 tinta" style="--i:10">
 			<div class="slot-hd">Calidad del registro</div>
 			<div class="slot-bd calidad">
 				<div class="cal-fila"><span>Sin código</span><b class:malo={calidad.sin_codigo > 0}>{calidad.sin_codigo ?? 0}</b></div>
