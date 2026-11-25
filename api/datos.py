@@ -1607,9 +1607,12 @@ def pendientes_snapshot() -> dict:
         # La lista se llena con los cerrados recientes y los pendientes de la
         # temporada: sin el filtro de fecha se colaban deudas de antes del corte
         # que no cuentan en el total de arriba y la pantalla se contradecía.
+        # TODAS las columnas llevan alias en minúscula: pymssql con
+        # `as_dict=True` usa el nombre que devuelve SQL (`S.Placa` → «Placa») y
+        # `armar_pendientes` lee «placa». Sin el alias la placa llegaba vacía.
         cur.execute(
             """SELECT TOP 6 S.IdSolicitante AS id_usuario,
-                      ISNULL(U.Nombre, '—') AS persona, S.Placa,
+                      ISNULL(U.Nombre, '—') AS persona, S.Placa AS placa,
                       S.MontoEmitido AS monto,
                       DATEDIFF(day, S.FechaSolicitud, GETDATE()) AS dias,
                       CASE WHEN S.IdTicketCierre IS NULL THEN 0 ELSE 1 END AS cerrado

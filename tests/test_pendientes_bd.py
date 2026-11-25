@@ -104,6 +104,21 @@ class PendientesSnapshotTest(unittest.TestCase):
         self.assertIsNone(r["ultimos"][1]["monto"])
         self.assertTrue(r["ultimos"][1]["cerrado"])
 
+    def test_la_lista_aliasa_todas_las_columnas(self):
+        """pymssql usa el nombre tal cual: sin `AS placa`, la clave es «Placa».
+
+        `armar_pendientes` lee `placa` en minúscula; con `S.Placa` a secas la
+        placa llegaba vacía a la pantalla (bug de producción, 2026-11-25).
+        """
+        con = _ConexionFalsa()
+        with mock.patch.object(datos, "get_connection", return_value=con):
+            r = datos.pendientes_snapshot()
+        sql = next(s for s, _ in con.registro if "TOP 6" in s)
+        for col in ("id_usuario", "persona", "placa", "monto", "dias", "cerrado"):
+            self.assertRegex(sql, rf"AS {col}\b")
+        # Sin alias el dict traería «Placa» y esto devolvería cadena vacía.
+        self.assertEqual(r["ultimos"][0]["placa"], "RWS675B")
+
 
 if __name__ == "__main__":
     unittest.main()
