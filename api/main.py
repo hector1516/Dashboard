@@ -150,9 +150,23 @@ def volt():
     """
     datos = _leer_snapshot() or {}
     degradado = datos.get("degradado") or []
-    # El clima y los fondos se bajan de internet desde el servidor: si los dos
-    # fallan, no es que el servicio esté raro, es que no hay salida a la red.
-    sin_internet = ("clima" in degradado and "bing" in degradado)
+
+    # Que el snapshot sea de hace un momento: si la base se cayó, el archivo se
+    # queda viejo y "no hay internet" sería mentira (lo que falló es SQL).
+    fresco = False
+    generado = str(datos.get("generado_en") or "")[:19]
+    if generado:
+        try:
+            import datetime as _dt
+            edad = _dt.datetime.now() - _dt.datetime.fromisoformat(generado)
+            fresco = edad < _dt.timedelta(minutes=12)
+        except Exception:
+            fresco = False
+
+    # El clima se pide a Open-Meteo desde el servidor en cada ciclo: si falla,
+    # no hay salida a internet. Es la señal más fiable (los fondos caen a la
+    # copia local y eso no significa que la red esté muerta).
+    sin_internet = fresco and ("clima" in degradado)
     return JSONResponse({
         "avisos": datos.get("volt_avisos") or [],
         "sin_internet": sin_internet,
