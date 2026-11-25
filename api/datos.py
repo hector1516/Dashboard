@@ -1485,3 +1485,42 @@ def combustible(sunday: str, hoy: str) -> dict:
         }
 
     return res
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Avisos para Volt: lo mismo que el vigilante manda por Telegram, pero en la
+# pantalla del pasillo. La tabla la escribe WorkersAdmon; aquí solo se lee.
+# ═══════════════════════════════════════════════════════════════════════════
+def volt_avisos(limite: int = 8) -> list:
+    """Últimos avisos vivos (48 h). Nunca lanza: si la tabla no existe todavía
+    o la BD no responde, devuelve [] y la pantalla sigue con su charla."""
+    limite = max(1, min(int(limite), 20))
+    try:
+        with get_connection() as conn:
+            cur = conn.cursor(as_dict=True)
+            cur.execute(f"""
+                SELECT TOP ({limite}) Id, Fecha, Tipo, Nivel, Texto
+                FROM HUB_VoltAvisos
+                WHERE Activo = 1 AND Fecha >= DATEADD(hour, -48, GETDATE())
+                ORDER BY Id DESC
+            """)
+            filas = cur.fetchall()
+    except Exception as e:
+        print(f"[datos.volt_avisos] {str(e)[:160]}")
+        return []
+
+    salida = []
+    for f in filas:
+        texto = (f.get("Texto") or "").strip()
+        if not texto:
+            continue
+        fecha = f.get("Fecha")
+        salida.append({
+            "id": int(f["Id"]),
+            "texto": texto,
+            "tipo": (f.get("Tipo") or "vigilante").strip(),
+            "nivel": (f.get("Nivel") or "info").strip(),
+            "fecha": fecha.strftime("%Y-%m-%d %H:%M") if fecha else None,
+        })
+    return salida

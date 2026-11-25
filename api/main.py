@@ -140,6 +140,27 @@ def ticket_imagen(ticket_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/dashboard/volt")
+def volt():
+    """
+    Lo que dice Volt: avisos del vigilante y si hay internet.
+
+    Sale del snapshot (sin BD): el snapshotter ya consultó hace menos de 2 min,
+    así el globo no golpea SQL cada minuto ni depende de la red para hablar.
+    """
+    datos = _leer_snapshot() or {}
+    degradado = datos.get("degradado") or []
+    # El clima y los fondos se bajan de internet desde el servidor: si los dos
+    # fallan, no es que el servicio esté raro, es que no hay salida a la red.
+    sin_internet = ("clima" in degradado and "bing" in degradado)
+    return JSONResponse({
+        "avisos": datos.get("volt_avisos") or [],
+        "sin_internet": sin_internet,
+        "degradado": degradado,
+        "generado_en": datos.get("generado_en"),
+    }, headers={"Cache-Control": "no-store"})
+
+
 @app.get("/api/dashboard/version")
 def version():
     """

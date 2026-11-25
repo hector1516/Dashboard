@@ -58,17 +58,31 @@
 				try { logError(ERROR_CODES.NET_ERROR, 'layout', String(ev.reason?.message || ev.reason || 'unhandled rejection'), { reason: String(ev.reason) }); } catch {}
 			});
 		}
-		try {
-			const [wobnimo, voltModule] = await Promise.all([
-				import('https://cdn.jsdelivr.net/npm/wobnimo@0.2/dist/wobnimo.js'),
-				import('https://cdn.jsdelivr.net/npm/wobnimo@0.2/dist/characters/volt.js')
-			]);
-			if (mascotContainer && voltModule.volt && wobnimo.mount) {
-				mascotInstance = wobnimo.mount(mascotContainer, voltModule.volt);
-				mascotInstance.setState(currentState);
+		// El personaje se sirve desde el propio contenedor (`static/vendor`), no
+		// desde un CDN: la regla del kiosco es no depender de internet. El CDN
+		// queda solo como respaldo por si el archivo local faltara.
+		const baseLocal = '/vendor/wobnimo';
+		const intentos: Array<[string, string]> = [
+			[`${baseLocal}/wobnimo.js`, `${baseLocal}/characters/volt.js`],
+			[
+				'https://cdn.jsdelivr.net/npm/wobnimo@0.2/dist/wobnimo.js',
+				'https://cdn.jsdelivr.net/npm/wobnimo@0.2/dist/characters/volt.js'
+			]
+		];
+		for (const [urlLib, urlPersonaje] of intentos) {
+			try {
+				const [wobnimo, voltModule] = await Promise.all([
+					import(/* @vite-ignore */ urlLib),
+					import(/* @vite-ignore */ urlPersonaje)
+				]);
+				if (mascotContainer && voltModule.volt && wobnimo.mount) {
+					mascotInstance = wobnimo.mount(mascotContainer, voltModule.volt);
+					mascotInstance.setState(currentState);
+					break;
+				}
+			} catch (e) {
+				console.error('Wobnimo no cargó desde', urlLib, e);
 			}
-		} catch (e) {
-			console.error('Wobnimo load error:', e);
 		}
 
 		// Volt NO camina: vive en su esquina, siempre en el mismo lugar, para no
