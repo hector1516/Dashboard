@@ -37,6 +37,9 @@ import traceback
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "api"))
 
 import config as C          # noqa: E402
+
+# Cada cuánto se recalcula el tablero de combustible (segundos).
+CACHE_COMBUSTIBLE_SEG = int(os.getenv("COMBUSTIBLE_CADA_SEG", "600"))
 import datos as D           # noqa: E402
 import eventos as E         # noqa: E402
 import medios as M          # noqa: E402
@@ -117,6 +120,20 @@ def _con_caras(personas: list, avatares: dict, fotos: dict) -> list:
     return personas
 
 
+def _bloque(fn, defecto, *args, **kwargs):
+    """Corre un bloque de datos sin tumbar el resto del snapshot.
+
+    Antes, una sola consulta lenta (el SQL del host viejo se queda sin memoria)
+    se llevaba por delante reportes, tickets y asistencia. Ahora el bloque que
+    falla se queda con el valor anterior y los demás siguen.
+    """
+    try:
+        return fn(*args, **kwargs)
+    except Exception as exc:
+        _log(f"bloque {getattr(fn, '__name__', '?')} falló: {str(exc)[:160]}")
+        return defecto
+
+
 def ciclo() -> dict:
     """Un vuelta completa. Devuelve el snapshot (para el log y las pruebas)."""
     C.asegurar_directorios()
@@ -139,12 +156,28 @@ def ciclo() -> dict:
         sunday = D.domingo_de_hoy(hoy).isoformat()
         hoy_s = hoy.isoformat()
 
+        # El tablero de combustible son ~17 consultas. Recalcularlo cada 2 min
+        # castiga al SQL que ya viene ahogado, y los vales no cambian tan
+        # rápido: se refresca cada 10 min y entre ciclos se reusa el anterior.
+        previo = _leer_json(C.SNAPSHOT, {})
+        ahora = time.time()
+        hecho = float(previo.get("combustible_en") or 0)
+        if previo.get("combustible") and (ahora - hecho) < CACHE_COMBUSTIBLE_SEG:
+            combustible = previo["combustible"]
+            combustible_en = hecho
+        else:
+            nuevo = _bloque(D.combustible, None, sunday, hoy_s)
+            combustible = nuevo or previo.get("combustible")
+            # Si falló, NO se reinicia el reloj: el dato sigue siendo viejo y
+            # el próximo ciclo lo vuelve a intentar.
+            combustible_en = ahora if nuevo else hecho
+
         bloques = {
             "cotizaciones_lista": D.cotizaciones_lista_facturar(),
             "reportes": D.reportes(sunday, hoy_s),
             "kilometros": D.kilometros(sunday, hoy_s),
             "tickets": D.tickets(sunday),
-            "combustible": D.combustible(sunday, hoy_s),
+            "combustible": combustible,
             "volt_avisos": D.volt_avisos(),
             "legends": D.legends(),
             "notas": D.notas(),
@@ -339,6 +372,7 @@ def ciclo() -> dict:
         "reportes": bloques["reportes"],
         "kilometros": bloques["kilometros"],
         "combustible": bloques["combustible"],
+        "combustible_en": combustible_en,
         "volt_avisos": bloques["volt_avisos"],
         "tickets": bloques["tickets"],
         "legends": legends,

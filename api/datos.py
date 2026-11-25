@@ -1267,16 +1267,37 @@ def combustible(sunday: str, hoy: str) -> dict:
         "tiempos": {}, "calidad": {}, "saldo": None, "umbral": umbral,
     }
 
+    estado = {"fallos": 0}
+
     with get_connection() as conn:
         cur = conn.cursor(as_dict=True)
 
         def q(sql, params=()):
+            """Una consulta. Si la base da un tirón, se reabre UNA vez; si ya
+            van tres fallos seguidos, se corta: seguir golpeando un SQL sin
+            memoria solo alarga el ciclo y deja el snapshot viejo igual."""
+            nonlocal conn, cur
             try:
                 cur.execute(sql, params)
+                estado["fallos"] = 0
                 return cur.fetchall()
             except Exception as e:
-                print(f"[datos.combustible] {str(e)[:160]}")
-                return []
+                print(f"[datos.combustible] {str(e)[:120]}")
+                estado["fallos"] += 1
+                if estado["fallos"] >= 3:
+                    raise RuntimeError("la base no responde; se corta el bloque") from e
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                conn = get_connection()
+                cur = conn.cursor(as_dict=True)
+                try:
+                    cur.execute(sql, params)
+                    return cur.fetchall()
+                except Exception as e2:
+                    print(f"[datos.combustible] reintento: {str(e2)[:120]}")
+                    return []
 
         # ── Resumen del mes y del anterior ──
         base = """
