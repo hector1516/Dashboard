@@ -52,6 +52,16 @@ export function snapshotVacio(build = 'dev'): Snapshot {
 			tasa_firma: 0
 		},
 		asistencia: { personas: [], total: 0, dentro: 0, salieron: 0 },
+		pendientes: { vales: 0, monto: 0, desde: '', ultimos: [] },
+		cotizaciones_lista: {
+			total: 0,
+			verdes: 0,
+			amarillos: 0,
+			rojos: 0,
+			por_autor: {},
+			mas_antiguas: [],
+			mas_antigua_dias: 0
+		},
 		imagen: { hay: false },
 		clima: {
 			actual: { temperatura: null, humedad: null, viento: null, codigo_clima: 0, descripcion: 'Sin datos', icono: '❓', es_dia: true },

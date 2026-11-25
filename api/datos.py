@@ -1545,3 +1545,53 @@ def volt_avisos(limite: int = 8) -> list:
             "fecha": fecha.strftime("%Y-%m-%d %H:%M") if fecha else None,
         })
     return salida
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Pendientes de comprobante: vales de la temporada sin foto de ticket + los
+# últimos vales. El cálculo (y su forma) vive en `pendientes.py`, que no toca
+# la base; aquí sólo se leen las filas.
+# ═══════════════════════════════════════════════════════════════════════════
+def _config(clave: str, defecto=None):
+    """Un valor de `HUB_Config`. Nunca lanza: si la tabla o la BD no están, se
+    queda el valor por defecto (la pantalla no puede depender de un ajuste)."""
+    try:
+        with get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT Valor FROM HUB_Config WHERE Clave = %s", (clave,))
+            fila = cur.fetchone()
+            return fila[0] if fila else defecto
+    except Exception:
+        return defecto
+
+
+def pendientes_snapshot() -> dict:
+    """Pendientes de la temporada + últimos vales (la lista que nunca se vacía)."""
+    from pendientes import armar_pendientes, corte_temporada
+    desde = corte_temporada(_config("comprobantes_desde"))
+    vacio = armar_pendientes({}, [], desde)
+    try:
+        with get_connection() as conn:
+            cur = conn.cursor(as_dict=True)
+            cur.execute(
+                """SELECT COUNT(*) AS n,
+                          SUM(CASE WHEN MontoEmitido IS NOT NULL THEN MontoEmitido ELSE 0 END) AS monto
+                   FROM HUB_SolicitudVales
+                   WHERE Estatus IN ('GENERADO','CONSUMIDO') AND IdTicketCierre IS NULL
+                     AND FechaSolicitud >= %s""", (desde,))
+            totales = cur.fetchone() or {}
+            cur.execute(
+                """SELECT TOP 6 S.IdSolicitante AS id_usuario,
+                          ISNULL(U.Nombre, '—') AS persona, S.Placa,
+                          S.MontoEmitido AS monto,
+                          DATEDIFF(day, S.FechaSolicitud, GETDATE()) AS dias,
+                          CASE WHEN S.IdTicketCierre IS NULL THEN 0 ELSE 1 END AS cerrado
+                   FROM HUB_SolicitudVales S
+                   LEFT JOIN HUB_Users U ON U.Id = S.IdSolicitante
+                   WHERE S.Estatus IN ('GENERADO','CONSUMIDO','CERRADO')
+                   ORDER BY S.FechaSolicitud DESC""")
+            ultimos = cur.fetchall()
+        return armar_pendientes(totales, ultimos, desde)
+    except Exception as e:
+        print(f"[datos.pendientes] {str(e)[:160]}")
+        return vacio

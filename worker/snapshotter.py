@@ -213,6 +213,9 @@ def ciclo() -> dict:
             "tickets": _bloque(D.tickets, previo.get("tickets") or {}, sunday),
             "combustible": combustible,
             "volt_avisos": _bloque(D.volt_avisos, previo.get("volt_avisos") or [], 8),
+            "pendientes": _bloque(
+                D.pendientes_snapshot,
+                previo.get("pendientes") or {"vales": 0, "monto": 0, "desde": "", "ultimos": []}),
             "legends": _bloque(D.legends, previo.get("legends") or _forma("legends")),
             "notas": _bloque(D.notas, previo.get("notas") or []),
             "celebraciones": _bloque(D.celebraciones, previo.get("celebraciones") or _forma("celebraciones")),
@@ -309,6 +312,12 @@ def ciclo() -> dict:
 
     rutas_avatar = _firmar_avatares(avs)
     rutas_foto = _firmar_fotos(fotos_usr)
+
+    # La foto de los últimos vales sale del mismo mapa que la asistencia. Si el
+    # bloque cayó y se reusó la lista anterior (que ya venía sin `id_usuario`),
+    # se conserva la ruta que traía: un ciclo fallido no borra la foto.
+    for _v in bloques["pendientes"].get("ultimos", []):
+        _v["foto"] = rutas_foto.get(_v.pop("id_usuario", None)) or _v.get("foto")
 
     # Avatares: en el ranking de Legends y en TODOS los cumpleaños/aniversarios
     # (los de hoy y los del mes). Antes sólo se pegaban a los de hoy y las
@@ -413,6 +422,7 @@ def ciclo() -> dict:
         "combustible": bloques["combustible"],
         "combustible_en": combustible_en,
         "volt_avisos": bloques["volt_avisos"],
+        "pendientes": bloques["pendientes"],
         "tickets": bloques["tickets"],
         "legends": legends,
         "fotos": {"ids": fotos["ids"], "rutas": thumbs_fotos},

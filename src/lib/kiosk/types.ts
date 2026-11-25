@@ -262,6 +262,27 @@ export interface Snapshot {
 	};
 
 	/**
+	 * Vales de la temporada en curso sin foto de ticket, más los últimos vales
+	 * (la lista que nunca se vacía). El corte sale de
+	 * `HUB_Config.comprobantes_desde`; el cálculo puro, de `api/pendientes.py`.
+	 */
+	pendientes: {
+		vales: number;
+		monto: number;
+		desde: string;
+		ultimos: {
+			nombre: string;
+			placa: string;
+			/** null = el vale no tiene monto emitido (no es cero). */
+			monto: number | null;
+			dias: number;
+			cerrado: boolean;
+			/** Ruta local de la foto; la resuelve el snapshotter. */
+			foto?: string | null;
+		}[];
+	};
+
+	/**
 	 * Imagen a pantalla completa (la "portada"): la sube el módulo Notas de
 	 * Admon a `HUB_PantallaImagenes`. `ruta` es local (/media/panel/…), nunca
 	 * una URL de internet.
