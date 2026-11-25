@@ -245,9 +245,10 @@
 							<div class="punto" aria-hidden="true"></div>
 						</div>
 					{/each}
-					{#if masEnLista > 0}
-						<div class="mas-fila">+{masEnLista} más en la oficina</div>
-					{/if}
+					<div class="mas-fila">
+						{#if masEnLista > 0}+{masEnLista} más en la oficina · {/if}según la red de la
+						oficina
+					</div>
 				{/if}
 			</div>
 		</Celda>
