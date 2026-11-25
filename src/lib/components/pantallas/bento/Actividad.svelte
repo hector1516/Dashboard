@@ -1,9 +1,10 @@
 <script lang="ts">
 	// Actividad, en la retícula bento: qué se movió, quién lo movió y a qué hora.
 	//
-	// Cuatro celdas: el ancla dice cuántas acciones cayeron en la última hora
-	// (reportes + kilómetros + tickets, el mismo conteo que publica la API);
-	// la lista nombra los cinco reportes más recientes; las barras muestran en
+	// Cuatro celdas: el ancla dice cuántos reportes van en la semana (un número
+	// estable y verdadero); la línea de contexto baja a la última hora
+	// (`actividad_hora`: reportes + km + tickets) y a la última lectura de km.
+	// La lista nombra los cinco reportes más recientes; las barras muestran en
 	// qué días de la semana se mueve la oficina; y la cifra chica es quien más
 	// reportes lleva de la semana.
 	//
@@ -11,11 +12,11 @@
 	// usa. La placa y el globo viven ahí; sin dibujar nada, no tapan ningún
 	// dato.
 	//
-	// DOS DESVÍOS DEL BRIEF, por el dato y no por gusto:
-	//   · El ancla no dice «acciones de hoy». El snapshot publica
-	//     `metricas.actividad_hora`, que es COUNT(*) de la ÚLTIMA HORA (ver
-	//     `api/datos.py::metricas`); rotularlo «de hoy» sería un cero falso a
-	//     media mañana. Se dice lo que el dato es.
+	// DESVÍOS DEL BRIEF, por el dato y no por gusto:
+	//   · El ancla no es «acciones de hoy»: el snapshot no publica el acumulado
+	//     del día. Lleva `reportes.esta_semana` (COUNT desde el domingo) y la
+	//     última hora (`actividad_hora`, que es COUNT de la ÚLTIMA HORA, no del
+	//     día) baja a la línea de contexto, con su nombre.
 	//   · Las barras no son «por app»: el snapshot no trae un conteo por
 	//     aplicación. Lo que sí trae es `pulso` (eventos por día de la semana
 	//     y hora, últimos 14 días), y de ahí salen las barras por día. La
@@ -86,6 +87,11 @@
 	/** Acciones en la última hora (reportes + km + tickets). */
 	const accionHora = $derived(sinDatos ? null : aNumero(m?.actividad_hora));
 
+	/** Reportes de la semana en curso (es el número del ancla). */
+	const reportesSemana = $derived(
+		sinDatos ? null : aNumero(datos?.reportes?.esta_semana)
+	);
+
 	const reportes = $derived(
 		(sinDatos || !Array.isArray(datos?.reportes?.ultimos)
 			? []
@@ -98,6 +104,8 @@
 	/** Quien más reportes lleva de la semana (el backend lo llama «del día»). */
 	const top = $derived(!sinDatos && m?.top_del_dia ? (m.top_del_dia as Top) : null);
 	const topValor = $derived(top ? aNumero(top.valor) : null);
+	/** El rótulo usa la unidad que publica el snapshot, no una palabra fija. */
+	const unidadTop = $derived(String(top?.unidad ?? '').trim());
 
 	// ── pulso: eventos por día de la semana, últimos 14 días ────────
 	const DIAS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
@@ -186,19 +194,17 @@
 		if (sinDatos) {
 			return 'El snapshot todavía no trae la actividad; no invento un cero.';
 		}
-		const actividad =
-			accionHora == null
-				? 'la actividad de la última hora no viene en el snapshot'
-				: accionHora === 0
-					? 'sin acciones en la última hora'
-					: `${accionHora} ${accionHora === 1 ? 'acción' : 'acciones'} en la última hora`;
+		const semana =
+			reportesSemana == null
+				? 'el snapshot no trae los reportes de la semana'
+				: `${reportesSemana} ${reportesSemana === 1 ? 'reporte' : 'reportes'} esta semana`;
 		const factura =
 			cotis == null
 				? ''
 				: cotis === 0
 					? ' y las cotizaciones están al día'
 					: ` y ${cotis} ${cotis === 1 ? 'cotización espera' : 'cotizaciones esperan'} factura`;
-		return mayus(actividad) + factura + '.';
+		return mayus(semana) + factura + '.';
 	}
 	function mayus(s: string): string {
 		return s.charAt(0).toUpperCase() + s.slice(1);
@@ -216,25 +222,28 @@
 	degradado={datos?.degradado ?? []}
 >
 	<Bento>
-		<!-- Ancla 2×2: el movimiento de la última hora. -->
-		<Celda area="1/1/3/3" tono="dark" rotulo="En la última hora" i={0}>
+		<!-- Ancla 2×2: los reportes de la semana y el pulso de la última hora. -->
+		<Celda area="1/1/3/3" tono="dark" rotulo="Reportes esta semana" i={0}>
 			<div class="cuerpo centro">
-				{#if accionHora == null}
-					<div class="cifra sin">—</div>
+				{#if reportesSemana == null}
+					<div class="cifra sin sobre-tinta">—</div>
 					<div class="sub">
-						{sinDatos ? 'sin datos del snapshot' : 'el snapshot no trae la actividad de la última hora'}
+						{sinDatos
+							? 'sin datos del snapshot'
+							: 'el snapshot no trae los reportes de la semana'}
 					</div>
 				{:else}
-					<div class="cifra ancla"><Numero valor={accionHora} formato={entero} /></div>
-					<div class="sub">
-						<b>{accionHora === 1 ? 'acción' : 'acciones'}</b> en reportes, km y tickets
+					<div class="cifra ancla"><Numero valor={reportesSemana} formato={entero} /></div>
+					<div class="sub">desde el domingo</div>
+					<div class="delta">
+						{#if accionHora == null}
+							sin dato de la última hora
+						{:else}
+							{accionHora} {accionHora === 1 ? 'acción' : 'acciones'} en la última hora
+						{/if}
 					</div>
 					{#if ultimaLectura}
-						<div class="delta">
-							última lectura de km: <span>{ultimaLectura.detalle}</span>
-						</div>
-					{:else}
-						<div class="delta neutro"><span>sin lecturas de kilómetros</span></div>
+						<div class="nota">última lectura de km: {ultimaLectura.detalle}</div>
 					{/if}
 				{/if}
 			</div>
@@ -306,7 +315,11 @@
 		</Celda>
 
 		<!-- Cifra 1×1: quién lleva más reportes de la semana. -->
-		<Celda area="3/3/4/4" rotulo="Más reportes · semana" i={3}>
+		<Celda
+			area="3/3/4/4"
+			rotulo={unidadTop ? `Más ${unidadTop} · semana` : 'Más reportes · semana'}
+			i={3}
+		>
 			<div class="cuerpo">
 				{#if !top || topValor == null}
 					<div class="cifra sin">—</div>
@@ -356,6 +369,10 @@
 		letter-spacing: 0;
 		opacity: 0.28;
 	}
+	/* Sobre la tinta del ancla, 0.28 desaparece: el guion sube para leerse. */
+	.cifra.sin.sobre-tinta {
+		opacity: 0.6;
+	}
 
 	.sub {
 		font-size: 21px;
@@ -377,12 +394,15 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
-	.delta.neutro {
-		color: #f7f3ea;
-	}
-	.delta span {
+	/* La última lectura de km: contexto, un escalón por debajo del delta. */
+	.nota {
+		font-size: 20px;
 		font-weight: 600;
-		opacity: 0.6;
+		color: #f7f3ea;
+		opacity: 0.55;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	/* ── lista de reportes ────────────────────────────────────── */

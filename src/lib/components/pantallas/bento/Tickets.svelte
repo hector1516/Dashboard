@@ -23,8 +23,12 @@
 	//     folio, que es el respaldo honesto.
 	//
 	// La miniatura sale de `/api/tickets/<id>/imagen`, que es del propio
-	// servidor (nunca de internet). Debajo va el folio: si la imagen tarda,
-	// no está o el endpoint falla, se sigue leyendo el ticket.
+	// servidor (nunca de internet). El endpoint manda `Cache-Control` de un
+	// año —el blob de un ticket no cambia—, así que la rotación (que remonta
+	// cada 45 s) no vuelve a bajar los 3-4 MB; `loading="lazy"` y
+	// `decoding="async"` evitan que la decodificación bloquee el resto.
+	// Debajo del todo va el folio: si la imagen tarda, no está o el endpoint
+	// falla, se sigue leyendo el ticket.
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Celda from '$lib/rediseno/Celda.svelte';
 	import Numero from '$lib/rediseno/Numero.svelte';
@@ -93,6 +97,12 @@
 	// La foto no viene en el snapshot: se sabe pidiéndola. Se anotan las que
 	// cargaron y las que ya se resolvieron (bien o mal); con eso la cifra de
 	// «con foto» no miente ni se queda en «cargando…» para siempre.
+	//
+	// La carrera: el navegador puede tener la imagen en caché y disparar
+	// `load` antes de que Svelte monte el `onload`, y entonces la celda se
+	// quedaba en «—» toda la visita. La acción `foto` corre DESPUÉS de montar
+	// y mira `complete`/`naturalWidth`; `onload`/`onerror` cubren el caso de
+	// que la descarga siga en curso. Las dos rutas son idempotentes.
 	let cargadas = $state<string[]>([]);
 	let resueltas = $state<string[]>([]);
 	const clave = (f: FilaTicket) => (f?.id_ticket == null ? '' : String(f.id_ticket));
@@ -114,11 +124,17 @@
 		if (!cargadas.includes(k)) cargadas = [...cargadas, k];
 		if (!resueltas.includes(k)) resueltas = [...resueltas, k];
 	}
-	function fotoFallo(e: Event, f: FilaTicket) {
+	function fotoFallo(img: HTMLImageElement, f: FilaTicket) {
 		// Un src roto deja el hueco; se quita y queda el folio de debajo.
-		(e.currentTarget as HTMLImageElement).remove();
+		img.remove();
 		const k = clave(f);
 		if (k && !resueltas.includes(k)) resueltas = [...resueltas, k];
+	}
+	/** Se ejecuta al montar la `<img>`: resuelve la carga que ya ocurrió. */
+	function foto(img: HTMLImageElement, f: FilaTicket) {
+		if (!img.complete) return;
+		if (img.naturalWidth > 0) fotoCargo(f);
+		else fotoFallo(img, f);
 	}
 
 	// ── por auto: cuál carga más (toda la historia) ───────────────
@@ -202,7 +218,7 @@
 		<Celda area="1/1/3/3" tono="dark" rotulo="Tickets registrados" i={0}>
 			<div class="cuerpo centro">
 				{#if total == null}
-					<div class="cifra sin">—</div>
+					<div class="cifra sin sobre-tinta">—</div>
 					<div class="sub">
 						{sinDatos ? 'sin datos del snapshot' : 'el snapshot no trae el total de tickets'}
 					</div>
@@ -241,8 +257,11 @@
 									<img
 										src={`/api/tickets/${f.id_ticket}/imagen`}
 										alt=""
+										loading="lazy"
+										decoding="async"
+										use:foto={f}
 										onload={() => fotoCargo(f)}
-										onerror={(e) => fotoFallo(e, f)}
+										onerror={(e) => fotoFallo(e.currentTarget as HTMLImageElement, f)}
 									/>
 								{/if}
 							</div>
@@ -346,6 +365,10 @@
 		font-size: 64px;
 		letter-spacing: 0;
 		opacity: 0.28;
+	}
+	/* Sobre la tinta del ancla, 0.28 desaparece: el guion sube para leerse. */
+	.cifra.sin.sobre-tinta {
+		opacity: 0.6;
 	}
 	/* «Con foto» mientras se resuelven las cuatro imágenes: no es un cero. */
 	.cifra.pend {

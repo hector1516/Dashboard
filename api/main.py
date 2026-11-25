@@ -136,7 +136,14 @@ def ticket_imagen(ticket_id: int):
         content_type = "image/jpeg"
         if row.get("ImagenNombre", "").lower().endswith(".png"):
             content_type = "image/png"
-        return Response(content=img_bytes, media_type=content_type)
+        # El blob de un ticket no cambia: se cachea un año. Sin esto, cada
+        # vuelta de la rotación (45 s, `{#key pantalla.id}` remonta) volvía a
+        # bajar 4 imágenes de 3-4 MB. `immutable` evita la revalidación.
+        return Response(
+            content=img_bytes,
+            media_type=content_type,
+            headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        )
     except HTTPException:
         raise
     except Exception as e:
