@@ -36,6 +36,11 @@ import CapaSalida from '$lib/components/CapaSalida.svelte';
 import CuentaRotacion from '$lib/components/CuentaRotacion.svelte';
 import WidgetCumple from '$lib/components/WidgetCumple.svelte';
 import Combustible from '$lib/components/pantallas/Combustible.svelte';
+// Rediseño bento (Fase 3): cada pantalla trae su propio `<Marco>`. Se montan
+// sólo con `datos` y con `?bento=1`; el reloj, la fecha y la antigüedad los
+// resuelve `relojKiosco` dentro del componente.
+import CombustibleBento from '$lib/components/pantallas/bento/Combustible.svelte';
+import ComprobantesBento from '$lib/components/pantallas/bento/Comprobantes.svelte';
 import Legends from '$lib/components/pantallas/Legends.svelte';
 import Reportes from '$lib/components/pantallas/Reportes.svelte';
 import Tickets from '$lib/components/pantallas/Tickets.svelte';
@@ -76,13 +81,29 @@ const SALIDA_AVISO_S = 10;       // cuenta regresiva de 10 s
 const SALIDA_POST_S = 45;        // el cartel de "18:30" dura 45 s
 
 /**
- * Las 10 pantallas. "pulso" entra dos veces por vuelta: es el latido de fondo
- * y si apareciera una vez cada 3 minutos se olvidaría.
+ * `?bento=1`: enciende las pantallas del rediseño (combustible y comprobantes).
+ * Va detrás de un flag hasta la Fase 4, cuando el bento sustituya a todo el
+ * kiosco: sin él, la pantalla se ve exactamente como antes.
+ *
+ * Se lee la URL aquí y no en `leerParams()` porque la lista de pantallas se
+ * arma justo abajo y necesita saber si entra «comprobantes».
+ */
+const BENTO =
+	typeof location !== 'undefined' && new URLSearchParams(location.search).has('bento');
+
+/**
+ * Las pantallas de la rotación. Con `?bento=1` son 10: entra «Faltan
+ * comprobantes», que todavía no tiene versión vieja. Sin el flag quedan las 9
+ * de siempre —el bento no se publica fuera del flag—, así que `comprobantes`
+ * sólo existe en la rotación cuando está encendido.
  */
 const PANTALLAS: PantallaDef[] = [
 	{ id: 'asistencia', icono: '👥', label: 'Asistencia de hoy' },
 	{ id: 'clima', icono: '🌤️', label: 'Clima' },
 	{ id: 'combustible', icono: '⛽', label: 'Combustible y vales' },
+	...(BENTO
+		? [{ id: 'comprobantes', icono: '🧾', label: 'Faltan comprobantes' }]
+		: []),
 	{ id: 'portada', icono: '📸', label: 'Portada del mes' },
 	{ id: 'actividad', icono: '📊', label: 'Actividad' },
 	{ id: 'tickets', icono: '🧾', label: 'Tickets OxxoGas' },
@@ -162,6 +183,8 @@ function escalar() {
 
 /* ── Derivados ────────────────────────────────────────────────── */
 const pantalla = $derived(PANTALLAS[orden[pos] ?? 0] ?? PANTALLAS[0]);
+/** La posición en la rotación (`6/10`), la misma para el header y el bento. */
+const posicionRotacion = $derived(`${Math.min(pos + 1, orden.length)}/${orden.length}`);
 
 // Actualizar store de pantalla actual para Volt
 $effect(() => {
@@ -1026,7 +1049,7 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 					pantallaLabel={pantalla.label}
 					{reloj}
 					{fecha}
-					posicion={`${Math.min(pos + 1, orden.length)}/${orden.length}`}
+					posicion={posicionRotacion}
 					degradado={datos.degradado ?? []}
 					generadoEn={datos.generado_en}
 					{antiguedad}
@@ -1044,10 +1067,15 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 							<div class="cargando-sub">Conectando con el servidor</div>
 						</div>
 					{:else}
-{#key pantalla.id}
+						{#key pantalla.id}
+							<!-- Con `?bento=1` estas dos pantallas usan el rediseño; el resto del
+							     kiosco sigue igual hasta la Fase 4. Sin el flag, `comprobantes`
+							     no está en la rotación (no tiene versión vieja que montar). -->
 							{#if pantalla.id === 'clima'}<Clima {datos} />
 							{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
+							{:else if pantalla.id === 'combustible' && BENTO}<CombustibleBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'combustible'}<Combustible {datos} />
+							{:else if pantalla.id === 'comprobantes'}<ComprobantesBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'actividad'}<Actividad {datos} />
 							{:else if pantalla.id === 'tickets'}<Tickets {datos} />
 							{:else if pantalla.id === 'equipo'}<Equipo {datos} />
