@@ -41,6 +41,8 @@ import Combustible from '$lib/components/pantallas/Combustible.svelte';
 // resuelve `relojKiosco` dentro del componente.
 import CombustibleBento from '$lib/components/pantallas/bento/Combustible.svelte';
 import ComprobantesBento from '$lib/components/pantallas/bento/Comprobantes.svelte';
+import AsistenciaBento from '$lib/components/pantallas/bento/Asistencia.svelte';
+import EquipoBento from '$lib/components/pantallas/bento/Equipo.svelte';
 import Legends from '$lib/components/pantallas/Legends.svelte';
 import Reportes from '$lib/components/pantallas/Reportes.svelte';
 import Tickets from '$lib/components/pantallas/Tickets.svelte';
@@ -186,14 +188,19 @@ const pantalla = $derived(PANTALLAS[orden[pos] ?? 0] ?? PANTALLAS[0]);
 /** La posición en la rotación (`6/10`), la misma para el header y el bento. */
 const posicionRotacion = $derived(`${Math.min(pos + 1, orden.length)}/${orden.length}`);
 /**
- * `?bento=1` en una de las dos pantallas rediseñadas. Cada una trae su propio
- * `<Marco>`, que ya pinta marca, título, reloj y chips: la barra de producción
- * (`HdrKiosco`) NO se monta, o se verían dos cabeceras. Es la MISMA condición
- * la que decide el componente y la cabecera, para que nunca haya una pantalla
- * sin barra y con contenido viejo (ni al revés).
+ * `?bento=1` en una de las pantallas rediseñadas (combustible, comprobantes,
+ * asistencia y equipo). Cada una trae su propio `<Marco>`, que ya pinta marca,
+ * título, reloj y chips: la barra de producción (`HdrKiosco`) NO se monta, o se
+ * verían dos cabeceras. Es la MISMA condición la que decide el componente y la
+ * cabecera, para que nunca haya una pantalla sin barra y con contenido viejo
+ * (ni al revés).
  */
 const pantallaBento = $derived(
-	BENTO && (pantalla.id === 'combustible' || pantalla.id === 'comprobantes')
+	BENTO &&
+		(pantalla.id === 'combustible' ||
+			pantalla.id === 'comprobantes' ||
+			pantalla.id === 'asistencia' ||
+			pantalla.id === 'equipo')
 );
 
 // Actualizar store de pantalla actual para Volt
@@ -1082,18 +1089,20 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 						</div>
 					{:else}
 						{#key pantalla.id}
-							<!-- Con `?bento=1` estas dos pantallas usan el rediseño; el resto del
+							<!-- Con `?bento=1` estas pantallas usan el rediseño; el resto del
 							     kiosco sigue igual hasta la Fase 4. Sin el flag, `comprobantes`
 							     no está en la rotación (no tiene versión vieja que montar), y sus
 							     dos ramas exigen `pantallaBento`: el día que el id entre sin el
 							     flag, la pantalla no se monta con la cabecera de producción. -->
 							{#if pantalla.id === 'clima'}<Clima {datos} />
+							{:else if pantalla.id === 'asistencia' && pantallaBento}<AsistenciaBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
 							{:else if pantalla.id === 'combustible' && pantallaBento}<CombustibleBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'combustible'}<Combustible {datos} />
 							{:else if pantalla.id === 'comprobantes' && pantallaBento}<ComprobantesBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'actividad'}<Actividad {datos} />
 							{:else if pantalla.id === 'tickets'}<Tickets {datos} />
+							{:else if pantalla.id === 'equipo' && pantallaBento}<EquipoBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'equipo'}<Equipo {datos} />
 							{:else if pantalla.id === 'portada'}<Portada {datos} />
 							{:else if pantalla.id === 'uso_apps'}<UsoApps />
