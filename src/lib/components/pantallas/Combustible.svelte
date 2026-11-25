@@ -1,211 +1,439 @@
 <!--
-	⛽ Combustible — consumo de la semana por vehículo.
+	⛽ Combustible — tablero completo de vales y costos.
 
-	Lo que aporta frente al dashboard de Field:
-	  · odómetro animado en los KPIs (el número cuenta, no aparece de golpe),
-	  · sparkline de 7 días (¿es normal lo de hoy?),
-	  · radar de flota con semáforo por "último registro" (no solo por si hay km
-	    esta semana): un vehículo con km de hace 5 días no está en ruta aunque
-	    esta semana tenga un registro.
+	Diseño: la pared de una máquina expendedora japonesa. Cada indicador es una
+	"ranura" con su franja de color, borde duro y sombra desplazada; los números
+	son el producto. Volt vive en la cabecera, en el flujo (nunca encima de los
+	datos), y la rejilla reserva su espacio.
+
+	Los datos llegan del snapshot (`datos.combustible`), que arma el snapshotter
+	desde SQL. El kiosco es de solo lectura.
 -->
 <script lang="ts">
-	import { num, haceCuanto } from '$lib/kiosk/format';
-	import type { Snapshot, VehiculoKm } from '$lib/kiosk/types';
-
-	interface Props { datos: Snapshot }
+	interface Props { datos: any }
 	let { datos }: Props = $props();
 
-	const km = $derived(datos.kilometros);
-	const vehiculos = $derived(km.por_vehiculo);
-	// La ventana MÓVIL de 7 días es la que se dibuja: la semana de ECCSA arranca
-	// en domingo, así que con la semanal los domingos la pantalla quedaría vacía.
-	const maxKm = $derived(Math.max(1, ...vehiculos.map((v) => Math.abs(v.consumo_7d || 0))));
-	const maxTickets = $derived(Math.max(1, ...datos.tickets.por_vehiculo.map((t) => t.total_tickets || 0)));
-	const totalConsumo = $derived(vehiculos.reduce((s, v) => s + Math.abs(v.consumo_7d || 0), 0));
-	const enRuta = $derived(vehiculos.filter((v) => v.consumo_7d > 0).length);
+	const c = $derived(datos?.combustible ?? null);
+	const r = $derived(c?.resumen ?? {});
+	const semanas = $derived(c?.semanas ?? []);
+	const autos = $derived((c?.por_auto ?? []).slice(0, 6));
+	const usuarios = $derived((c?.por_usuario ?? []).slice(0, 5));
+	const estaciones = $derived(c?.estaciones ?? []);
+	const clientes = $derived(c?.clientes ?? []);
+	const horas = $derived(c?.horas ?? Array(24).fill(0));
+	const tiempos = $derived(c?.tiempos ?? {});
+	const calidad = $derived(c?.calidad ?? {});
 
-	/** Semáforo de un vehículo según cuándo fue su último registro. */
-	function estado(v: VehiculoKm): { cls: string; txt: string } {
-		if (!v.ultimo_registro) return { cls: 'off', txt: 'sin registro' };
-		const h = (Date.now() - Date.parse(v.ultimo_registro.replace(' ', 'T'))) / 3600000;
-		if (h <= 24) return { cls: 'ruta', txt: haceCuanto(v.ultimo_registro) };
-		if (h <= 72) return { cls: 'medio', txt: haceCuanto(v.ultimo_registro) };
-		return { cls: 'off', txt: haceCuanto(v.ultimo_registro) };
+	const baratas = $derived(estaciones.slice(0, 3));
+	const caras = $derived([...estaciones].slice(-3).reverse());
+	const maxSemana = $derived(Math.max(1, ...semanas.map((s: any) => s.monto || 0)));
+	const maxAuto = $derived(Math.max(1, ...autos.map((a: any) => a.monto || 0)));
+	const maxUsuario = $derived(Math.max(1, ...usuarios.map((u: any) => u.vales || 0)));
+	const maxHora = $derived(Math.max(1, ...horas));
+	const maxCliente = $derived(Math.max(1, ...clientes.map((x: any) => x.tickets || 0)));
+
+	const meses = ['enero','febrero','marzo','abril','mayo','junio','julio',
+		'agosto','septiembre','octubre','noviembre','diciembre'];
+	const hoy = new Date();
+	const mesTxt = `${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
+
+	const dinero = (n: any) =>
+		n == null ? '—' : Number(n).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+	const decimal = (n: any, d = 1) =>
+		n == null ? '—' : Number(n).toLocaleString('es-MX', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+	/** Imagen del auto: mismo nombre que usan Field/Admon (slug del modelo). */
+	function slugAuto(marca: string): string {
+		return String(marca || '').toLowerCase().trim()
+			.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 	}
-
-	// Serie de 7 días → puntos del sparkline (SVG viewBox fijo 320×70).
-	const serie = $derived(km.serie_7dias ?? []);
-	const puntos = $derived.by(() => {
-		if (serie.length < 2) return '';
-		const max = Math.max(1, ...serie.map((d) => d.km || 0));
-		return serie
-			.map((d, i) => {
-				const x = (i / (serie.length - 1)) * 320;
-				const y = 66 - ((d.km || 0) / max) * 60;
-				return `${x.toFixed(1)},${y.toFixed(1)}`;
-			})
-			.join(' ');
-	});
-	const area = $derived(puntos ? `0,70 ${puntos} 320,70` : '');
+	function sinFoto(e: Event) {
+		(e.currentTarget as HTMLElement).style.display = 'none';
+	}
 </script>
 
-<div class="screen">
-	<div class="screen-titulo"><span class="ic">⛽</span> Consumo de Combustible — Últimos 7 días</div>
-
-	{#if vehiculos.length}
-		<div class="kpis" style="grid-template-columns:repeat(4,1fr)">
-			<div class="kpi blue" style="animation-delay:0s">
-				<span class="kpi-ic">🛣️</span>
-				<span class="kpi-val">{num(km.total_semana)}</span>
-				<span class="kpi-lab">km registrados · semana</span>
-			</div>
-			<div class="kpi green" style="animation-delay:0.08s">
-				<span class="kpi-ic">🟢</span>
-				<span class="kpi-val">{enRuta}/{vehiculos.length}</span>
-				<span class="kpi-lab">vehículos con consumo</span>
-			</div>
-			<div class="kpi gold" style="animation-delay:0.16s">
-				<span class="kpi-ic">Σ</span>
-				<span class="kpi-val">{num(totalConsumo)}</span>
-				<span class="kpi-lab">km recorridos · 7 días</span>
-			</div>
-			<div class="kpi orange" style="animation-delay:0.24s">
-				<span class="kpi-ic">🎫</span>
-				<span class="kpi-val">{num(datos.tickets.total_semana)}</span>
-				<span class="kpi-lab">tickets OxxoGas · semana</span>
+<div class="maquina">
+	<!-- Cabecera: marca, mes y Volt. Volt va EN EL FLUJO: reserva su espacio y
+	     nunca puede taparse con un dato. -->
+	<header class="cab">
+		<div class="cab-izq">
+			<span class="cab-logo">⛽</span>
+			<div>
+				<div class="cab-tit">Combustible</div>
+				<div class="cab-sub">Vales · costos · consumo — {mesTxt}</div>
 			</div>
 		</div>
+		<div class="cab-der">
+			<div class="saldo">
+				<span class="saldo-l">Saldo Go Vale</span>
+				<span class="saldo-n">${dinero(r.saldo)}</span>
+				<span class="saldo-s">{r.alcanza_vales != null ? `alcanza ${r.alcanza_vales} vales` : 'sin dato'}</span>
+			</div>
+			<div class="volt" title="Volt, el asistente de ECCSA">
+				<svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">
+					<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="currentColor" />
+				</svg>
+				<span>Volt</span>
+			</div>
+		</div>
+	</header>
 
-		<div class="cuerpo">
-			<!-- Izquierda: estado de la flota + serie semanal -->
-			<div class="col-izq">
-				<div class="seccion-lab">Flota · último registro</div>
-				<div class="flota">
-					{#each vehiculos as v, i}
-						{@const e = estado(v)}
-						<div class="veh" class:con-km={v.consumo_7d > 0} style="animation-delay:{i * 0.05}s">
-							<span class="luz {e.cls}" title={e.txt}></span>
-							<div class="veh-cuerpo">
-								<div class="veh-nombre">{v.MarcaModelo}</div>
-								<div class="veh-meta">{v.Placas} · {e.txt}</div>
-							</div>
-							<div class="veh-km">
-								{#if v.sin_referencia}
-									<span class="sin-ref" title="No hay lectura anterior para comparar">1ª lectura</span>
-								{:else if v.consumo_7d > 0}
-									+{num(v.consumo_7d)}
-								{:else}
-									—
-								{/if}
-							</div>
+	<!-- Franja de tiempos y cobertura: una línea, sin robar altura a las ranuras. -->
+	<div class="tira">
+		<span>Pedir → generar: <b>{decimal(tiempos.pedir_generar_min)} min</b></span>
+		<span>Peor caso: <b>{tiempos.pedir_generar_peor_min ?? '—'} min</b></span>
+		<span>Tickets con factura: <b>{calidad.tickets ? Math.round((calidad.tickets_con_vale / calidad.tickets) * 100) : 0} %</b></span>
+		<span>Con foto: <b>{calidad.tickets ? Math.round((calidad.tickets_con_foto / calidad.tickets) * 100) : 0} %</b></span>
+	<span class="tira-push">Sin comprobante: <b>{dinero(r.sin_comprobante_monto)}</b></span>
+	</div>
+
+	<main class="rejilla">
+		<!-- Gasto del mes -->
+		<section class="slot ancho-4 alto-2 rojo" style="--i:0">
+			<div class="slot-hd">Gasto del mes</div>
+			<div class="slot-bd">
+				<div class="num gigante">${dinero(r.gasto_mes)}</div>
+				<div class="comp">
+					{#if r.variacion_pct != null}
+						<span class:mas={r.variacion_pct > 0} class:menos={r.variacion_pct <= 0}>
+							{r.variacion_pct > 0 ? '▲' : '▼'} {Math.abs(r.variacion_pct)} %
+						</span>
+						<span class="comp-l">vs mes anterior (${dinero(r.gasto_mes_anterior)})</span>
+					{:else}
+						<span class="comp-l">sin mes anterior para comparar</span>
+					{/if}
+				</div>
+			</div>
+		</section>
+
+		<!-- Vales y promedio -->
+		<section class="slot ancho-2 cobalt" style="--i:1">
+			<div class="slot-hd">Vales</div>
+			<div class="slot-bd">
+				<div class="num">{dinero(r.vales_mes)}</div>
+				<div class="pie">en el mes</div>
+			</div>
+		</section>
+
+		<section class="slot ancho-2 amarillo" style="--i:2">
+			<div class="slot-hd">Promedio</div>
+			<div class="slot-bd">
+				<div class="num">${dinero(r.promedio)}</div>
+				<div class="pie">por vale <span class="mini">(tope $500)</span></div>
+			</div>
+		</section>
+
+		<!-- Sin comprobante -->
+		<section class="slot ancho-4 alto-2 tinta" style="--i:3">
+			<div class="slot-hd alerta">Dinero sin comprobante</div>
+			<div class="slot-bd">
+				<div class="num gigante">${dinero(r.sin_comprobante_monto)}</div>
+				<div class="pie">{r.sin_comprobante_n ?? 0} vale(s) emitidos sin foto del ticket</div>
+				<div class="nota">Se cierra solo cuando el usuario sube la foto.</div>
+			</div>
+		</section>
+
+		<!-- Semanas -->
+		<section class="slot ancho-4 alto-2 verde" style="--i:4">
+			<div class="slot-hd">Gasto por semana</div>
+			<div class="slot-bd barras">
+				{#each semanas as s (s.semana)}
+					<div class="barra-col">
+						<span class="barra-top">${dinero(s.monto)}</span>
+						<div class="barra" style={`height:${Math.max(6, (s.monto / maxSemana) * 130)}px`}></div>
+						<span class="barra-l">sem {s.semana}</span>
+					</div>
+				{/each}
+				{#if !semanas.length}<div class="vacio">Sin vales en 4 semanas</div>{/if}
+			</div>
+		</section>
+
+		<!-- Estaciones -->
+		<section class="slot ancho-4 alto-2 menta" style="--i:5">
+			<div class="slot-hd">Precio por litro · estaciones</div>
+			<div class="slot-bd dos-col">
+				<div>
+					<div class="sub-h">Más baratas</div>
+					{#each baratas as e (e.estacion)}
+						<div class="fila-precio">
+							<span class="est">{e.estacion}</span>
+							<span class="precio bien">${decimal(e.precio_l, 2)}</span>
+						</div>
+					{/each}
+					{#if !baratas.length}<div class="vacio">Sin facturas</div>{/if}
+				</div>
+				<div>
+					<div class="sub-h">Más caras</div>
+					{#each caras as e (e.estacion)}
+						<div class="fila-precio">
+							<span class="est">{e.estacion}</span>
+							<span class="precio mal">${decimal(e.precio_l, 2)}</span>
 						</div>
 					{/each}
 				</div>
+			</div>
+		</section>
 
-				{#if serie.length > 1}
-					<div class="spark-box card">
-						<div class="seccion-lab">Kilómetros por día (7 días)</div>
-						<svg class="spark" viewBox="0 0 320 78" preserveAspectRatio="none" aria-hidden="true">
-							<defs>
-								<linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-									<stop offset="0%" stop-color="#FFAE00" stop-opacity="0.55" />
-									<stop offset="100%" stop-color="#FFAE00" stop-opacity="0" />
-								</linearGradient>
-							</defs>
-							<polygon class="spark-area" points={area} />
-							<polyline class="spark-line" points={puntos} />
-							{#each serie as d, i}
-								{@const max = Math.max(1, ...serie.map((x) => x.km || 0))}
-								<circle
-									class="spark-pt"
-									cx={(i / (serie.length - 1)) * 320}
-									cy={66 - ((d.km || 0) / max) * 60}
-									r="3"
-								/>
-							{/each}
-						</svg>
-						<div class="spark-ejes">
-							<span>{serie[0]?.fecha?.slice(5) ?? ''}</span>
-							<span>{serie[serie.length - 1]?.fecha?.slice(5) ?? ''}</span>
+		<!-- Autos -->
+		<section class="slot ancho-4 alto-2 amarillo" style="--i:6">
+			<div class="slot-hd">Autos que más piden</div>
+			<div class="slot-bd lista-autos">
+				{#each autos as a (a.id)}
+					<div class="auto">
+						<div class="auto-foto">
+							<img src={`/autos/${slugAuto(a.marca)}.webp`} alt={a.marca || ''} loading="lazy" onerror={sinFoto} />
+							<span class="auto-ini">{(a.marca || '?').slice(0, 2)}</span>
+						</div>
+						<div class="auto-info">
+							<div class="auto-nom">{a.marca || 'Sin modelo'}<span class="auto-pl">{[a.placas].filter(Boolean)}</span></div>
+							<div class="auto-barra"><i style={`width:${Math.max(4, (a.monto / maxAuto) * 100)}%`}></i></div>
+						</div>
+						<div class="auto-cifras">
+							<b>${dinero(a.monto)}</b>
+							<span>{a.vales} vale(s){a.km_l ? ` · ${a.km_l} km/L` : ''}</span>
 						</div>
 					</div>
-				{/if}
+				{/each}
+				{#if !autos.length}<div class="vacio">Sin vales en 4 semanas</div>{/if}
 			</div>
+		</section>
 
-			<!-- Derecha: barras de km y de tickets -->
-			<div class="col-der">
-				<div class="seccion-lab">Kilómetros por vehículo (vs. el mayor de los últimos 7 días)</div>
-				<div class="barras">
-					{#each vehiculos.slice(0, 9) as v, i}
-						{@const p = Math.round((Math.abs(v.consumo_7d || 0) / maxKm) * 100)}
-						<div class="bar-fila" style="animation-delay:{i * 0.06}s">
-							<span class="bar-lab">{v.MarcaModelo}</span>
-							<div class="bar-pista">
-								<div class="bar-relleno km" style="width:{Math.max(p, 2)}%"></div>
-							</div>
-							<span class="bar-val km">+{num(v.consumo_7d)}</span>
-							<span class="bar-pct">{p}%</span>
-						</div>
+		<!-- Usuarios -->
+		<section class="slot ancho-3 cobalt" style="--i:7">
+			<div class="slot-hd">Quién más pide</div>
+			<div class="slot-bd">
+				{#each usuarios as u, i (u.nombre)}
+					<div class="fila">
+						<span class="puesto">{i + 1}</span>
+						<span class="quien">{u.nombre || '—'}</span>
+						<span class="cuenta">{u.vales}</span>
+					</div>
+					<div class="mini-barra"><i style={`width:${(u.vales / maxUsuario) * 100}%`}></i></div>
+				{/each}
+				{#if !usuarios.length}<div class="vacio">Sin datos</div>{/if}
+			</div>
+		</section>
+
+		<!-- Horas -->
+		<section class="slot ancho-3 rojo" style="--i:8">
+			<div class="slot-hd">A qué hora cargan</div>
+			<div class="slot-bd">
+				<div class="horas">
+					{#each horas as n, h}
+						<div class="hora" style={`height:${Math.max(4, (n / maxHora) * 96)}px`} title={`${h}:00`}></div>
 					{/each}
 				</div>
-
-				{#if datos.tickets.por_vehiculo.length}
-					<div class="seccion-lab t-tickets">🎫 Tickets OxxoGas por vehículo (semana)</div>
-					<div class="barras">
-						{#each datos.tickets.por_vehiculo as t, i}
-							{@const p = Math.round(((t.total_tickets || 0) / maxTickets) * 100)}
-							<div class="bar-fila" style="animation-delay:{0.25 + i * 0.06}s">
-								<span class="bar-lab">{t.vehiculo}</span>
-								<div class="bar-pista">
-									<div class="bar-relleno ticket" style="width:{Math.max(p, 4)}%"></div>
-								</div>
-								<span class="bar-val ticket">{t.total_tickets} tkt</span>
-								<span class="bar-pct">{p}%</span>
-							</div>
-						{/each}
-					</div>
-				{/if}
+				<div class="pie">00 h ··· 23 h</div>
 			</div>
-		</div>
-	{:else}
-		<div class="vacio">
-			Sin consumo calculable esta semana
-			<span class="vacio-sub">Se muestra cuando hay registro esta semana y el anterior</span>
-		</div>
-	{/if}
+		</section>
+
+		<!-- Clientes -->
+		<section class="slot ancho-3 menta" style="--i:9">
+			<div class="slot-hd">Clientes más visitados</div>
+			<div class="slot-bd">
+				{#each clientes as cl (cl.cliente)}
+					<div class="fila">
+						<span class="quien">{cl.cliente || '—'}</span>
+						<span class="cuenta">{cl.tickets}</span>
+					</div>
+					<div class="mini-barra"><i style={`width:${(cl.tickets / maxCliente) * 100}%`}></i></div>
+				{/each}
+				{#if !clientes.length}<div class="vacio">Sin tickets</div>{/if}
+			</div>
+		</section>
+
+		<!-- Calidad -->
+		<section class="slot ancho-3 tinta" style="--i:10">
+			<div class="slot-hd">Calidad del registro</div>
+			<div class="slot-bd calidad">
+				<div class="cal-fila"><span>Sin código</span><b class:malo={calidad.sin_codigo > 0}>{calidad.sin_codigo ?? 0}</b></div>
+				<div class="cal-fila"><span>Sin monto emitido</span><b class:malo={calidad.sin_monto > 0}>{calidad.sin_monto ?? 0}</b></div>
+				<div class="cal-fila"><span>Monto distinto a $500</span><b class:malo={calidad.monto_raro > 0}>{calidad.monto_raro ?? 0}</b></div>
+				<div class="cal-fila"><span>Tickets del periodo</span><b>{calidad.tickets ?? 0}</b></div>
+			</div>
+		</section>
+	</main>
 </div>
 
 <style>
-	.cuerpo { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(360px, 0.85fr) 1.35fr; gap: 18px; }
-	.col-izq, .col-der { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-	.seccion-lab { font-size: 14px; font-weight: 800; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; }
-	.seccion-lab.t-tickets { margin-top: 4px; color: #FBBF24; }
-
-	/* La lista de flota NO crece (son pocas filas): el espacio que sobra lo toma
-	   la sparkline, que de otro modo quedaba aplastada contra el piso. */
-	.flota { display: flex; flex-direction: column; gap: 7px; overflow: hidden; flex: 0 1 auto; }
-	.veh {
-		display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-radius: 11px;
-		background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
-		animation: entrarStagger 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+	.maquina {
+		position: absolute; inset: 0;
+		display: flex; flex-direction: column;
+		padding: 26px 28px 24px;
+		gap: 12px;
+		background:
+			radial-gradient(circle at 18% 12%, #faf5ec 0%, #f1e9db 55%, #ece2d1 100%);
+		color: #141414;
+		font-family: Outfit, system-ui, sans-serif;
+		overflow: hidden;
 	}
-	.veh.con-km { background: linear-gradient(90deg, rgba(34,197,94,0.13), rgba(34,197,94,0.03)); border-color: rgba(34,197,94,0.3); }
-	.luz { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
-	.luz.ruta  { background: #22C55E; box-shadow: 0 0 10px rgba(34,197,94,0.7); animation: latir 2.4s ease-in-out infinite; }
-	.luz.medio { background: #F59E0B; box-shadow: 0 0 8px rgba(245,158,11,0.5); }
-	.luz.off   { background: #475569; }
-	.veh-cuerpo { flex: 1; min-width: 0; }
-	.veh-nombre { font-weight: 700; font-size: 16px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.veh-meta { font-size: 13px; color: var(--color-text-muted); }
-	.veh-km { font-size: 15px; font-weight: 800; color: #4ADE80; font-variant-numeric: tabular-nums; }
-	.sin-ref { font-size: 12px; font-weight: 700; color: #FBBF24; }
 
-	.barras { display: flex; flex-direction: column; gap: 8px; overflow: hidden; flex: 1; }
-	.barras .bar-fila { grid-template-columns: 190px 1fr 110px 46px; }
+	/* ── Cabecera ─────────────────────────────────────────────────── */
+	.cab {
+		flex: 0 0 92px;
+		display: flex; align-items: center; justify-content: space-between;
+		padding: 0 22px;
+		background: #e4002b; color: #fff;
+		border: 2px solid #141414; border-radius: 18px;
+		box-shadow: 6px 6px 0 #141414;
+	}
+	.cab-izq { display: flex; align-items: center; gap: 16px; }
+	.cab-logo { font-size: 42px; line-height: 1; filter: grayscale(1) brightness(3); }
+	.cab-tit { font-size: 40px; font-weight: 900; letter-spacing: -0.5px; line-height: 1; }
+	.cab-sub { font-size: 15px; font-weight: 600; opacity: 0.9; margin-top: 4px; }
+	.cab-der { display: flex; align-items: center; gap: 18px; }
 
-	.spark-box { padding: 14px 18px 10px; flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: 6px; min-height: 150px; }
-	.spark { height: 100%; min-height: 110px; }
-	.spark-ejes { display: flex; justify-content: space-between; font-size: 12px; color: #64748B; }
+	.saldo {
+		display: flex; flex-direction: column; align-items: flex-end;
+		background: #fffdf8; color: #141414;
+		border: 2px solid #141414; border-radius: 12px;
+		padding: 6px 14px; min-width: 190px;
+	}
+	.saldo-l { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; opacity: 0.6; }
+	.saldo-n { font-size: 26px; font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; }
+	.saldo-s { font-size: 11px; font-weight: 600; opacity: 0.65; }
 
-	@keyframes latir { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+	/* Volt: en el flujo, con su propio espacio. Nunca se superpone. */
+	.volt {
+		display: flex; flex-direction: column; align-items: center; justify-content: center;
+		width: 78px; height: 78px; flex: 0 0 78px;
+		background: #ffc400; color: #141414;
+		border: 2px solid #141414; border-radius: 50%;
+		box-shadow: 4px 4px 0 #141414;
+	}
+	.volt span { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin-top: -2px; }
+
+	/* ── Tira de tiempos ──────────────────────────────────────────── */
+	.tira {
+		flex: 0 0 36px;
+		display: flex; align-items: center; gap: 26px;
+		padding: 0 16px;
+		font-size: 14px; font-weight: 600;
+		background: #fffdf8; border: 2px solid #141414; border-radius: 12px;
+	}
+	.tira b { font-weight: 900; }
+	.tira-push { margin-left: auto; color: #b00020; }
+
+	/* ── Rejilla de ranuras ───────────────────────────────────────── */
+	.rejilla {
+		flex: 1; min-height: 0;
+		display: grid;
+		grid-template-columns: repeat(12, 1fr);
+		grid-auto-rows: 1fr;
+		gap: 14px;
+	}
+	.ancho-2 { grid-column: span 2; }
+	.ancho-3 { grid-column: span 3; }
+	.ancho-4 { grid-column: span 4; }
+	.alto-2 { grid-row: span 2; }
+
+	.slot {
+		display: flex; flex-direction: column;
+		background: #fffdf8;
+		border: 2px solid #141414; border-radius: 16px;
+		box-shadow: 5px 5px 0 #141414;
+		overflow: hidden;
+		animation: caer 0.5s cubic-bezier(.2,.9,.3,1.2) both;
+		animation-delay: calc(var(--i) * 40ms);
+	}
+	@keyframes caer {
+		from { opacity: 0; transform: translateY(-16px) scale(.97); }
+		to   { opacity: 1; transform: none; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.slot { animation: none; }
+	}
+
+	.slot-hd {
+		flex: 0 0 34px;
+		display: flex; align-items: center;
+		padding: 0 14px;
+		font-size: 12.5px; font-weight: 800;
+		letter-spacing: 1.4px; text-transform: uppercase;
+		color: #fff; background: #141414;
+	}
+	.rojo .slot-hd { background: #e4002b; }
+	.cobalt .slot-hd { background: #1b3fa0; }
+	.amarillo .slot-hd { background: #ffc400; color: #141414; }
+	.verde .slot-hd { background: #007a4d; }
+	.menta .slot-hd { background: #00a88e; }
+	.tinta .slot-hd { background: #141414; }
+	.slot-hd.alerta { background: #b00020; }
+
+	.slot-bd {
+		flex: 1; min-height: 0;
+		padding: 10px 14px 12px;
+		display: flex; flex-direction: column; justify-content: center;
+		gap: 4px;
+	}
+
+	.num { font-size: 46px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+	.num.gigante { font-size: 74px; }
+	.pie { font-size: 13px; font-weight: 600; color: #555; }
+	.mini { font-weight: 500; opacity: .7; }
+	.nota { font-size: 11.5px; color: #777; margin-top: 2px; }
+	.comp { display: flex; align-items: baseline; gap: 8px; font-size: 15px; font-weight: 800; }
+	.comp .mas { color: #b00020; }
+	.comp .menos { color: #007a4d; }
+	.comp-l { font-size: 12.5px; font-weight: 600; color: #666; }
+	.vacio { font-size: 13px; color: #888; font-weight: 600; }
+
+	/* Barras por semana */
+	.barras { flex-direction: row; align-items: flex-end; justify-content: space-around; gap: 10px; }
+	.barra-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+	.barra-top { font-size: 12px; font-weight: 800; }
+	.barra { width: 44px; background: #007a4d; border: 2px solid #141414; border-radius: 6px 6px 0 0; }
+	.barra-l { font-size: 11px; font-weight: 700; color: #666; }
+
+	/* Precios */
+	.dos-col { flex-direction: row; gap: 16px; }
+	.dos-col > div { flex: 1; min-width: 0; }
+	.sub-h { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #666; margin-bottom: 4px; }
+	.fila-precio { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 2.5px 0; border-bottom: 1px dashed #ddd; }
+	.est { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.precio { font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
+	.bien { color: #007a4d; }
+	.mal { color: #b00020; }
+
+	/* Autos */
+	.lista-autos { gap: 6px; }
+	.auto { display: flex; align-items: center; gap: 10px; }
+	.auto-foto {
+		position: relative; width: 62px; height: 40px; flex: 0 0 62px;
+		background: #f1e9db; border: 2px solid #141414; border-radius: 8px; overflow: hidden;
+	}
+	.auto-foto img { width: 100%; height: 100%; object-fit: cover; }
+	.auto-ini {
+		position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+		font-size: 14px; font-weight: 900; color: #b9ab93; text-transform: uppercase;
+	}
+	.auto-foto img:not([style*="none"]) + .auto-ini { display: none; }
+	.auto-info { flex: 1; min-width: 0; }
+	.auto-nom { font-size: 12.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.auto-pl { font-weight: 600; color: #777; margin-left: 6px; }
+	.auto-barra { height: 9px; background: #efe6d6; border: 1.5px solid #141414; border-radius: 5px; overflow: hidden; margin-top: 3px; }
+	.auto-barra i { display: block; height: 100%; background: #ffc400; }
+	.auto-cifras { text-align: right; flex: 0 0 auto; }
+	.auto-cifras b { display: block; font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
+	.auto-cifras span { font-size: 10.5px; font-weight: 600; color: #666; white-space: nowrap; }
+
+	/* Listas (usuarios y clientes) */
+	.fila { display: flex; align-items: baseline; gap: 8px; font-size: 13px; }
+	.puesto { font-size: 10px; font-weight: 900; color: #999; width: 14px; }
+	.quien { flex: 1; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.cuenta { font-weight: 900; font-variant-numeric: tabular-nums; }
+	.mini-barra { height: 6px; background: #efe6d6; border-radius: 4px; overflow: hidden; margin: 0 0 6px 22px; }
+	.cobalt .mini-barra i { background: #1b3fa0; }
+	.menta .mini-barra i { background: #00a88e; }
+	.mini-barra i { display: block; height: 100%; }
+
+	/* Horas */
+	.horas { display: flex; align-items: flex-end; gap: 3px; height: 96px; }
+	.hora { flex: 1; background: #e4002b; border-radius: 2px 2px 0 0; min-width: 0; }
+
+	/* Calidad */
+	.calidad { gap: 8px; }
+	.cal-fila { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; border-bottom: 1px dashed #ddd; padding-bottom: 5px; }
+	.cal-fila b { font-size: 18px; font-weight: 900; }
+	.cal-fila .malo { color: #b00020; }
 </style>

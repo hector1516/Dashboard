@@ -1243,3 +1243,228 @@ def fotos_usuarios() -> dict:
 def _dump(x) -> str:
     """Para depurar desde la consola."""
     return json.dumps(x, ensure_ascii=False, default=str, indent=2)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Combustible: vales, costos, precios por estación, consumo, personas, tiempos
+# ═══════════════════════════════════════════════════════════════════════════
+def combustible(sunday: str, hoy: str) -> dict:
+    """Todo el tablero de combustible en una sola pasada (solo lectura).
+
+    Regla de dinero: el gasto usa `MontoEmitido` (lo que de verdad salió). Un
+    vale sin monto emitido NO se suma como 500: suma a «sin comprobante».
+    """
+    hoy_d = _dt.date.fromisoformat(hoy)
+    inicio_mes = hoy_d.replace(day=1)
+    inicio_mes_ant = (inicio_mes - _dt.timedelta(days=1)).replace(day=1)
+    fin_mes_ant = inicio_mes - _dt.timedelta(days=1)
+    hace_28 = hoy_d - _dt.timedelta(days=27)
+    umbral = 2000.0
+
+    res = {
+        "resumen": {}, "semanas": [], "por_auto": [], "por_usuario": [],
+        "estaciones": [], "clientes": [], "horas": [0] * 24, "dias": [0] * 7,
+        "tiempos": {}, "calidad": {}, "saldo": None, "umbral": umbral,
+    }
+
+    with get_connection() as conn:
+        cur = conn.cursor(as_dict=True)
+
+        def q(sql, params=()):
+            try:
+                cur.execute(sql, params)
+                return cur.fetchall()
+            except Exception as e:
+                print(f"[datos.combustible] {str(e)[:160]}")
+                return []
+
+        # ── Resumen del mes y del anterior ──
+        base = """
+            SELECT COUNT(*) AS n,
+                   SUM(CASE WHEN MontoEmitido IS NOT NULL THEN MontoEmitido ELSE 0 END) AS gasto,
+                   SUM(CASE WHEN MontoEmitido IS NULL THEN 1 ELSE 0 END) AS sin_monto,
+                   AVG(CASE WHEN MontoEmitido IS NOT NULL THEN MontoEmitido ELSE MontoUnit END) AS prom
+            FROM HUB_SolicitudVales
+            WHERE FechaSolicitud >= %s AND FechaSolicitud < %s
+        """
+        act = (q(base, (inicio_mes.isoformat(), (hoy_d + _dt.timedelta(days=1)).isoformat()))
+               or [{}])[0]
+        ant = (q(base, (inicio_mes_ant.isoformat(), (fin_mes_ant + _dt.timedelta(days=1)).isoformat()))
+               or [{}])[0]
+        gasto = float(act.get("gasto") or 0)
+        gasto_ant = float(ant.get("gasto") or 0)
+
+        # Dinero sin comprobante: vale emitido sin ticket.
+        sin_comp = q("""
+            SELECT COUNT(*) AS n,
+                   SUM(CASE WHEN MontoEmitido IS NOT NULL THEN MontoEmitido ELSE 0 END) AS monto
+            FROM HUB_SolicitudVales
+            WHERE Estatus IN ('GENERADO', 'CONSUMIDO') AND IdTicketCierre IS NULL
+        """) or [{}]
+        sin_comp = sin_comp[0]
+
+        saldo_fila = q("SELECT Valor FROM HUB_Config WHERE Clave = 'govale_saldo'")
+        saldo = None
+        if saldo_fila:
+            try:
+                saldo = float(saldo_fila[0]["Valor"])
+            except (TypeError, ValueError):
+                saldo = None
+
+        res["resumen"] = {
+            "gasto_mes": gasto,
+            "gasto_mes_anterior": gasto_ant,
+            "variacion_pct": (round((gasto - gasto_ant) / gasto_ant * 100, 1)
+                              if gasto_ant else None),
+            "vales_mes": int(act.get("n") or 0),
+            "promedio": float(act.get("prom") or 0),
+            "vales_sin_monto": int(act.get("sin_monto") or 0),
+            "sin_comprobante_n": int(sin_comp.get("n") or 0),
+            "sin_comprobante_monto": float(sin_comp.get("monto") or 0),
+            "saldo": saldo,
+            "alcanza_vales": (int(saldo // 500) if saldo is not None else None),
+        }
+
+        # ── Vales por semana (últimos 28 días) ──
+        res["semanas"] = q("""
+            SELECT DATEPART(year, FechaSolicitud) AS anio,
+                   DATEPART(week, FechaSolicitud) AS semana,
+                   COUNT(*) AS vales,
+                   SUM(CASE WHEN MontoEmitido IS NOT NULL THEN MontoEmitido ELSE 0 END) AS monto
+            FROM HUB_SolicitudVales
+            WHERE FechaSolicitud >= %s
+            GROUP BY DATEPART(year, FechaSolicitud), DATEPART(week, FechaSolicitud)
+            ORDER BY anio, semana
+        """, (hace_28.isoformat(),))
+
+        # ── Por auto: vales, monto, litros y km del periodo ──
+        autos = q("""
+            SELECT S.IdAutomovil AS id, A.MarcaModelo AS marca, A.Placas AS placas,
+                   COUNT(*) AS vales,
+                   SUM(CASE WHEN S.MontoEmitido IS NOT NULL THEN S.MontoEmitido ELSE 0 END) AS monto
+            FROM HUB_SolicitudVales S
+            LEFT JOIN HUB_Automoviles A ON A.Id = S.IdAutomovil
+            WHERE S.FechaSolicitud >= %s
+            GROUP BY S.IdAutomovil, A.MarcaModelo, A.Placas
+            ORDER BY monto DESC
+        """, (hace_28.isoformat(),))
+
+        litros_auto = {f["id"]: float(f["litros"] or 0) for f in q("""
+            SELECT IdVehiculo AS id, SUM(XmlLitros) AS litros
+            FROM HUB_OxxoGasVales
+            WHERE Fecha >= %s AND IdVehiculo IS NOT NULL AND XmlLitros > 0
+            GROUP BY IdVehiculo
+        """, (hace_28.isoformat(),))}
+
+        # Km: primera y última lectura del periodo por auto (el odómetro no se suma).
+        km_auto = {}
+        for f in q("""
+            SELECT v.IdAutomovil AS id,
+                   MAX(v.Kilometros) AS km_max, MIN(v.Kilometros) AS km_min,
+                   COUNT(*) AS lecturas
+            FROM HUB_RegistroKilometros v
+            WHERE v.FechaHora >= %s
+            GROUP BY v.IdAutomovil
+        """, (hace_28.isoformat(),)):
+            if f["lecturas"] and int(f["lecturas"]) >= 2:
+                km_auto[f["id"]] = max(0, float(f["km_max"]) - float(f["km_min"]))
+
+        for a in autos:
+            litros = litros_auto.get(a["id"], 0.0)
+            km = km_auto.get(a["id"], 0.0)
+            a["litros"] = round(litros, 1)
+            a["km"] = round(km, 1)
+            a["km_l"] = round(km / litros, 2) if litros > 0 else None
+            a["costo_km"] = round(float(a["monto"] or 0) / km, 2) if km > 0 else None
+            a["monto"] = float(a["monto"] or 0)
+        res["por_auto"] = autos
+
+        # ── Por usuario ──
+        res["por_usuario"] = q("""
+            SELECT U.Nombre AS nombre, COUNT(*) AS vales,
+                   SUM(CASE WHEN S.MontoEmitido IS NOT NULL THEN S.MontoEmitido ELSE 0 END) AS monto
+            FROM HUB_SolicitudVales S LEFT JOIN HUB_Users U ON U.Id = S.IdSolicitante
+            WHERE S.FechaSolicitud >= %s
+            GROUP BY U.Nombre
+            ORDER BY vales DESC
+        """, (hace_28.isoformat(),))
+
+        # ── Estaciones: precio por litro real ──
+        res["estaciones"] = q("""
+            SELECT XmlEstacion AS estacion, COUNT(*) AS tickets,
+                   SUM(XmlLitros) AS litros, SUM(Monto) AS monto,
+                   CASE WHEN SUM(XmlLitros) > 0 THEN SUM(Monto) / SUM(XmlLitros) END AS precio_l
+            FROM HUB_OxxoGasVales
+            WHERE Fecha >= %s AND XmlEstacion IS NOT NULL
+              AND LTRIM(RTRIM(XmlEstacion)) <> '' AND XmlLitros > 0
+            GROUP BY XmlEstacion
+            ORDER BY precio_l
+        """, (hace_28.isoformat(),))
+
+        # ── Clientes más visitados ──
+        res["clientes"] = q("""
+            SELECT TOP 6 ISNULL(C.Cliente, T.IdCliente) AS cliente, COUNT(*) AS tickets
+            FROM HUB_OxxoGasTickets T
+            LEFT JOIN (SELECT IdCliente, MIN(Cliente) AS Cliente FROM clientes
+                       GROUP BY IdCliente) C ON C.IdCliente = T.IdCliente
+            WHERE T.FechaRegistro >= %s
+            GROUP BY C.Cliente, T.IdCliente
+            ORDER BY tickets DESC
+        """, (hace_28.isoformat(),))
+
+        # ── Horas y días de consumo ──
+        for f in q("""
+            SELECT DATEPART(hour, CAST(FechaRegistro AS DATETIME)) AS h, COUNT(*) AS n
+            FROM HUB_OxxoGasTickets WHERE FechaRegistro >= %s
+            GROUP BY DATEPART(hour, CAST(FechaRegistro AS DATETIME))
+        """, (hace_28.isoformat(),)):
+            if f["h"] is not None and 0 <= int(f["h"]) < 24:
+                res["horas"][int(f["h"])] = int(f["n"])
+
+        for f in q("""
+            SELECT DATEPART(weekday, CAST(FechaRegistro AS DATETIME)) AS d, COUNT(*) AS n
+            FROM HUB_OxxoGasTickets WHERE FechaRegistro >= %s
+            GROUP BY DATEPART(weekday, CAST(FechaRegistro AS DATETIME))
+        """, (hace_28.isoformat(),)):
+            if f["d"] is not None and 1 <= int(f["d"]) <= 7:
+                res["dias"][int(f["d"]) - 1] = int(f["n"])
+
+        # ── Tiempos ──
+        t = q("""
+            SELECT AVG(DATEDIFF(minute, FechaSolicitud, FechaAprobado)) AS prom,
+                   MAX(DATEDIFF(minute, FechaSolicitud, FechaAprobado)) AS peor
+            FROM HUB_SolicitudVales
+            WHERE FechaAprobado IS NOT NULL AND FechaSolicitud >= %s
+        """, (hace_28.isoformat(),)) or [{}]
+        res["tiempos"] = {
+            "pedir_generar_min": round(float(t[0].get("prom") or 0), 1),
+            "pedir_generar_peor_min": int(t[0].get("peor") or 0),
+        }
+
+        # ── Calidad del registro ──
+        cal = q("""
+            SELECT
+              SUM(CASE WHEN CodigoQR IS NULL OR LTRIM(RTRIM(CodigoQR)) = '' THEN 1 ELSE 0 END) AS sin_codigo,
+              SUM(CASE WHEN MontoEmitido IS NULL THEN 1 ELSE 0 END) AS sin_monto,
+              SUM(CASE WHEN MontoEmitido IS NOT NULL AND ABS(MontoEmitido - 500) > 0.01 THEN 1 ELSE 0 END) AS monto_raro,
+              COUNT(*) AS total
+            FROM HUB_SolicitudVales
+            WHERE FechaSolicitud >= %s AND Estatus IN ('GENERADO','CERRADO','CONSUMIDO')
+        """, (hace_28.isoformat(),)) or [{}]
+        cob = q("""
+            SELECT COUNT(*) AS tickets,
+                   SUM(CASE WHEN IdSolicitudVale IS NOT NULL THEN 1 ELSE 0 END) AS con_vale,
+                   SUM(CASE WHEN ImagenTicket IS NOT NULL THEN 1 ELSE 0 END) AS con_foto
+            FROM HUB_OxxoGasTickets WHERE FechaRegistro >= %s
+        """, (hace_28.isoformat(),)) or [{}]
+        res["calidad"] = {
+            "sin_codigo": int(cal[0].get("sin_codigo") or 0),
+            "sin_monto": int(cal[0].get("sin_monto") or 0),
+            "monto_raro": int(cal[0].get("monto_raro") or 0),
+            "total_vales": int(cal[0].get("total") or 0),
+            "tickets": int(cob[0].get("tickets") or 0),
+            "tickets_con_vale": int(cob[0].get("con_vale") or 0),
+            "tickets_con_foto": int(cob[0].get("con_foto") or 0),
+        }
+
+    return res
