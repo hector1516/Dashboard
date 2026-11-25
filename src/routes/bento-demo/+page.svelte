@@ -7,6 +7,7 @@
 	import '$lib/rediseno/tokens.css';
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Celda from '$lib/rediseno/Celda.svelte';
+	import Marco from '$lib/rediseno/Marco.svelte';
 	import Numero from '$lib/rediseno/Numero.svelte';
 	import { dinero } from '$lib/rediseno/formato';
 
@@ -31,103 +32,112 @@
 	const conHora = (n: number) => `${n} h`;
 </script>
 
-<div
-	class="stage"
-	style="width:1920px;height:1080px;display:flex;flex-direction:column;background:var(--k-base)"
->
-	<Bento>
-		<Celda area="1/1/3/3" tono="dark" rotulo="Gasto del mes" i={0}>
-			<div class="cuerpo centro">
-				<div class="cifra ancla"><span class="cur">$</span><Numero valor={2000} formato={miles} /></div>
-				<div class="sub oscuro"><b>23 vales</b> · promedio $500</div>
-				<div class="delta down">▼ 12 % <span>vs mes anterior</span></div>
-			</div>
-		</Celda>
-
-		<Celda area="1/3/2/4" rotulo="Sin comprobante" i={1}>
-			<div class="cuerpo">
-				<div class="cifra"><Numero valor={1000} formato={dinero} /></div>
-				<div class="sub"><b>6 vales</b> · 3 sin monto</div>
-			</div>
-		</Celda>
-
-		<Celda area="1/4/2/5" rotulo="Saldo Go Vale" i={2}>
-			<div class="cuerpo">
-				<div class="cifra"><Numero valor={4209} formato={dinero} /></div>
-				<div class="sub">alcanza <b>8 vales</b></div>
-			</div>
-		</Celda>
-
-		<Celda area="2/3/3/5" rotulo="Gasto por semana" i={3}>
-			<div class="cuerpo">
-				<div class="barras">
-					{#each semanas as x}
-						<div class="bcol">
-							<div class="bval">{x.v ? dinero(x.v) : '$0'}</div>
-							<div class="bbar" style="height:{x.v ? 120 : 6}px"></div>
-							<div class="bpiso">sem {x.s}</div>
-						</div>
-					{/each}
+<div class="stage">
+	<Marco
+		titulo="Prueba"
+		reloj="12:29"
+		fecha="miércoles 25 de noviembre"
+		antiguedad="datos de hace 1 min"
+		sinFoto={2}
+		posicion="1/9"
+		volt="El gasto va bien; lo que se acumula son los comprobantes."
+	>
+		<Bento>
+			<Celda area="1/1/3/3" tono="dark" rotulo="Gasto del mes" i={0}>
+				<div class="cuerpo centro">
+					<div class="cifra ancla"><span class="cur">$</span><Numero valor={2000} formato={miles} /></div>
+					<div class="sub oscuro"><b>23 vales</b> · promedio $500</div>
+					<div class="delta down">▼ 12 % <span>vs mes anterior</span></div>
 				</div>
-			</div>
-		</Celda>
+			</Celda>
 
-		<Celda area="3/1/4/3" rotulo="Precio del litro · dónde cargan" i={4}>
-			<div class="cuerpo arriba">
-				<div class="linea">
-					<div class="cifra md verde">$21.29</div>
-					<div class="sub">por litro · <b>874 L</b> en 4 semanas</div>
+			<Celda area="1/3/2/4" rotulo="Sin comprobante" i={1}>
+				<div class="cuerpo">
+					<div class="cifra"><Numero valor={1000} formato={dinero} /></div>
+					<div class="sub"><b>6 vales</b> · 3 sin monto</div>
 				</div>
-				<div class="estaciones">
-					{#each estaciones as [nombre, vales]}
-						<div class="est-row">
-							<b>{nombre}</b>
-							<div class="est-pista"><i style="width:{(vales / 6) * 100}%"></i></div>
-							<span>{vales}</span>
-						</div>
-					{/each}
-				</div>
-			</div>
-		</Celda>
+			</Celda>
 
-		<Celda area="3/3/4/4" rotulo="Auto que más pide" i={5}>
-			<div class="cuerpo">
-				<div class="auto">
-					<img src="/autos/honda-city-blanco.webp" alt="Honda City" />
-					<div class="datos"><b>Honda City</b><span>8 vales · $1,000</span></div>
+			<Celda area="1/4/2/5" rotulo="Saldo Go Vale" i={2}>
+				<div class="cuerpo">
+					<div class="cifra"><Numero valor={4209} formato={dinero} /></div>
+					<div class="sub">alcanza <b>8 vales</b></div>
 				</div>
-				<div class="sub">2,112 km · $0.47 / km</div>
-			</div>
-		</Celda>
+			</Celda>
 
-		<Celda area="3/4/4/5" rotulo="A qué hora cargan" i={6}>
-			<div class="cuerpo">
-				<div class="cifra"><Numero valor={9} formato={conHora} /></div>
-				<div class="mini24">
-					{#each horas as v}
-						<i style="height:{Math.max(4, (v / 9) * 58)}px"></i>
-					{/each}
+			<Celda area="2/3/3/5" rotulo="Gasto por semana" i={3}>
+				<div class="cuerpo">
+					<div class="barras">
+						{#each semanas as x}
+							<div class="bcol">
+								<div class="bval">{x.v ? dinero(x.v) : '$0'}</div>
+								<div class="bbar" style="height:{x.v ? 120 : 6}px"></div>
+								<div class="bpiso">sem {x.s}</div>
+							</div>
+						{/each}
+					</div>
 				</div>
-				<div class="sub">pico entre 8 y 10</div>
-			</div>
-		</Celda>
-	</Bento>
+			</Celda>
+
+			<Celda area="3/1/4/3" rotulo="Precio del litro · dónde cargan" i={4}>
+				<div class="cuerpo arriba">
+					<div class="linea">
+						<div class="cifra md verde">$21.29</div>
+						<div class="sub">por litro · <b>874 L</b> en 4 semanas</div>
+					</div>
+					<div class="estaciones">
+						{#each estaciones as [nombre, vales]}
+							<div class="est-row">
+								<b>{nombre}</b>
+								<div class="est-pista"><i style="width:{(vales / 6) * 100}%"></i></div>
+								<span>{vales}</span>
+							</div>
+						{/each}
+					</div>
+				</div>
+			</Celda>
+
+			<Celda area="3/3/4/4" rotulo="Auto que más pide" i={5}>
+				<div class="cuerpo">
+					<div class="auto">
+						<img src="/autos/honda-city-blanco.webp" alt="Honda City" />
+						<div class="datos"><b>Honda City</b><span>8 vales · $1,000</span></div>
+					</div>
+					<div class="sub">2,112 km · $0.47 / km</div>
+				</div>
+			</Celda>
+
+			<Celda area="3/4/4/5" rotulo="A qué hora cargan" i={6}>
+				<div class="cuerpo">
+					<div class="cifra"><Numero valor={9} formato={conHora} /></div>
+					<div class="mini24">
+						{#each horas as v}
+							<i style="height:{Math.max(4, (v / 9) * 58)}px"></i>
+						{/each}
+					</div>
+					<div class="sub">pico entre 8 y 10</div>
+				</div>
+			</Celda>
+		</Bento>
+	</Marco>
 </div>
 
 <style>
+	/* El escenario fijo del kiosco: el marco y el tablero se miden dentro de
+	   esta caja de 1920×1080 y nunca empujan scroll. */
 	.stage {
+		width: 1920px;
+		height: 1080px;
 		position: relative;
 		z-index: 1;
 		overflow: hidden;
-		color: var(--k-tinta);
-		font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
 	}
 
-	/* Solo para el banco de pruebas: el dock fijo de Volt taparía la celda
-	   de abajo a la derecha y ensuciaría las capturas del sistema. En
-	   producción el rincón se RESERVA, no se tapa (Task 4). El globo de
-	   Volt no se toca: no afecta la retícula. */
-	:global(.volt-dock) {
+	/* Solo para el banco de pruebas: el dock fijo de Volt y su globo taparían
+	   la celda de abajo a la derecha y ensuciarían las capturas del sistema.
+	   En producción el rincón se RESERVA, no se tapa (Task 4). */
+	:global(.volt-dock),
+	:global(.volt-comentario) {
 		display: none !important;
 	}
 
