@@ -1,7 +1,8 @@
 {
   "app": "dashboard",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "cambios": [
+    "El tablero de combustible se reacomoda en tres bandas fijas: ya no se corta la fila de abajo y el rincón de Volt queda reservado.",
     "Vuelven a la rotación las pantallas de combustible y de tickets OxxoGas, y cada bloque del tablero se protege por separado.",
     "El kiosco aguanta los tirones de la base: si un bloque falla no se cae el resto, y el tablero de combustible se recalcula cada 10 minutos.",
     "Volt ya aparece sin internet (el personaje viaja con la app) y cuenta en pantalla los mismos avisos que el vigilante manda por Telegram.",
