@@ -43,6 +43,8 @@ import CombustibleBento from '$lib/components/pantallas/bento/Combustible.svelte
 import ComprobantesBento from '$lib/components/pantallas/bento/Comprobantes.svelte';
 import AsistenciaBento from '$lib/components/pantallas/bento/Asistencia.svelte';
 import EquipoBento from '$lib/components/pantallas/bento/Equipo.svelte';
+import ActividadBento from '$lib/components/pantallas/bento/Actividad.svelte';
+import TicketsBento from '$lib/components/pantallas/bento/Tickets.svelte';
 import Legends from '$lib/components/pantallas/Legends.svelte';
 import Reportes from '$lib/components/pantallas/Reportes.svelte';
 import Tickets from '$lib/components/pantallas/Tickets.svelte';
@@ -189,18 +191,20 @@ const pantalla = $derived(PANTALLAS[orden[pos] ?? 0] ?? PANTALLAS[0]);
 const posicionRotacion = $derived(`${Math.min(pos + 1, orden.length)}/${orden.length}`);
 /**
  * `?bento=1` en una de las pantallas rediseñadas (combustible, comprobantes,
- * asistencia y equipo). Cada una trae su propio `<Marco>`, que ya pinta marca,
- * título, reloj y chips: la barra de producción (`HdrKiosco`) NO se monta, o se
- * verían dos cabeceras. Es la MISMA condición la que decide el componente y la
- * cabecera, para que nunca haya una pantalla sin barra y con contenido viejo
- * (ni al revés).
+ * asistencia, equipo, actividad y tickets). Cada una trae su propio `<Marco>`,
+ * que ya pinta marca, título, reloj y chips: la barra de producción
+ * (`HdrKiosco`) NO se monta, o se verían dos cabeceras. Es la MISMA condición la
+ * que decide el componente y la cabecera, para que nunca haya una pantalla sin
+ * barra y con contenido viejo (ni al revés).
  */
 const pantallaBento = $derived(
 	BENTO &&
 		(pantalla.id === 'combustible' ||
 			pantalla.id === 'comprobantes' ||
 			pantalla.id === 'asistencia' ||
-			pantalla.id === 'equipo')
+			pantalla.id === 'equipo' ||
+			pantalla.id === 'actividad' ||
+			pantalla.id === 'tickets')
 );
 
 // Actualizar store de pantalla actual para Volt
@@ -1100,7 +1104,9 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 							{:else if pantalla.id === 'combustible' && pantallaBento}<CombustibleBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'combustible'}<Combustible {datos} />
 							{:else if pantalla.id === 'comprobantes' && pantallaBento}<ComprobantesBento {datos} posicion={posicionRotacion} />
+							{:else if pantalla.id === 'actividad' && pantallaBento}<ActividadBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'actividad'}<Actividad {datos} />
+							{:else if pantalla.id === 'tickets' && pantallaBento}<TicketsBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'tickets'}<Tickets {datos} />
 							{:else if pantalla.id === 'equipo' && pantallaBento}<EquipoBento {datos} posicion={posicionRotacion} />
 							{:else if pantalla.id === 'equipo'}<Equipo {datos} />
