@@ -22,6 +22,7 @@ import { cargarSnapshot, pedirBuild, snapshotVacio } from '$lib/kiosk/api';
 import type { EventoKiosko, PantallaDef, Snapshot } from '$lib/kiosk/types';
 import { mascotState } from '$lib/kiosk/mascot';
 import { currentScreen } from '$lib/kiosk/currentScreen';
+import { decirVolt } from '$lib/kiosk/voltAviso';
 import { esLluvioso, esNublado, esSoleado, haceCuanto, nombreDia, nombreMes } from '$lib/kiosk/format';
 import {
 	initAudio, tocar, apagar, setVolumen, getVolumen, estaSilenciado,
@@ -454,6 +455,19 @@ function anunciar(e: EventoKiosko) {
 	// El avatar reacciona al evento.
 	eventoAvatar = e.titulo;
 	personaAvatar = e.persona ?? null;
+
+	// El globo de Volt lo cuenta en corto, además de lo que se vea en la
+	// pantalla completa o en la banda. Entradas/salidas y tickets nuevos son
+	// noticia de la oficina, no ruido: una línea y se va solo.
+	if (e.titulo === 'Entró' || e.titulo === 'Salió') {
+		const entro = e.titulo === 'Entró';
+		decirVolt(
+			`${e.persona ?? 'Alguien'} ${entro ? 'entró' : 'salió'} de la oficina.`,
+			entro ? '👋' : '🚪'
+		);
+	} else if (e.titulo.startsWith('Ticket')) {
+		decirVolt(`Ticket nuevo de ${e.persona ?? 'alguien'}: ${e.texto ?? ''}.`, '🎫');
+	}
 
 	// Aviso a pantalla completa: encola y, si no había ninguno en curso, lo saca
 	// ya. El sonido va aquí (y no al mostrarlo) para que se oiga en el momento

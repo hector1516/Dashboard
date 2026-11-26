@@ -2,6 +2,7 @@
 	import { mascotState } from '$lib/kiosk/mascot';
 	import { pauseWalking, resumeWalking } from '$lib/kiosk/voltWalker';
 	import { tocar } from '$lib/kiosk/audio';
+	import { voltAviso } from '$lib/kiosk/voltAviso';
 	import { onMount, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { browser } from '$app/environment';
@@ -13,6 +14,8 @@
 	 *   2. No hay internet (lo detecta el servidor: clima y fondos son la
 	 *      señal; el kiosco no llama a internet para averiguarlo).
 	 *   3. Volvió el internet.
+	 *   4. Un aviso corto de otro módulo (entrada/salida de la oficina,
+	 *      ticket nuevo) que llega por `voltAviso`.
 	 *
 	 * No hay charla aleatoria ni comentarios de pantalla: si no hay nada que
 	 * decir, no se muestra. Cuando sale, se queda ~11 s, se va con un fundido
@@ -130,11 +133,20 @@
 		cargar();
 		carga = setInterval(cargar, 60000);
 
+		// Avisos cortos que otros módulos dejan para Volt. Se consume uno y el
+		// buzón vuelve a null: al recargar la pantalla no se repite el último.
+		const dejarDeEscuchar = voltAviso.subscribe((v) => {
+			if (!v) return;
+			mostrar(v.texto, v.reaccion ?? '💬');
+			voltAviso.set(null);
+		});
+
 		const alCambiarRed = () => cargar();
 		window.addEventListener('online', alCambiarRed);
 		window.addEventListener('offline', alCambiarRed);
 
 		return () => {
+			dejarDeEscuchar();
 			window.removeEventListener('online', alCambiarRed);
 			window.removeEventListener('offline', alCambiarRed);
 		};
