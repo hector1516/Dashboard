@@ -68,6 +68,12 @@ import UsoApps from '$lib/components/pantallas/UsoApps.svelte';
 import SwarmRebuild from '$lib/components/SwarmRebuild.svelte';
 import LogoTraceLoader from '$lib/components/effects/LogoTraceLoader.svelte';
 
+// Animación de entrada de TODO lo que hay dentro de una pantalla (filas,
+// barras, fotos, chips). Va al final de los imports para que sus reglas ganen
+// a las del componente cuando haga falta, y se apaga con `?sinanim=1` y con
+// `prefers-reduced-motion`.
+import '$lib/rediseno/anim.css';
+
 /* ── Configuración de la pantalla ─────────────────────────────── */
 const ROTACION_MS = 45_000;      // 45 s por pantalla
 const REFRESCO_MS = 30_000;      // pedir el snapshot
@@ -157,6 +163,20 @@ let salidaReloj = 0;   // sólo para `?salida=cuenta`: fin de la cuenta forzada
 /* Cuenta de rotación: los segundos que le quedan a la pantalla actual. */
 let restanteRotacion = $state(ROTACION_MS / 1000);
 let t0Rotacion = Date.now();
+/**
+ * El pad del cambio de pantalla se oye como máximo una vez cada 3 s. La
+ * rotación es de 45 s, así que sólo frena los cambios forzados (panel remoto,
+ * URL): sin esto, pedir tres pantallas seguidas encadenaría tres pads.
+ */
+const MS_ENTRE_TRANSICIONES = 3000;
+let ultimaTransicion = 0;
+
+function tonoTransicion() {
+	const ahora = Date.now();
+	if (ahora - ultimaTransicion < MS_ENTRE_TRANSICIONES) return;
+	ultimaTransicion = ahora;
+	tocar('transicion');
+}
 const HORA_SALIDA = `${String(SALIDA_HORA).padStart(2, '0')}:${String(SALIDA_MIN).padStart(2, '0')}`;
 
 let banda = $state<EventoKiosko[]>([]);
@@ -516,6 +536,9 @@ function avanzar() {
 	pos = (pos + 1) % orden.length;
 	// La cuenta de segundos arranca con la pantalla nueva, no con el giro.
 	t0Rotacion = Date.now();
+	// El pad del cambio. `tocar()` respeta mute y horario nocturno; el
+	// throttling es por si un cambio forzado cae encima de este.
+	tonoTransicion();
 	if (pos === 0) orden = barajar();   // vuelta nueva, orden nuevo
 	// Fondo nuevo en cada giro (aleatorio de los locales).
 	if (fondoRef?.cambiarFondo && datos.fondos.length) {
@@ -541,6 +564,7 @@ function irAPantalla(id: string) {
 	pos = 0;
 	t0Rotacion = Date.now();
 	restanteRotacion = ROTACION_MS / 1000;
+	tonoTransicion();
 	return true;
 }
 
@@ -1097,7 +1121,7 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 		{/snippet}
 
 		<!-- Escenario fijo 1920×1080 escalado al viewport. Determinista. -->
-		<div class="escenario" class:fondo-claro={pantallaBento} bind:this={escenarioRef}>
+		<div class="escenario" class:fondo-claro={pantallaBento} class:sin-anim={sinAnim} bind:this={escenarioRef}>
 			<div class="pantalla-caja">
 				<!-- Las pantallas bento traen su propio marco: con ellas no se monta
 				     la barra de producción (serían dos cabeceras). -->

@@ -3,6 +3,7 @@
 	import { getVoltComentario, getVoltComentarioPantalla } from '$lib/kiosk/voltComentarios';
 	import { pauseWalking, resumeWalking } from '$lib/kiosk/voltWalker';
 	import { currentScreen } from '$lib/kiosk/currentScreen';
+	import { tocar } from '$lib/kiosk/audio';
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 
@@ -48,6 +49,9 @@
 		reaccion = r;
 		pauseWalking();
 		mascotState.set('speaking');
+		// Volt habla: dos notas amables. `tocar()` ya respeta el mute y el
+		// silencio de 22:00 a 07:00, así que aquí no se comprueba nada más.
+		tocar('volt');
 		setTimeout(() => {
 			mascotState.set('idle');
 			resumeWalking();

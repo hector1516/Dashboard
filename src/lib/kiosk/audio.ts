@@ -157,7 +157,45 @@ function nota(freq: number, dur: number, vol: number, atraso = 0, tipo: Oscillat
 	osc.stop(t0 + dur + 0.05);
 }
 
-export type Tono = 'info' | 'exito' | 'destaque' | 'alerta' | 'click' | 'hola' | 'adios' | 'tic' | 'salida' | 'aviso' | 'pantalla';
+/**
+ * Un pad: una nota grave que se desliza de `f0` a `f1` mientras sube y baja
+ * de volumen. No es un arpegio ni una nota aguda: es el sonido de fondo del
+ * cambio de pantalla, para oírlo cada 45 s sin que canse.
+ */
+function pad(f0: number, f1: number, dur: number, vol: number, tipo: OscillatorType = 'sine') {
+	const r = recursos();
+	if (!r) return;
+	const t0 = r.c.currentTime;
+	const osc = r.c.createOscillator();
+	const g = r.c.createGain();
+	osc.type = tipo;
+	osc.frequency.setValueAtTime(f0, t0);
+	// Deslizamiento exponencial: sube parejo al oído, sin el salto de una rampa
+	// lineal en frecuencias.
+	osc.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+	g.gain.setValueAtTime(0.0001, t0);
+	g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t0 + 0.05);
+	g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + 0.08);
+	osc.connect(g);
+	g.connect(r.m);
+	osc.start(t0);
+	osc.stop(t0 + dur + 0.12);
+}
+
+export type Tono =
+	| 'info'
+	| 'exito'
+	| 'destaque'
+	| 'alerta'
+	| 'click'
+	| 'hola'
+	| 'adios'
+	| 'tic'
+	| 'salida'
+	| 'aviso'
+	| 'pantalla'
+	| 'transicion'
+	| 'volt';
 
 /**
  * Tonos del kiosco. Cortos y de poca información: son un "algo pasó" para
@@ -216,6 +254,19 @@ export function tocar(tono: Tono) {
 			[220, 220, 329.63, 220, 220].forEach((f, i) =>
 				nota(f, i === 4 ? 0.7 : 0.2, 0.2, [0, 0.28, 0.56, 0.9, 1.2][i], 'sawtooth'));
 			[220, 329.63, 440].forEach((f, i) => nota(f, 0.9, 0.1, 1.6 + i * 0.02, 'triangle'));
+			break;
+		case 'transicion':
+			// Cambio de pantalla: un pad grave que sube media octava en 0.22 s.
+			// Suena cada 45 s, así que va MUY bajo (0.05 + 0.02) y sin nota
+			// aguda: tiene que ser aire, no un aviso. La suma queda ≤0.07.
+			pad(110, 164.81, 0.22, 0.05);
+			pad(55, 82.41, 0.24, 0.02, 'triangle');
+			break;
+		case 'volt':
+			// Volt toma la palabra: dos notas cortas y amables (660 → 880), con
+			// menos volumen que un aviso. Es compañía, no una alarma.
+			nota(659.25, 0.08, 0.055);
+			nota(880, 0.08, 0.05, 0.09);
 			break;
 	}
 }

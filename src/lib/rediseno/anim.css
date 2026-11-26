@@ -1,0 +1,215 @@
+/*
+	Entrada de los objetos de cada pantalla.
+
+	Hasta ahora sólo entraban las tarjetas (`.cell` con `caer`) y las cifras
+	(`<Numero>` contando). El resto aparecía de golpe: las filas de una lista,
+	las barras de una serie, las fotos y los chips. Este archivo les da la
+	misma entrada, en cascada, para que un cambio de pantalla se lea como un
+	tablero que se arma y no como un corte de video.
+
+	Reglas:
+	  · Sólo `transform` y `opacity`: nada de position/layout animado, para no
+	    mover ni un píxel de la retícula de 1920×1080 mientras se mide.
+	  · 300–450 ms, easing de salida y `both`: el estado final es el natural,
+	    así que una captura a mitad de animación no miente sobre el diseño.
+	  · Sin animaciones infinitas.
+	  · Se apaga con `prefers-reduced-motion: reduce` y con `?sinanim=1`
+	    (la clase `.sin-anim` que `+page.svelte` pone en `.escenario`).
+
+	Las cifras NO se tocan: `<Numero>` ya cuenta y animarlas otra vez las
+	haría bailar dos veces.
+*/
+
+/* ── keyframes ───────────────────────────────────────────────────────────── */
+
+/* Filas, chips y objetos sueltos: suben un poco mientras aparecen. */
+@keyframes k-entra {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* Barras verticales: crecen desde su base. */
+@keyframes k-barra-y {
+	from {
+		transform: scaleY(0);
+	}
+	to {
+		transform: scaleY(1);
+	}
+}
+
+/* Barras horizontales (pistas): crecen desde la izquierda. */
+@keyframes k-barra-x {
+	from {
+		transform: scaleX(0);
+	}
+	to {
+		transform: scaleX(1);
+	}
+}
+
+/* Fotos y caras: un zoom mínimo, como si enfocaran. */
+@keyframes k-foto {
+	from {
+		opacity: 0.6;
+		transform: scale(0.94);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* Chips de la barra superior: bajan desde el borde. */
+@keyframes k-chip {
+	from {
+		opacity: 0;
+		transform: translateY(-6px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* ── filas de listas y series ────────────────────────────────────────────── */
+
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras) > * {
+	animation: k-entra 360ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+}
+
+/* Escalonado de 38 ms entre hermanos, hasta diez. Más de diez ya no se
+   distingue: la animación dura lo mismo que el resto de la lista. */
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+	> :nth-child(1),
+.bento .mini24 > i:nth-child(1) {
+	animation-delay: 0ms;
+}
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+	> :nth-child(2),
+.bento .mini24 > i:nth-child(2) {
+	animation-delay: 38ms;
+}
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+	> :nth-child(3),
+.bento .mini24 > i:nth-child(3) {
+	animation-delay: 76ms;
+}
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+	> :nth-child(4),
+.bento .mini24 > i:nth-child(4) {
+	animation-delay: 114ms;
+}
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+	> :nth-child(5),
+.bento .mini24 > i:nth-child(5) {
+	animation-delay: 152ms;
+}
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+	> :nth-child(6),
+.bento .mini24 > i:nth-child(6) {
+	animation-delay: 190ms;
+}
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+	> :nth-child(7),
+.bento .mini24 > i:nth-child(7) {
+	animation-delay: 228ms;
+}
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+	> :nth-child(8),
+.bento .mini24 > i:nth-child(8) {
+	animation-delay: 266ms;
+}
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+	> :nth-child(9),
+.bento .mini24 > i:nth-child(9) {
+	animation-delay: 304ms;
+}
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+	> :nth-child(10),
+.bento .mini24 > i:nth-child(10) {
+	animation-delay: 342ms;
+}
+
+/* ── barras ──────────────────────────────────────────────────────────────── */
+
+/* Verticales: las cuatro semanas de combustible, los días de Actividad y el
+   mini histograma de 24 horas. `transform-origin: bottom` es lo que hace que
+   crezcan desde el piso y no desde su centro. */
+.bento .bbar,
+.bento .dbar,
+.bento .mini24 i {
+	transform-origin: bottom;
+	animation: k-barra-y 420ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+}
+.bento .bbar {
+	animation-delay: 90ms;
+}
+.bento .dbar {
+	animation-delay: 60ms;
+}
+.bento .mini24 i {
+	animation-duration: 360ms;
+}
+
+/* Horizontales: la pista de gasolineras, la cobertura de Comprobantes y las
+   llamadas por app. Crecen desde la izquierda, que es donde empieza el dato. */
+.bento .est-pista i,
+.bento .pista i {
+	transform-origin: left center;
+	animation: k-barra-x 420ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+	animation-delay: 120ms;
+}
+
+/* ── fotos y caras ───────────────────────────────────────────────────────── */
+
+.bento .cara img,
+.bento .ava img,
+.bento .thumb img,
+.bento .auto-foto img,
+.bento .escena .fondo {
+	animation: k-foto 420ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+}
+
+/* La portada entra un poco más despacio: es una imagen grande y un zoom
+   rápido en una foto de 1600 px se nota como un salto. */
+.bento .escena .fondo {
+	animation-duration: 450ms;
+}
+
+/* ── chips de la barra superior ──────────────────────────────────────────── */
+
+.marco .top .chip {
+	animation: k-chip 320ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+}
+.marco .top .chip:nth-child(2) {
+	animation-delay: 45ms;
+}
+
+/* ── apagado explícito ───────────────────────────────────────────────────── */
+
+/*
+	`?sinanim=1` (clase `.sin-anim` en `.escenario`) y `prefers-reduced-motion`
+	apagan TODO lo que entre en el escenario, incluido el `caer` de las celdas:
+	una captura y una persona con sensibilidad al movimiento necesitan el
+	estado final quieto, no una versión rápida de la fiesta.
+*/
+.sin-anim *,
+.sin-anim *::before,
+.sin-anim *::after {
+	animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.escenario *,
+	.escenario *::before,
+	.escenario *::after {
+		animation: none !important;
+	}
+}
