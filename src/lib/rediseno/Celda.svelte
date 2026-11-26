@@ -55,7 +55,7 @@
 		background-repeat: no-repeat;
 		/* La celda es tinta: el dibujo se pasa a gris y se OSCURECE para que
 		   solo deje ver el trazo. Con brightness alto (2.2) los muros blancos
-		   se saturaban y la marca se leía como una foto; a 0.65 y 10 % queda
+		   se saturaban y la marca se leía como una foto; a 0.5 y 7 % queda
 		   como papel de fondo, no como imagen. */
 		filter: grayscale(1) brightness(0.5) contrast(0.95);
 		opacity: 0.07;
@@ -73,7 +73,7 @@
 	   Blanco sobre #F26D26 se queda en 2.9:1 y no se lee a 3 metros. */
 	.cell.red { background: var(--k-rojo); color: var(--k-tinta); }
 	/* Ancla informativa: azul del logo, texto blanco (10:1). */
-	.cell.azul { background: var(--k-azul); color: #fff; }
+	.cell.azul { background: var(--k-azul); color: var(--k-sup); }
 	.lbl { font-size: var(--k-f-strip); font-weight: 800; letter-spacing: 1.7px; text-transform: uppercase; opacity: .55; }
 	/* En las anclas de color el rótulo sube a .8: hereda tinta (naranja) o
 	   blanco (azul) y al .55 se perdía contra el fondo. */

@@ -78,6 +78,17 @@
 	// trae, se cuenta el ranking, que es la misma lista.
 	const participantes = $derived(aNumero(lg?.participantes) ?? ranking.length);
 	const puntos = $derived(aNumero(lg?.total_puntos));
+	/**
+	 * Cuántas filas caben sin scroll en la celda 2×2 (≈24 px por fila). Si hay
+	 * más, se ve el podio —que es lo que importa— y una fila «y N más»; nunca
+	 * se recorta en silencio dejando fuera al primero. La fila de resumen ocupa
+	 * el último hueco, por eso se muestran 18 + resumen cuando desborda.
+	 */
+	const MAX_FILAS = 19;
+	const desborda = $derived(ranking.length > MAX_FILAS);
+	const visibles = $derived(desborda ? MAX_FILAS - 1 : ranking.length);
+	const filasRank = $derived(ranking.slice(0, visibles));
+	const masRank = $derived(Math.max(0, ranking.length - filasRank.length));
 
 	// ── Celebraciones rodantes ───────────────────────────────────
 	// `undefined` = el snapshot no trae la lista (es opcional y puede ser de
@@ -97,16 +108,17 @@
 	const miles = (n: number | null) => (n == null ? '—' : Math.round(n).toLocaleString('es-MX'));
 
 	/**
-	 * Días que faltan HOY a la próxima ocurrencia.
+	 * Próxima ocurrencia relativa a HOY: días que faltan y cuántos años rodó
+	 * (para sumarlos a `anos` de un aniversario).
 	 *
 	 * El snapshot trae `dias` calculado el día que se generó. Si el snapshot
 	 * lleva dos días en disco, ese 0 ya no es «hoy». Primero se usa `p.fecha`
-	 * (la fecha absoluta de la próxima ocurrencia); si no viene, se suma la
-	 * edad del snapshot (`generado_en`) a `dias`. Si la fecha absoluta ya pasó
-	 * —snapshot viejo—, se avanza al mismo día del año siguiente, que es
-	 * cuando vuelve a caer la fiesta.
+	 * (la fecha absoluta de la próxima ocurrencia); si no viene, se le restan
+	 * a `dias` los días que el snapshot lleva en disco, con módulo 365 CON
+	 * SIGNO: si la fiesta ya pasó, vuelve a caer el año siguiente (y `vueltas`
+	 * sube para que un aniversario diga los años que de verdad cumple).
 	 */
-	function diasHasta(fecha: unknown, diasSnapshot: unknown): number {
+	function espera(fecha: unknown, diasSnapshot: unknown): { dias: number; vueltas: number } {
 		const m = typeof fecha === 'string' ? /^(\d{4})-(\d{2})-(\d{2})/.exec(fecha) : null;
 		if (m) {
 			const hoy = new Date();
@@ -114,17 +126,35 @@
 			const objetivo = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 			if (!Number.isNaN(objetivo.getTime())) {
 				let d = Math.round((objetivo.getTime() - base.getTime()) / 86_400_000);
+				let vueltas = 0;
 				// Un snapshot de hace meses no puede decir «en -40 días».
-				for (let vuelta = 0; d < 0 && vuelta < 3; vuelta++) {
+				while (d < 0 && vueltas < 3) {
 					objetivo.setFullYear(objetivo.getFullYear() + 1);
 					d = Math.round((objetivo.getTime() - base.getTime()) / 86_400_000);
+					vueltas++;
 				}
-				if (d >= 0) return d;
+				if (d >= 0) return { dias: d, vueltas };
 			}
 		}
-		// Sin fecha utilizable: el día que decía el snapshot, más los días que
-		// el snapshot lleva esperando en disco.
-		return Math.max(0, Math.round(Number(diasSnapshot ?? 0) || 0) + edadSnapshot());
+		// Sin fecha utilizable: el día que decía el snapshot, menos los días
+		// que el snapshot lleva esperando en disco.
+		let d = Math.round(Number(diasSnapshot ?? 0) || 0) - edadSnapshot();
+		let vueltas = 0;
+		while (d < 0 && vueltas < 3) {
+			d += 365;
+			vueltas++;
+		}
+		return { dias: Math.max(0, d), vueltas };
+	}
+
+	function diasHasta(fecha: unknown, diasSnapshot: unknown): number {
+		return espera(fecha, diasSnapshot).dias;
+	}
+
+	/** Años que cumple en la próxima ocurrencia (sube si la fecha rodó). */
+	function anosDe(anos: unknown, fecha: unknown, diasSnapshot: unknown): number {
+		const a = Math.max(0, Math.round(Number(anos ?? 0) || 0));
+		return a + espera(fecha, diasSnapshot).vueltas;
 	}
 
 	/** Días completos que el snapshot lleva generado (0 si no se sabe). */
@@ -220,14 +250,14 @@
 						<b>Sin datos todavía</b>
 						<span>El snapshot no trae el bloque de ECCSA Legends.</span>
 					</div>
-				{:else if ranking.length === 0}
+				{:else if filasRank.length === 0}
 					<div class="sin-filas">
 						<b>Sin participantes</b>
 						<span>Nadie de la plantilla juega ECCSA Legends todavía.</span>
 					</div>
 				{:else}
 					<div class="rank-lista">
-						{#each ranking as r, i (r.id_usuario ?? i)}
+						{#each filasRank as r, i (r.id_usuario ?? i)}
 							<div class="r-fila">
 								<span class="pos">{i + 1}</span>
 								<b class="nom">{r.nombre || r.nickname || 'Sin nombre'}</b>
@@ -237,6 +267,9 @@
 								</span>
 							</div>
 						{/each}
+						{#if masRank > 0}
+							<div class="r-mas">y {masRank} más</div>
+						{/if}
 					</div>
 					<div class="rank-pie">
 						{participantes}
@@ -314,7 +347,7 @@
 							<div class="quien">
 								<b>{a.nombre || 'Sin nombre'}</b>
 								<span class:hoy={diasHasta(a.fecha, a.dias) === 0}>
-									{anosTexto(a.anos)} · {cuando(a.fecha, a.dias)}
+									{anosTexto(anosDe(a.anos, a.fecha, a.dias))} · {cuando(a.fecha, a.dias)}
 								</span>
 							</div>
 						</div>
@@ -389,7 +422,7 @@
 	}
 	.delta.vacio span {
 		color: #f7f3ea;
-		opacity: 0.45;
+		opacity: 0.62;
 	}
 
 	/* ── tabla de ECCSA Legends ───────────────────────────────── */
@@ -406,7 +439,8 @@
 		min-height: 0;
 		display: flex;
 		flex-direction: column;
-		justify-content: center;
+		justify-content: flex-start;
+		overflow: hidden;
 	}
 	/* Filas flexibles: 12 integrantes caben en ~40 px cada uno y 20 se
 	   aprietan a 24 px sin scroll. No hay tope: se ven todos. */
@@ -427,7 +461,7 @@
 		flex: 0 0 22px;
 		text-align: right;
 		font-weight: 700;
-		opacity: 0.35;
+		opacity: 0.62;
 		font-variant-numeric: tabular-nums;
 	}
 	.nom {
@@ -456,7 +490,16 @@
 	.rank-pie {
 		font-size: 20px;
 		font-weight: 600;
-		opacity: 0.45;
+		opacity: 0.62;
+	}
+	/* Cuando hay más de los que caben: se ve el podio y el resto se resume. */
+	.r-mas {
+		flex: 0 0 24px;
+		display: flex;
+		align-items: center;
+		font-size: 20px;
+		font-weight: 700;
+		opacity: 0.62;
 	}
 
 	/* ── cumpleaños y aniversarios (1×1) ─────────────────────── */
@@ -524,9 +567,10 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
-	/* Hoy sí se pinta en rojo: es el único dato que cambia de un día a otro. */
+	/* Hoy sí se pinta en naranja: es el único dato que cambia de un día a otro.
+	   Texto sobre blanco: la versión oscura del acento (5.3:1), no #F26D26. */
 	.quien span.hoy {
-		color: var(--k-rojo);
+		color: var(--k-rojo-texto);
 		opacity: 1;
 		font-weight: 800;
 	}

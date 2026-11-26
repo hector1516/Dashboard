@@ -112,3 +112,33 @@ Cambios de contraste:
   tinta; convertirlas todas es una decisiÃ³n de diseÃ±o, no de contraste.
 - La escala de pies y notas por debajo de `.62` (`.45`, `.4`) se dejÃ³ como
   jerarquÃ­a visual deliberada; no interviene en la paleta de acento.
+
+## Fix round 1
+
+1. **Naranja como texto.** Nuevo token `--k-rojo-texto: #b24d12` (**5.30:1**
+   sobre blanco). Lo usan `Comprobantes .rojo` (días del vale) y `Equipo
+   .hoy`; `--k-rojo` (`#F26D26`) se queda para fondos, barras y subrayados.
+   También se añadió `--k-ambar-texto: #8a6200` (5.49:1) y se usa en
+   `Comprobantes .ambar` y `Actividad .estado.medio`.
+2. **Datos secundarios a AA.** Suben a `.62` (5.17:1 en claro):
+   `Equipo .pos` (.35), `.rank-pie` (.45), `.delta.vacio` (.45) y
+   `Clima .rango .min` (.45).
+3. **`diasHasta()` con snapshot viejo.** Ahora `espera()` devuelve
+   `{ dias, vueltas }`. Con `fecha` rueda al mismo día del año siguiente; sin
+   `fecha` resta la edad del snapshot (`generado_en`) y suma 365 con signo
+   (módulo 365, hasta 3 vueltas). `anosDe()` suma `vueltas` a los años del
+   aniversario. Verificado en DOM con snapshot de 3 días: sin `fecha` ?
+   «en 362 días» (antes «en 3 días»); aniversario pasado ? «5 años · en 363
+   días» (antes 4).
+4. **Legends sin recorte silencioso.** `.rank-lista` pasa a
+   `justify-content: flex-start` + `overflow: hidden`; caben 19 filas y, si hay
+   más, se pintan 18 + «y N más» (el resumen ocupa el último hueco). Con 12 se
+   ven los 12; con 25 se ven los 18 primeros y «y 7 más», con el podio intacto.
+5. **Menores.** `Celda .cell.azul` usa `var(--k-sup)`; comentario de la marca
+   de agua corregido a `brightness(0.5)` / opacidad `0.07`.
+
+Verificación del round: `npm run check` ? 7 errores / 50 avisos (baseline);
+`npm run build` ? `Wrote site to "build"`; DOM con 25 integrantes ? 18 filas +
+«y 7 más». Capturas: `capturas/fix1-comprobantes.png`,
+`capturas/fix1-equipo.png`, `capturas/fix1-clima.png` y
+`capturas/fix1-equipo-25.png`.

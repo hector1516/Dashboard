@@ -339,7 +339,7 @@
 		font-weight: 800;
 		letter-spacing: -1px;
 		font-variant-numeric: tabular-nums;
-		opacity: 0.45;
+		opacity: 0.62;
 	}
 
 	.sub {

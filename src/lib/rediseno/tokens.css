@@ -10,11 +10,18 @@
 	/* Acento de marca (naranja del logo). Sobre él el texto va en tinta:
 	   blanco sobre #F26D26 apenas llega a 2.9:1. */
 	--k-rojo: #f26d26;
+	/* Naranja para TEXTO sobre superficies claras: #F26D26 ahí da 3.0:1 y no
+	   pasa AA. Esta versión oscura da 5.3:1 sobre blanco; #F26D26 se queda
+	   para fondos, barras y subrayados. */
+	--k-rojo-texto: #b24d12;
 	/* Azul del logo. Es el fondo de las anclas informativas; sobre él el
 	   texto va en blanco (≈10:1). */
 	--k-azul: #27347b;
 	--k-verde: #0e8f7e;
 	--k-ambar: #d99a00;
+	/* Ámbar para TEXTO sobre claro: el token de arriba da 2.45:1 (sirve de
+	   fondo, no de letra). Esta versión oscura da 5.49:1. */
+	--k-ambar-texto: #8a6200;
 	--k-radio: 20px;
 	--k-gap: 24px;
 	--k-marco: 76px;

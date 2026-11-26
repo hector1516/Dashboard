@@ -395,12 +395,12 @@
 		opacity: 0.6;
 	}
 	.rojo {
-		color: var(--k-rojo);
+		color: var(--k-rojo-texto);
 	}
 	.ambar {
-		/* El ámbar del token sobre blanco da 2.5:1: es fondo, no texto. La
-		   palabra usa su versión oscura (5.5:1), igual que Actividad. */
-		color: #8a6200;
+		/* El ámbar del token sobre blanco da 2.45:1: es fondo, no texto. La
+		   palabra usa su versión oscura (5.49:1), igual que Actividad. */
+		color: var(--k-ambar-texto);
 	}
 	.gris {
 		color: #8a8578;

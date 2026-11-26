@@ -473,7 +473,7 @@
 	.estado.medio {
 		/* El ámbar del token (#D99A00) sobre blanco da 2.5:1: sirve de fondo,
 		   no de texto. Para la palabra se usa su versión oscura (5.5:1). */
-		color: #8a6200;
+		color: var(--k-ambar-texto);
 		opacity: 1;
 	}
 	.sin-filas,
