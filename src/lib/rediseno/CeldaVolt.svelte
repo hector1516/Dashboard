@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
 	// La celda que llena el hueco inferior derecho de la retícula: The Penguin
 	// (Pebble, el pingüino 3D de Wobnimo) y sus últimas tres notificaciones,
 	// cada una con su hora.
@@ -9,9 +9,16 @@
 	//
 	// El historial lo llena `voltAviso.ts`: presencia, tickets, avisos del
 	// vigilante y «sin internet». Aquí sólo se pinta, sin peticiones propias.
+	//
+	// Animaciones: Wobnimo acepta exactamente `idle`, `happy`, `sad`,
+	// `speaking` y `sleeping`. La base es `happy` en Equipo (cumples y
+	// aniversarios) e `idle` en el resto; un aviso nuevo lo pone `happy` 3 s y
+	// de vez en cuando se duerme solo (nunca en Equipo ni recién avisado).
+	// `?sinanim=1` lo deja clavado en la base, para capturas.
 	import { onMount } from 'svelte';
 	import Celda from './Celda.svelte';
 	import { voltHistorial, type AvisoVolt } from '$lib/kiosk/voltAviso';
+	import { currentScreen } from '$lib/kiosk/currentScreen';
 
 	interface Props {
 		/**
@@ -34,20 +41,85 @@
 	/** Instancia de Wobnimo (`mount()`): setState y dispose. */
 	type Mascota = { setState?: (estado: string) => void; dispose?: () => void };
 	let mascota: Mascota | null = null;
-	/** Vuelve a `idle` cuando termina de hablar. */
-	let regreso: ReturnType<typeof setTimeout> | null = null;
 
-	/** Lo último que se vio en el historial: una fila nueva dispara `speaking`. */
+	/** ¿La pantalla visible es Equipo? Ahí celebra sin parar. */
+	let fiesta = false;
+	/** `?sinanim=1`: ni avisos ni siestas; se queda en el estado base. */
+	let sinAnim = false;
+
+	/** Vuelve a la base cuando termina la celebración de un aviso. */
+	let regreso: ReturnType<typeof setTimeout> | null = null;
+	/** Fin de una siesta; su presencia bloquea otras animaciones. */
+	let siesta: ReturnType<typeof setTimeout> | null = null;
+	/** Reloj que decide de vez en cuando si toca dormir. */
+	let revisor: ReturnType<typeof setInterval> | null = null;
+	/** Momento del último aviso: no se duerme si acaba de sonar. */
+	let ultimoAviso = 0;
+
+	/** Lo último que se vio en el historial: una fila nueva dispara `happy`. */
 	let visto: string | null = null;
 
-	function hablar() {
+	/**
+	 * Gesto festivo. La compilación que trae Wobnimo valida contra su lista
+	 * pública y esa lista no incluye `happy`, aunque el personaje sí lo dibuja
+	 * (y `pebble.js` le da movimiento). Se intenta `happy`; si lo rechaza se
+	 * usa `celebrating`, que es su gesto festivo real.
+	 */
+	let festejo: 'happy' | 'celebrating' = 'happy';
+
+	/** `happy` es lo único que puede necesitar respaldo en esta compilación. */
+	function poner(estado: 'happy' | 'idle' | 'sleeping') {
 		if (!mascota?.setState) return;
-		mascota.setState('speaking');
+		const real = estado === 'happy' ? festejo : estado;
+		try {
+			mascota.setState(real);
+		} catch {
+			if (estado !== 'happy') return;
+			festejo = 'celebrating';
+			mascota.setState(festejo);
+		}
+	}
+
+	/** Estado en reposo: `happy` en Equipo, `idle` en cualquier otra. */
+	function estadoBase(): 'happy' | 'idle' {
+		return fiesta ? 'happy' : 'idle';
+	}
+
+	/** Vuelve a la base, salvo que haya un aviso o una siesta en curso. */
+	function alBase() {
+		if (!mascota?.setState) return;
+		if (regreso || siesta) return;
+		poner(estadoBase());
+	}
+
+	function celebrar() {
+		if (sinAnim || !mascota?.setState) return;
+		ultimoAviso = Date.now();
+		// Un aviso despierta al personaje.
+		if (siesta) {
+			clearTimeout(siesta);
+			siesta = null;
+		}
+		poner('happy');
 		if (regreso) clearTimeout(regreso);
 		regreso = setTimeout(() => {
 			regreso = null;
-			mascota?.setState?.('idle');
-		}, 3200);
+			alBase();
+		}, 3000);
+	}
+
+	/** Cada ~30 s: 40 % de probabilidad de echarse una siesta de 6–10 s. */
+	function quizaDormir() {
+		if (sinAnim || fiesta || !mascota?.setState) return;
+		if (regreso || siesta) return;
+		if (Date.now() - ultimoAviso < 10_000) return;
+		if (Math.random() > 0.4) return;
+		poner('sleeping');
+		const ms = 6000 + Math.random() * 4000;
+		siesta = setTimeout(() => {
+			siesta = null;
+			alBase();
+		}, ms);
 	}
 
 	async function montarPersonaje() {
@@ -70,7 +142,7 @@
 				return;
 			}
 			mascota = instancia;
-			instancia.setState?.('idle');
+			poner(estadoBase());
 			montado = true;
 		} catch (e) {
 			// Sin personaje 3D la celda no queda vacía: sigue el 🐧.
@@ -79,26 +151,50 @@
 	}
 
 	onMount(() => {
+		sinAnim = new URLSearchParams(window.location.search).get('sinanim') === '1';
+
 		const soltar = voltHistorial.subscribe((v) => {
 			avisos = v;
 			const frente = v[0];
 			const marca = frente ? `${frente.hora}·${frente.texto}` : '';
-			// La primera foto es lo que ya había al entrar: no se habla. A
+			// La primera foto es lo que ya había al entrar: no se celebra. A
 			// partir de ahí, cualquier fila nueva (o el primero que llega a una
-			// lista vacía) pone al personaje a hablar.
+			// lista vacía) pone al personaje contento.
 			if (visto === null) {
 				visto = marca;
 				return;
 			}
-			if (marca && marca !== visto) hablar();
+			if (marca && marca !== visto) celebrar();
 			visto = marca;
 		});
 
+		// Al entrar a Equipo celebra de inmediato (la base ya es `happy`); al
+		// salir, vuelve a `idle` y se le permite dormir otra vez.
+		const soltarPantalla = currentScreen.subscribe((id) => {
+			const antes = fiesta;
+			fiesta = id === 'equipo';
+			if (fiesta && !antes) {
+				if (regreso) {
+					clearTimeout(regreso);
+					regreso = null;
+				}
+				if (siesta) {
+					clearTimeout(siesta);
+					siesta = null;
+				}
+			}
+			alBase();
+		});
+
+		revisor = setInterval(quizaDormir, 30_000);
 		void montarPersonaje();
 
 		return () => {
 			soltar();
+			soltarPantalla();
+			if (revisor) clearInterval(revisor);
 			if (regreso) clearTimeout(regreso);
+			if (siesta) clearTimeout(siesta);
 			mascota?.dispose?.();
 			mascota = null;
 		};
