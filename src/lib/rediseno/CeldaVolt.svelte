@@ -1,12 +1,11 @@
 ﻿<script lang="ts">
 	// La celda que llena el hueco inferior derecho de la retícula: The Penguin
-	// (el robot 3D de Wobnimo) y sus últimas tres notificaciones, cada una con
-	// su hora.
+	// (Pebble, el pingüino 3D de Wobnimo) y sus últimas tres notificaciones,
+	// cada una con su hora.
 	//
 	// El personaje vive DENTRO de la celda, no en un dock fijo: se va con la
-	// pantalla y no tapa la retícula. Wobnimo no tiene pingüino, así que se
-	// monta el personaje `volt` y se sigue llamando The Penguin: es la mascota,
-	// no el modelo. Si el import o el montaje fallan, queda el 🐧 de respaldo.
+	// pantalla y no tapa la retícula. Si el import o el montaje fallan, queda
+	// el 🐧 de respaldo.
 	//
 	// El historial lo llena `voltAviso.ts`: presencia, tickets, avisos del
 	// vigilante y «sin internet». Aquí sólo se pinta, sin peticiones propias.
@@ -58,12 +57,13 @@
 		// la URL literal para que Vite no intente empaquetarla.
 		const base = '/vendor/wobnimo';
 		try {
-			const [wobnimo, voltModule] = await Promise.all([
+			const [wobnimo, penguinModule] = await Promise.all([
 				import(/* @vite-ignore */ `${base}/wobnimo.js`),
-				import(/* @vite-ignore */ `${base}/characters/volt.js`)
+				// Pebble es el pingüino de Wobnimo: es The Penguin.
+				import(/* @vite-ignore */ `${base}/characters/pebble.js`)
 			]);
-			if (!escena || !wobnimo?.mount || !voltModule?.volt) return;
-			const instancia = wobnimo.mount(escena, voltModule.volt) as Mascota;
+			if (!escena || !wobnimo?.mount || !penguinModule?.pebble) return;
+			const instancia = wobnimo.mount(escena, penguinModule.pebble) as Mascota;
 			// La celda pudo desmontarse mientras cargaba el módulo.
 			if (!escena?.isConnected) {
 				instancia.dispose?.();
