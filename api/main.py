@@ -299,15 +299,25 @@ def uso_resumen():
             """)
             top_endpoints = [{"endpoint": r["Endpoint"], "usos": r["usos"]} for r in (cur.fetchall() or [])]
 
-            # Top 10 usuarios (últimos 7 días)
+            # Top 10 usuarios (últimos 7 días).
+            #
+            # `HUB_ApiUsage.Usuario` guarda el **Id** del usuario (texto), no su
+            # nombre: sin el JOIN la pantalla enseñaba «3, 7, 12». Se cruza con
+            # HUB_Users y se cae al id solo si el usuario ya no existe.
             cur.execute("""
-                SELECT TOP 10 Usuario, COUNT(*) as llamadas
-                FROM HUB_ApiUsage
-                WHERE Fecha >= DATEADD(day, -7, GETDATE()) AND Usuario IS NOT NULL
-                GROUP BY Usuario
+                SELECT TOP 10 a.Usuario AS id,
+                       ISNULL(u.Nombre, a.Usuario) AS nombre,
+                       COUNT(*) as llamadas
+                FROM HUB_ApiUsage a
+                LEFT JOIN HUB_Users u ON CAST(u.Id AS varchar(20)) = a.Usuario
+                WHERE a.Fecha >= DATEADD(day, -7, GETDATE()) AND a.Usuario IS NOT NULL
+                GROUP BY a.Usuario, u.Nombre
                 ORDER BY llamadas DESC
             """)
-            top_usuarios = [{"usuario": r["Usuario"], "llamadas": r["llamadas"]} for r in (cur.fetchall() or [])]
+            top_usuarios = [
+                {"usuario": r["nombre"], "id": r["id"], "llamadas": r["llamadas"]}
+                for r in (cur.fetchall() or [])
+            ]
 
             # Usuarios inactivos (no usaron en 7 días).
             #
