@@ -8,14 +8,6 @@
 		tono?: '' | 'dark' | 'red' | 'azul';
 		i?: number;
 		/**
-		 * Marca de agua opcional: una imagen de fondo, muy tenue, al pie de la
-		 * celda. Es decoración, no dato: va por detrás del rótulo y del
-		 * contenido, no se puede seleccionar y si el archivo no carga no pasa
-		 * nada (el `background-image` falla en silencio y la celda se lee
-		 * igual). La usa la celda ancla del clima con el dibujo de la oficina.
-		 */
-		marcaAgua?: string;
-		/**
 		 * Fondo de foto de los reportes de servicio (anclas 2×2).
 		 *
 		 * La foto la publica el store global `fotoActual`, que precarga todas
@@ -27,7 +19,7 @@
 		fondo?: boolean;
 		children: Snippet;
 	}
-	let { area, rotulo, tono = '', i = 0, marcaAgua = '', fondo = false, children }: Props = $props();
+	let { area, rotulo, tono = '', i = 0, fondo = false, children }: Props = $props();
 
 	/** Sin fundido si el sistema pide menos movimiento: el cambio es seco. */
 	let sinMovimiento = $state(false);
@@ -42,14 +34,13 @@
 
 <section
 	class="cell {tono}"
-	class:marca={!!marcaAgua}
 	class:con-foto={fondo}
-	style="grid-area:{area};--i:{i}{marcaAgua ? `;--marca:url('${marcaAgua}')` : ''}"
+	style="grid-area:{area};--i:{i}"
 >
 	{#if fondo}
 		<!-- Foto de los reportes por detrás del contenido. `z-index` negativo
-		     dentro del `isolation` de la celda (igual que la marca de agua):
-		     queda sobre el fondo y debajo del texto. -->
+		     dentro del `isolation` de la celda: queda sobre el fondo y debajo
+		     del texto. -->
 		<div class="foto" aria-hidden="true">
 			{#if $fotoActual}
 				{#key $fotoActual}
@@ -72,9 +63,9 @@
 <style>
 	.cell {
 		position: relative;
-		/* El `isolation` es lo que deja pintar la marca de agua con z-index
-		   negativo: queda ENCIMA del fondo de la celda y DEBAJO del contenido,
-		   en vez de irse detrás de la celda y desaparecer. */
+		/* El `isolation` deja pintar la foto con `z-index` negativo: queda
+		   ENCIMA del fondo de la celda y DEBAJO del contenido, en vez de irse
+		   detrás de la celda y desaparecer. */
 		isolation: isolate;
 		min-height: 0; border-radius: var(--k-radio); background: var(--k-sup);
 		padding: 24px 28px; display: flex; flex-direction: column; gap: 10px;
@@ -83,30 +74,8 @@
 		animation: caer .45s cubic-bezier(.2,.9,.3,1.2) both;
 		animation-delay: calc(var(--i, 0) * 35ms);
 	}
-	/* Marca de agua: el dibujo isométrico de la oficina, cubriendo el ancho y
-	   apoyado al pie. Opacidad baja para que no se lea como una foto y se
-	   desvanece hacia arriba, donde está la cifra. */
-	.cell.marca::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		z-index: -1;
-		background-image: var(--marca);
-		background-size: cover;
-		background-position: center bottom;
-		background-repeat: no-repeat;
-		/* La celda es tinta: el dibujo se pasa a gris y se OSCURECE para que
-		   solo deje ver el trazo. Con brightness alto (2.2) los muros blancos
-		   se saturaban y la marca se leía como una foto; a 0.5 y 7 % queda
-		   como papel de fondo, no como imagen. */
-		filter: grayscale(1) brightness(0.5) contrast(0.95);
-		opacity: 0.07;
-		mask-image: linear-gradient(to bottom, transparent 0%, #000 58%);
-		-webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 58%);
-		pointer-events: none;
-	}
-	/* Capa de foto. Va en -2 para que la marca de agua (-1) siga contando y
-	   el contenido quede por delante. */
+	/* Capa de foto: por detrás del contenido, con `z-index` negativo dentro
+	   del `isolation` de la celda. */
 	.foto {
 		position: absolute;
 		inset: 0;
@@ -121,10 +90,10 @@
 		object-fit: cover;
 	}
 	/* Velo del tono de la celda: deja ver la foto pero manda el color y
-	   garantiza el contraste del texto. Medido sobre el peor caso (foto
-	   blanca, 255): la tinta a .80 → el `.delta` al 60 % queda en 4.8:1;
-	   el azul oscurecido a .89 → el `.delta` al 62 % en 5.1:1; el naranja a
-	   .86 → la tinta al 62 % en 4.3:1 (ya estaba así sobre el plano). */
+	   garantiza el contraste del texto. Medido con el peor píxel de la caja
+	   de cada texto, sobre las fotos reales y con una foto blanca forzada
+	   (2026-11-26): tinta ≥8:1, azul ≥5.4:1, naranja ≥4.6:1 con el texto
+	   opaco (ver la regla del ancla naranja más abajo). */
 	.foto-velo {
 		position: absolute;
 		inset: 0;
@@ -140,6 +109,31 @@
 	}
 	.cell:not(.dark):not(.red):not(.azul) .foto-velo {
 		background: linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.88));
+	}
+	/* Con foto, el contenido lleva una sombra corta: separa la cifra y el
+	   texto de la textura sin apagar la foto. La sombra hereda a todo lo que
+	   hay dentro de la celda. Sobre el naranja (texto en tinta) se usa una
+	   sombra cálida, para no ensuciar el trazo con negro. */
+	.cell.con-foto {
+		text-shadow:
+			0 1px 2px rgba(9, 10, 14, 0.55),
+			0 4px 18px rgba(9, 10, 14, 0.4);
+	}
+	.cell.con-foto.red {
+		text-shadow:
+			0 1px 1px rgba(96, 34, 4, 0.42),
+			0 3px 14px rgba(96, 34, 4, 0.3);
+	}
+	/* En el ancla naranja el texto va en tinta y ahí la translucidez cuesta
+	   contraste: la tinta al 82 % sobre la naranja plana da 4.8:1, pero una
+	   zona oscura de la foto la baja a 3.8:1. Medido con el peor píxel de la
+	   caja del texto, opaco se queda en 4.5–6:1 en TODO el rango de la foto
+	   (negro a blanco), así que sobre foto esos tres textos van sin veladura
+	   y la jerarquía la da el tamaño, no la opacidad. */
+	.cell.con-foto.red .lbl,
+	.cell.con-foto.red :global(.sub),
+	.cell.con-foto.red :global(.delta) {
+		opacity: 1;
 	}
 	@keyframes caer {
 		from { opacity: 0; transform: translateY(-12px) scale(.985); }

@@ -126,17 +126,13 @@
 >
 	<Bento>
 		<!-- Ancla 2×2: la temperatura de ahora, el icono y el estado del cielo.
-		     Lleva el dibujo isométrico de la oficina como marca de agua, muy
-		     tenue y al pie: sobre la tinta se ve el trazo, no una foto, y la
-		     cifra y el texto quedan por delante. -->
-		<Celda
-			area="1/1/3/3"
-			tono="dark"
-			rotulo="Ahora en Monterrey"
-			i={0}
-			marcaAgua="/images/oficina-eccsa.webp"
-			fondo
-		>
+		     A la derecha va la ilustración isométrica de la casa ECCSA, grande
+		     y fundida con la tinta por la izquierda; la cifra y el texto se
+		     quedan sobre el fondo limpio. No lleva la foto de los reportes:
+		     las dos imágenes juntas se estorban. -->
+		<Celda area="1/1/3/3" tono="dark" rotulo="Ahora en Monterrey" i={0}>
+			<span class="casa-luz" aria-hidden="true"></span>
+			<span class="casa-img" aria-hidden="true"></span>
 			<div class="cuerpo centro">
 				{#if sinDatos}
 					<div class="cifra sin sobre-tinta">—</div>
@@ -255,6 +251,47 @@
 	}
 	.cuerpo.centro {
 		justify-content: center;
+	}
+
+	/* ── ancla: la casa ECCSA ─────────────────────────────────── */
+	/* La ilustración se recortó a WebP con fondo transparente
+	   (`static/images/casa-eccsa.webp`, derivada del JPG del dueño: se quitó
+	   el blanco con relleno desde el borde, sin tocar el interior y sin
+	   comerse la banqueta). Así se apoya directa sobre la tinta, a color, sin
+	   parche ni velo. La luz cálida de abajo la despega del fondo y la
+	   máscara funde el borde izquierdo para que la cifra y el texto sigan
+	   sobre tinta limpia. */
+	.casa-luz {
+		position: absolute;
+		right: -8%;
+		bottom: -12%;
+		width: 64%;
+		height: 80%;
+		z-index: -2;
+		pointer-events: none;
+		background: radial-gradient(
+			60% 58% at 56% 64%,
+			rgba(247, 243, 234, 0.4) 0%,
+			rgba(247, 243, 234, 0.22) 48%,
+			rgba(247, 243, 234, 0) 78%
+		);
+	}
+	.casa-img {
+		position: absolute;
+		right: -3%;
+		bottom: -8%;
+		width: 57%;
+		aspect-ratio: 2000 / 1493;
+		z-index: -1;
+		pointer-events: none;
+		background: url('/images/casa-eccsa.webp') no-repeat center bottom / contain;
+		mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.45) 28%, #000 50%);
+		-webkit-mask-image: linear-gradient(
+			to right,
+			transparent 0%,
+			rgba(0, 0, 0, 0.45) 28%,
+			#000 50%
+		);
 	}
 
 	/* ── ancla: temperatura ───────────────────────────────────── */
