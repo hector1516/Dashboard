@@ -18,7 +18,9 @@
 		const t0 = performance.now();
 		let raf = 0;
 		const paso = (t: number) => {
-			const k = Math.min(1, (t - t0) / duracion);
+			// El timestamp del frame puede quedar antes de `t0` por un pelo:
+			// sin el tope en 0, la primera pintura salía negativa («$-27,952»).
+			const k = Math.max(0, Math.min(1, (t - t0) / duracion));
 			mostrado = valor * (1 - Math.pow(1 - k, 3));
 			if (k < 1) raf = requestAnimationFrame(paso);
 		};
@@ -27,4 +29,6 @@
 	});
 </script>
 
-<span class="num" style="font-variant-numeric:tabular-nums">{formato(Math.round(mostrado))}</span>
+<!-- `data-numero`: el barrido de `contarNumeros` salta este span porque ya
+     cuenta solo; animarlo otra vez lo haría bailar dos veces. -->
+<span class="num" data-numero style="font-variant-numeric:tabular-nums">{formato(Math.round(mostrado))}</span>

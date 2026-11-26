@@ -20,7 +20,7 @@
 	let { restante }: Props = $props();
 </script>
 
-<div class="rot" aria-hidden="true">
+<div class="rot" aria-hidden="true" data-sin-contar>
 	<span class="seg">{Math.max(0, Math.ceil(restante))}</span>
 	<span class="s">s</span>
 </div>

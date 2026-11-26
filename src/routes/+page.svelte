@@ -16,7 +16,7 @@
 	se despierta con el primer gesto por si el kiosco se abre a mano.
 */
 <script lang="ts">
-import { onMount, onDestroy } from 'svelte';
+import { onMount, onDestroy, tick } from 'svelte';
 import { fade } from 'svelte/transition';
 import { cargarSnapshot, pedirBuild, snapshotVacio } from '$lib/kiosk/api';
 import type { EventoKiosko, PantallaDef, Snapshot } from '$lib/kiosk/types';
@@ -76,6 +76,10 @@ import LogoTraceLoader from '$lib/components/effects/LogoTraceLoader.svelte';
 // desempatan—; el archivo no compite con ellos, sólo añade animaciones que
 // ninguna pantalla declara.
 import '$lib/rediseno/anim.css';
+// Barrido de cifras: cada pantalla entra con sus números contando de 0 a su
+// valor. Convive con `anim.css` (las filas siguen cayendo en cascada) y salta
+// el ancla de `Numero.svelte`, que ya cuenta por su cuenta.
+import { contarNumeros } from '$lib/rediseno/contar';
 
 /* ── Configuración de la pantalla ─────────────────────────────── */
 const ROTACION_MS = 45_000;      // 45 s por pantalla
@@ -240,6 +244,34 @@ const CON_BENTO = new Set([
 	'uso_apps'
 ]);
 const pantallaBento = $derived(!CLASICO && CON_BENTO.has(pantalla.id));
+
+/**
+ * Cifras: al entrar cada pantalla, sus números cuentan de 0 a su valor.
+ *
+ * Se lanza una vez por pantalla (las dependencias son el id, si ya hay datos y
+ * el interruptor de animación), y espera a que el DOM esté montado: `tick()`
+ * resuelve después del cambio y el `requestAnimationFrame` deja pasar un
+ * fotograma para que el texto ya esté en su sitio. No es un bucle: cada cifra
+ * se anima una vez y se queda en su valor.
+ */
+$effect(() => {
+	const idPantalla = pantalla.id;
+	const quieto = sinAnim;
+	if (cargando || quieto) return;
+	// `idPantalla` es la dependencia real: pantalla nueva → barrido nuevo.
+	void idPantalla;
+	let cancelado = false;
+	tick().then(() => {
+		if (cancelado) return;
+		requestAnimationFrame(() => {
+			if (cancelado || !escenarioRef) return;
+			contarNumeros(escenarioRef);
+		});
+	});
+	return () => {
+		cancelado = true;
+	};
+});
 
 // Actualizar store de pantalla actual para Volt
 $effect(() => {
