@@ -470,7 +470,7 @@
 	.quien span {
 		font-size: 21px;
 		font-weight: 600;
-		opacity: 0.55;
+		opacity: 0.62;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;

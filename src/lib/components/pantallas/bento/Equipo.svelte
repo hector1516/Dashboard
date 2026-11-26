@@ -4,8 +4,8 @@
 	//
 	// Cuatro celdas:
 	//   · ancla 2×2 → personas activas y la línea de ECCSA Legends;
-	//   · lista 2×2 → TODOS los integrantes de Legends con sus puntos (la
-	//     tabla se corta en 8 y dice «+N más»);
+	//   · lista 2×2 → TODOS los integrantes de Legends con sus puntos (sin
+	//     tope ni «+N más»: la celda tiene alto de sobra para la plantilla);
 	//   · dos 1×1   → los próximos cumpleaños y los próximos aniversarios.
 	//
 	// Las celebraciones son RODANTES (`proximos_cumpleanos` y
@@ -38,9 +38,6 @@
 		puntos_temporada?: number | null;
 		avatar?: string | null;
 	}
-
-	/** Cuántos caben en la celda antes de resumir; el resto va en «+N más». */
-	const TOPE_RANKING = 8;
 
 	interface Props {
 		/** Snapshot del kiosco. Solo se leen `equipo`, `legends` y celebraciones. */
@@ -81,8 +78,6 @@
 	// trae, se cuenta el ranking, que es la misma lista.
 	const participantes = $derived(aNumero(lg?.participantes) ?? ranking.length);
 	const puntos = $derived(aNumero(lg?.total_puntos));
-	const filasRank = $derived(ranking.slice(0, TOPE_RANKING));
-	const masRank = $derived(Math.max(0, ranking.length - filasRank.length));
 
 	// ── Celebraciones rodantes ───────────────────────────────────
 	// `undefined` = el snapshot no trae la lista (es opcional y puede ser de
@@ -101,9 +96,49 @@
 	const entero = (n: number) => String(Math.round(n));
 	const miles = (n: number | null) => (n == null ? '—' : Math.round(n).toLocaleString('es-MX'));
 
+	/**
+	 * Días que faltan HOY a la próxima ocurrencia.
+	 *
+	 * El snapshot trae `dias` calculado el día que se generó. Si el snapshot
+	 * lleva dos días en disco, ese 0 ya no es «hoy». Primero se usa `p.fecha`
+	 * (la fecha absoluta de la próxima ocurrencia); si no viene, se suma la
+	 * edad del snapshot (`generado_en`) a `dias`. Si la fecha absoluta ya pasó
+	 * —snapshot viejo—, se avanza al mismo día del año siguiente, que es
+	 * cuando vuelve a caer la fiesta.
+	 */
+	function diasHasta(fecha: unknown, diasSnapshot: unknown): number {
+		const m = typeof fecha === 'string' ? /^(\d{4})-(\d{2})-(\d{2})/.exec(fecha) : null;
+		if (m) {
+			const hoy = new Date();
+			const base = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+			const objetivo = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+			if (!Number.isNaN(objetivo.getTime())) {
+				let d = Math.round((objetivo.getTime() - base.getTime()) / 86_400_000);
+				// Un snapshot de hace meses no puede decir «en -40 días».
+				for (let vuelta = 0; d < 0 && vuelta < 3; vuelta++) {
+					objetivo.setFullYear(objetivo.getFullYear() + 1);
+					d = Math.round((objetivo.getTime() - base.getTime()) / 86_400_000);
+				}
+				if (d >= 0) return d;
+			}
+		}
+		// Sin fecha utilizable: el día que decía el snapshot, más los días que
+		// el snapshot lleva esperando en disco.
+		return Math.max(0, Math.round(Number(diasSnapshot ?? 0) || 0) + edadSnapshot());
+	}
+
+	/** Días completos que el snapshot lleva generado (0 si no se sabe). */
+	function edadSnapshot(): number {
+		const iso = datos?.generado_en;
+		if (typeof iso !== 'string') return 0;
+		const t = Date.parse(iso);
+		if (!Number.isFinite(t)) return 0;
+		return Math.max(0, Math.floor((Date.now() - t) / 86_400_000));
+	}
+
 	/** «hoy» o «en N días». El día 0 se dice hoy, no «en 0 días». */
-	function cuando(dias: unknown): string {
-		const d = Math.max(0, Math.round(Number(dias ?? 0) || 0));
+	function cuando(fecha: unknown, diasSnapshot: unknown): string {
+		const d = diasHasta(fecha, diasSnapshot);
 		if (d === 0) return 'hoy';
 		return d === 1 ? 'en 1 día' : `en ${d} días`;
 	}
@@ -151,7 +186,7 @@
 >
 	<Bento>
 		<!-- Ancla 2×2: cuántas personas activas hay y cuántas juegan Legends. -->
-		<Celda area="1/1/3/3" tono="dark" rotulo="En el equipo" i={0}>
+		<Celda area="1/1/3/3" tono="azul" rotulo="En el equipo" i={0}>
 			<div class="cuerpo centro">
 				{#if personas == null}
 					<div class="cifra sin">—</div>
@@ -185,14 +220,14 @@
 						<b>Sin datos todavía</b>
 						<span>El snapshot no trae el bloque de ECCSA Legends.</span>
 					</div>
-				{:else if filasRank.length === 0}
+				{:else if ranking.length === 0}
 					<div class="sin-filas">
 						<b>Sin participantes</b>
 						<span>Nadie de la plantilla juega ECCSA Legends todavía.</span>
 					</div>
 				{:else}
 					<div class="rank-lista">
-						{#each filasRank as r, i (r.id_usuario ?? i)}
+						{#each ranking as r, i (r.id_usuario ?? i)}
 							<div class="r-fila">
 								<span class="pos">{i + 1}</span>
 								<b class="nom">{r.nombre || r.nickname || 'Sin nombre'}</b>
@@ -202,9 +237,6 @@
 								</span>
 							</div>
 						{/each}
-						{#if masRank > 0}
-							<div class="r-mas">+{masRank} más</div>
-						{/if}
 					</div>
 					<div class="rank-pie">
 						{participantes}
@@ -233,9 +265,9 @@
 						<div class="p-fila">
 							<div class="ava" aria-hidden="true">
 								<span>{iniciales(p.nombre)}</span>
-								{#if p.foto}
+								{#if p.foto ?? p.avatar}
 									<img
-										src={p.foto}
+										src={p.foto ?? p.avatar ?? ''}
 										alt=""
 										onerror={(e) => (e.currentTarget as HTMLImageElement).remove()}
 									/>
@@ -243,7 +275,9 @@
 							</div>
 							<div class="quien">
 								<b>{p.nombre || 'Sin nombre'}</b>
-								<span class:hoy={Number(p.dias) === 0}>{cuando(p.dias)}</span>
+								<span class:hoy={diasHasta(p.fecha, p.dias) === 0}
+									>{cuando(p.fecha, p.dias)}</span
+								>
 							</div>
 						</div>
 					{/each}
@@ -269,9 +303,9 @@
 						<div class="p-fila">
 							<div class="ava" aria-hidden="true">
 								<span>{iniciales(a.nombre)}</span>
-								{#if a.foto}
+								{#if a.foto ?? a.avatar}
 									<img
-										src={a.foto}
+										src={a.foto ?? a.avatar ?? ''}
 										alt=""
 										onerror={(e) => (e.currentTarget as HTMLImageElement).remove()}
 									/>
@@ -279,8 +313,8 @@
 							</div>
 							<div class="quien">
 								<b>{a.nombre || 'Sin nombre'}</b>
-								<span class:hoy={Number(a.dias) === 0}>
-									{anosTexto(a.anos)} · {cuando(a.dias)}
+								<span class:hoy={diasHasta(a.fecha, a.dias) === 0}>
+									{anosTexto(a.anos)} · {cuando(a.fecha, a.dias)}
 								</span>
 							</div>
 						</div>
@@ -368,13 +402,18 @@
 		gap: 8px;
 	}
 	.rank-lista {
+		flex: 1;
+		min-height: 0;
 		display: flex;
 		flex-direction: column;
+		justify-content: center;
 	}
-	/* Filas compactas de 26 px: 8 caben sin scroll y se leen de un vistazo. */
+	/* Filas flexibles: 12 integrantes caben en ~40 px cada uno y 20 se
+	   aprietan a 24 px sin scroll. No hay tope: se ven todos. */
 	.r-fila {
-		height: 26px;
-		flex: 0 0 26px;
+		flex: 1 1 0;
+		min-height: 24px;
+		max-height: 44px;
 		display: flex;
 		align-items: center;
 		gap: 14px;
@@ -410,16 +449,8 @@
 		/* 20 px: en este sistema nada baja de ahí (se lee a 3 m). */
 		font-size: 20px;
 		font-weight: 700;
-		opacity: 0.55;
+		opacity: 0.62;
 		margin-left: 2px;
-	}
-	.r-mas {
-		height: 26px;
-		display: flex;
-		align-items: center;
-		font-size: 20px;
-		font-weight: 700;
-		opacity: 0.5;
 	}
 	/* La suma de la semana: contexto de los puntos de arriba, no otra cifra. */
 	.rank-pie {
@@ -487,7 +518,7 @@
 	.quien span {
 		font-size: 20px;
 		font-weight: 600;
-		opacity: 0.55;
+		opacity: 0.62;
 		line-height: 1.15;
 		white-space: nowrap;
 		overflow: hidden;

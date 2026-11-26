@@ -305,7 +305,8 @@
 	.delta {
 		font-size: 20px;
 		font-weight: 800;
-		color: #fff;
+		/* Hereda el color de la celda: en el ancla naranja es tinta (6.1:1),
+		   no blanco (2.9:1). */
 		opacity: 0.85;
 	}
 
@@ -331,7 +332,7 @@
 	}
 	/* El cerrado se atenúa: sigue en la bandeja, pero ya no pide nada. */
 	.fila.ok {
-		opacity: 0.55;
+		opacity: 0.62;
 	}
 	.ava {
 		position: relative;
@@ -374,7 +375,7 @@
 	.quien span {
 		font-size: 20px;
 		font-weight: 600;
-		opacity: 0.55;
+		opacity: 0.62;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -397,7 +398,9 @@
 		color: var(--k-rojo);
 	}
 	.ambar {
-		color: var(--k-ambar);
+		/* El ámbar del token sobre blanco da 2.5:1: es fondo, no texto. La
+		   palabra usa su versión oscura (5.5:1), igual que Actividad. */
+		color: #8a6200;
 	}
 	.gris {
 		color: #8a8578;
@@ -446,7 +449,7 @@
 	.nota span {
 		font-size: 20px;
 		font-weight: 600;
-		opacity: 0.55;
+		opacity: 0.62;
 	}
 	.pista {
 		display: flex;
@@ -460,7 +463,7 @@
 	}
 	.pista i.cerrado {
 		background: var(--k-verde);
-		opacity: 0.55;
+		opacity: 0.62;
 	}
 	.pista i.rojo {
 		background: var(--k-rojo);

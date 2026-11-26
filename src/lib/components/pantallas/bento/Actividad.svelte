@@ -399,7 +399,7 @@
 		font-size: 20px;
 		font-weight: 600;
 		color: #f7f3ea;
-		opacity: 0.55;
+		opacity: 0.62;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -455,7 +455,7 @@
 	.quien span {
 		font-size: 20px;
 		font-weight: 600;
-		opacity: 0.55;
+		opacity: 0.62;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -463,7 +463,7 @@
 	.estado {
 		font-size: 20px;
 		font-weight: 800;
-		opacity: 0.55;
+		opacity: 0.62;
 		white-space: nowrap;
 	}
 	.estado.ok {

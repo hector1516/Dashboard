@@ -17,6 +17,7 @@
 */
 <script lang="ts">
 import { onMount, onDestroy } from 'svelte';
+import { fade } from 'svelte/transition';
 import { cargarSnapshot, pedirBuild, snapshotVacio } from '$lib/kiosk/api';
 import type { EventoKiosko, PantallaDef, Snapshot } from '$lib/kiosk/types';
 import { mascotState } from '$lib/kiosk/mascot';
@@ -133,7 +134,6 @@ let eventoAvatar = $state<string | null>(null);
 let personaAvatar = $state<string | null>(null);
 let orden = $state<number[]>([]);
 let pos = $state(0);
-let saliendo = $state(false);
 let swarmActivo = $state(false);
 let reloj = $state('');
 let fecha = $state('');
@@ -513,18 +513,14 @@ function avanzar() {
 	// Un aviso a pantalla completa en curso manda: no se cambia lo que se está
 	// leyendo. Y tampoco la marca de salida, que encima se come la pantalla.
 	if (aviso || colaAviso.length || salidaModo) return;
-	saliendo = true;
-	setTimeout(() => {
-		pos = (pos + 1) % orden.length;
-		// La cuenta de segundos arranca con la pantalla nueva, no con el giro.
-		t0Rotacion = Date.now();
-		if (pos === 0) orden = barajar();   // vuelta nueva, orden nuevo
-		saliendo = false;
-		// Fondo nuevo en cada giro (aleatorio de los locales).
-		if (fondoRef?.cambiarFondo && datos.fondos.length) {
-			fondoRef.cambiarFondo(Math.floor(Math.random() * datos.fondos.length), 1600);
-		}
-	}, 520);
+	pos = (pos + 1) % orden.length;
+	// La cuenta de segundos arranca con la pantalla nueva, no con el giro.
+	t0Rotacion = Date.now();
+	if (pos === 0) orden = barajar();   // vuelta nueva, orden nuevo
+	// Fondo nuevo en cada giro (aleatorio de los locales).
+	if (fondoRef?.cambiarFondo && datos.fondos.length) {
+		fondoRef.cambiarFondo(Math.floor(Math.random() * datos.fondos.length), 1600);
+	}
 }
 
 /**
@@ -545,7 +541,6 @@ function irAPantalla(id: string) {
 	pos = 0;
 	t0Rotacion = Date.now();
 	restanteRotacion = ROTACION_MS / 1000;
-	saliendo = false;
 	return true;
 }
 
@@ -1073,9 +1068,37 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 			tema={temaAMostrar()}
 		/>
 
+		<!-- Una sola definición de las ramas bento/clásica: la usan la pantalla
+		     que entra y la que sale durante el crossfade. -->
+		{#snippet pintaPantalla(p: PantallaDef)}
+			{@const esBento = !CLASICO && CON_BENTO.has(p.id)}
+			{#if p.id === 'clima' && esBento}<ClimaBento {datos} posicion={posicionRotacion} />
+			{:else if p.id === 'clima'}<Clima {datos} />
+			{:else if p.id === 'asistencia' && esBento}<AsistenciaBento {datos} posicion={posicionRotacion} />
+			{:else if p.id === 'asistencia'}<Asistencia {datos} />
+			{:else if p.id === 'combustible' && esBento}<CombustibleBento {datos} posicion={posicionRotacion} />
+			{:else if p.id === 'combustible'}<Combustible {datos} />
+			{:else if p.id === 'comprobantes' && esBento}<ComprobantesBento {datos} posicion={posicionRotacion} />
+			{:else if p.id === 'actividad' && esBento}<ActividadBento {datos} posicion={posicionRotacion} />
+			{:else if p.id === 'actividad'}<Actividad {datos} />
+			{:else if p.id === 'tickets' && esBento}<TicketsBento {datos} posicion={posicionRotacion} />
+			{:else if p.id === 'tickets'}<Tickets {datos} />
+			{:else if p.id === 'equipo' && esBento}<EquipoBento {datos} posicion={posicionRotacion} />
+			{:else if p.id === 'equipo'}<Equipo {datos} />
+			{:else if p.id === 'portada' && esBento}<PortadaBento {datos} posicion={posicionRotacion} />
+			{:else if p.id === 'portada'}<Portada {datos} />
+			{:else if p.id === 'uso_apps' && esBento}<UsoAppsBento {datos} posicion={posicionRotacion} />
+			{:else if p.id === 'uso_apps'}<UsoApps />
+			{:else}
+				<div class="sin-pantalla">
+					Sin pantalla para «{p.label}».
+				</div>
+			{/if}
+		{/snippet}
+
 		<!-- Escenario fijo 1920×1080 escalado al viewport. Determinista. -->
 		<div class="escenario" class:fondo-claro={pantallaBento} bind:this={escenarioRef}>
-			<div class="pantalla-caja" class:saliendo class:entrando={!saliendo}>
+			<div class="pantalla-caja">
 				<!-- Las pantallas bento traen su propio marco: con ellas no se monta
 				     la barra de producción (serían dos cabeceras). -->
 				{#if !pantallaBento}
@@ -1097,42 +1120,24 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 
 				<div class="area">
 					{#if cargando}
-						<div class="cargando">
+						<div class="cargando" class:clasico={!pantallaBento}>
 							<LogoTraceLoader size={120} />
 							<div class="cargando-texto">Cargando centro de operaciones…</div>
 							<div class="cargando-sub">Conectando con el servidor</div>
 						</div>
 					{:else}
+						<!-- Crossfade: durante 420 ms Svelte mantiene montada la pantalla
+						     saliente (transición `out`) debajo de la entrante (`in`), en
+						     vez de fundir al vacío. Las dos capas van absolutas para no
+						     empujarse. `?sinanim=1` lo deja en seco para las capturas. -->
 						{#key pantalla.id}
-							<!-- Cada pantalla de la rotación tiene sus dos versiones: la
-							     bento —la de por defecto— y la vieja, que sólo se monta con
-							     `?clasico=1`. `comprobantes` sólo existe en la rotación con
-							     el bento, así que aquí no necesita rama vieja. El `else`
-							     final no es decorativo: si un id se agregara a `PANTALLAS`
-							     sin rama, la pantalla lo diría en vez de quedarse en blanco
-							     (una TV en negro parece un kiosco caído). -->
-							{#if pantalla.id === 'clima' && pantallaBento}<ClimaBento {datos} posicion={posicionRotacion} />
-							{:else if pantalla.id === 'clima'}<Clima {datos} />
-							{:else if pantalla.id === 'asistencia' && pantallaBento}<AsistenciaBento {datos} posicion={posicionRotacion} />
-							{:else if pantalla.id === 'asistencia'}<Asistencia {datos} />
-							{:else if pantalla.id === 'combustible' && pantallaBento}<CombustibleBento {datos} posicion={posicionRotacion} />
-							{:else if pantalla.id === 'combustible'}<Combustible {datos} />
-							{:else if pantalla.id === 'comprobantes' && pantallaBento}<ComprobantesBento {datos} posicion={posicionRotacion} />
-							{:else if pantalla.id === 'actividad' && pantallaBento}<ActividadBento {datos} posicion={posicionRotacion} />
-							{:else if pantalla.id === 'actividad'}<Actividad {datos} />
-							{:else if pantalla.id === 'tickets' && pantallaBento}<TicketsBento {datos} posicion={posicionRotacion} />
-							{:else if pantalla.id === 'tickets'}<Tickets {datos} />
-							{:else if pantalla.id === 'equipo' && pantallaBento}<EquipoBento {datos} posicion={posicionRotacion} />
-							{:else if pantalla.id === 'equipo'}<Equipo {datos} />
-							{:else if pantalla.id === 'portada' && pantallaBento}<PortadaBento {datos} posicion={posicionRotacion} />
-							{:else if pantalla.id === 'portada'}<Portada {datos} />
-							{:else if pantalla.id === 'uso_apps' && pantallaBento}<UsoAppsBento {datos} posicion={posicionRotacion} />
-							{:else if pantalla.id === 'uso_apps'}<UsoApps />
-							{:else}
-								<div class="sin-pantalla">
-									Sin pantalla para «{pantalla.label}».
-								</div>
-							{/if}
+							<div
+								class="capa-pantalla"
+								in:fade={{ duration: sinAnim ? 0 : 420 }}
+								out:fade={{ duration: sinAnim ? 0 : 420 }}
+							>
+								{@render pintaPantalla(pantalla)}
+							</div>
 						{/key}
 					{/if}
 				</div>
@@ -1233,10 +1238,12 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 	.escenario.fondo-claro { background: #e9ecf1; }
 
 	.pantalla-caja { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-	.pantalla-caja.saliendo { opacity: 0; transform: scale(0.97) translateY(8px); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-	.pantalla-caja.entrando { opacity: 1; transform: scale(1) translateY(0); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
 
 	.area { position: relative; flex: 1; min-height: 0; }
+	/* Capa de cada pantalla. Absoluta para que la saliente y la entrante se
+	   crucen en el mismo sitio durante el crossfade (sin empujarse) y para
+	   que el `height: 100%` de las pantallas siga teniendo referencia. */
+	.capa-pantalla { position: absolute; inset: 0; display: flex; flex-direction: column; }
 
 	/* El confeti cae dentro del área de contenido (debajo del header, encima del
 	   pie) y toma el tamaño de esa caja, que es la que le pasa el componente. */
@@ -1267,6 +1274,16 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 	.cargando { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; color: rgba(18,20,26,0.62); animation: fadeIn 0.3s ease; }
 	.cargando-texto { font-size: 1.2rem; font-weight: 600; color: #12141a; }
 	.cargando-sub { font-size: 0.9rem; color: rgba(18,20,26,0.55); animation: pulse 1.5s ease-in-out infinite; }
+	/* `?clasico=1`: el Fondo oscuro sigue debajo (el escenario no lleva el base
+	   claro). La misma carga necesitaba su variante: aquí el texto va claro y
+	   con sombra para despegarse de la foto. */
+	.cargando.clasico { color: rgba(241,245,249,0.72); }
+	.cargando.clasico .cargando-texto { color: #f7f3ea; text-shadow: 0 2px 18px rgba(0,0,0,0.65); }
+	.cargando.clasico .cargando-sub { color: rgba(241,245,249,0.68); }
+	:global(.cargando.clasico .label) {
+		color: rgba(247,243,234,0.72);
+		text-shadow: 0 1px 12px rgba(0,0,0,0.6);
+	}
 	@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 	@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 	.spinner {

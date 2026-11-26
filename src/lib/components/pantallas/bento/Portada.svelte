@@ -281,7 +281,7 @@
 		opacity: 1;
 	}
 	.escena.sin-foto .anio {
-		opacity: 0.55;
+		opacity: 0.62;
 	}
 	.aviso {
 		display: flex;

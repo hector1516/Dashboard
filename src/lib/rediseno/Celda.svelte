@@ -3,7 +3,7 @@
 	interface Props {
 		area: string;
 		rotulo: string;
-		tono?: '' | 'dark' | 'red';
+		tono?: '' | 'dark' | 'red' | 'azul';
 		i?: number;
 		/**
 		 * Marca de agua opcional: una imagen de fondo, muy tenue, al pie de la
@@ -53,11 +53,12 @@
 		background-size: cover;
 		background-position: center bottom;
 		background-repeat: no-repeat;
-		/* La celda es tinta: el dibujo se pasa a gris y se aclara para que
-		   aparezca como una marca de agua clara (no como una foto de ladrillo
-		   sobre el fondo oscuro). */
-		filter: grayscale(1) brightness(2.2) contrast(0.9);
-		opacity: 0.1;
+		/* La celda es tinta: el dibujo se pasa a gris y se OSCURECE para que
+		   solo deje ver el trazo. Con brightness alto (2.2) los muros blancos
+		   se saturaban y la marca se leía como una foto; a 0.65 y 10 % queda
+		   como papel de fondo, no como imagen. */
+		filter: grayscale(1) brightness(0.5) contrast(0.95);
+		opacity: 0.07;
 		mask-image: linear-gradient(to bottom, transparent 0%, #000 58%);
 		-webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 58%);
 		pointer-events: none;
@@ -68,6 +69,13 @@
 	}
 	@media (prefers-reduced-motion: reduce) { .cell { animation: none; } }
 	.cell.dark { background: var(--k-tinta); color: #f7f3ea; }
-	.cell.red { background: var(--k-rojo); color: #fff; }
+	/* Ancla de alerta: fondo naranja de marca, texto en tinta (6.1:1).
+	   Blanco sobre #F26D26 se queda en 2.9:1 y no se lee a 3 metros. */
+	.cell.red { background: var(--k-rojo); color: var(--k-tinta); }
+	/* Ancla informativa: azul del logo, texto blanco (10:1). */
+	.cell.azul { background: var(--k-azul); color: #fff; }
 	.lbl { font-size: var(--k-f-strip); font-weight: 800; letter-spacing: 1.7px; text-transform: uppercase; opacity: .55; }
+	/* En las anclas de color el rótulo sube a .8: hereda tinta (naranja) o
+	   blanco (azul) y al .55 se perdía contra el fondo. */
+	.cell.red .lbl, .cell.azul .lbl { opacity: .8; }
 </style>

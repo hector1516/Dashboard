@@ -68,11 +68,10 @@
 	const descripcion = $derived(String(ahora?.descripcion ?? '').trim());
 	const icono = $derived(String(ahora?.icono ?? '').trim());
 
-	/** «18.7» (un decimal, como lo publica Open-Meteo; sin «.0» de relleno). */
+	/** «19°»: entero, igual que la temperatura de la barra del marco. El
+	 *  kiosco no muestra «18.7°» a 3 metros. */
 	function grados(n: number | null): string {
-		if (n == null) return '—';
-		const r = Math.round(n * 10) / 10;
-		return Number.isInteger(r) ? String(r) : r.toFixed(1);
+		return n == null ? '—' : String(Math.round(n));
 	}
 
 	/** Cuándo se leyó el clima. `leido_en` es de la última lectura buena y
@@ -92,7 +91,7 @@
 		return h === 'ahora' ? 'ahora' : h;
 	});
 
-	/** «18.7° y despejado; hoy entre 9.3° y 18.7°.» Con lluvia, se avisa. */
+	/** «19° y despejado; hoy entre 9° y 19°.» Con lluvia, se avisa. */
 	function frase(): string {
 		if (sinDatos) {
 			return 'El snapshot todavía no trae el clima; no invento una temperatura.';
@@ -264,7 +263,7 @@
 		gap: 16px;
 		min-width: 0;
 	}
-	/* 176 px y no los 214 del token: «18.7°C» son cinco glifos y a 214 px la
+	/* 176 px y no los 214 del token: «19°C» son pocos glifos y a 214 px la
 	   cifra se salía de la celda con el icono al lado. Sigue siendo lo más
 	   grande de la pantalla. */
 	.tempnum {

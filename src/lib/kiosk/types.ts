@@ -118,6 +118,8 @@ export interface ProximoCumple {
 	nombre: string;
 	/** Ruta local de la foto real; `null` si la persona no tiene. */
 	foto: string | null;
+	/** Avatar IA de respaldo; el snapshotter manda las dos rutas. */
+	avatar?: string | null;
 	/** `YYYY-MM-DD` de la próxima ocurrencia. */
 	fecha: string;
 	/** Días que faltan desde el día del snapshot (0 = hoy). */
