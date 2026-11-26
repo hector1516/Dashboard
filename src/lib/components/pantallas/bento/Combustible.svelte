@@ -229,7 +229,7 @@
 >
 	<Bento>
 		<!-- Ancla 2×2: el gasto del mes con sus vales y el promedio. -->
-		<Celda area="1/1/3/3" tono="azul" rotulo="Gasto del mes" i={0}>
+		<Celda area="1/1/3/3" tono="azul" rotulo="Gasto del mes" i={0} fondo>
 			<div class="cuerpo centro">
 				{#if gasto == null}
 					<div class="cifra sin">—</div>

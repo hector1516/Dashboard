@@ -223,7 +223,7 @@
 >
 	<Bento>
 		<!-- Ancla 2×2: los reportes de la semana y el pulso de la última hora. -->
-		<Celda area="1/1/3/3" tono="dark" rotulo="Reportes esta semana" i={0}>
+		<Celda area="1/1/3/3" tono="dark" rotulo="Reportes esta semana" i={0} fondo>
 			<div class="cuerpo centro">
 				{#if reportesSemana == null}
 					<div class="cifra sin sobre-tinta">—</div>

@@ -215,7 +215,7 @@
 >
 	<Bento>
 		<!-- Ancla 2×2: todos los tickets registrados y el último que llegó. -->
-		<Celda area="1/1/3/3" tono="dark" rotulo="Tickets registrados" i={0}>
+		<Celda area="1/1/3/3" tono="dark" rotulo="Tickets registrados" i={0} fondo>
 			<div class="cuerpo centro">
 				{#if total == null}
 					<div class="cifra sin sobre-tinta">—</div>

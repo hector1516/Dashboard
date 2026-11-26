@@ -227,7 +227,15 @@ export interface Snapshot {
 		};
 	};
 
-	fotos: { ids: { IdReporte: number; Folio: string; Cliente: string; ingeniero: string; Orden: number }[] };
+	/**
+	 * Fotos del carrusel de reportes. `rutas` son los thumbs locales
+	 * (`/media/thumbs/rep_*.jpg`) y son los que usa el fondo de las anclas;
+	 * opcional porque un snapshot viejo puede no traerlo.
+	 */
+	fotos: {
+		ids: { IdReporte: number; Folio: string; Cliente: string; ingeniero: string; Orden: number }[];
+		rutas?: string[];
+	};
 
 	notas: Nota[];
 

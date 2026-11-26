@@ -118,7 +118,7 @@
 >
 	<Bento>
 		<!-- Ancla 2×2: el número más grande de la pantalla. -->
-		<Celda area="1/1/3/3" tono={vales > 0 && !sinDatos ? 'red' : 'dark'} rotulo="Vales sin comprobar" i={0}>
+		<Celda area="1/1/3/3" tono={vales > 0 && !sinDatos ? 'red' : 'dark'} rotulo="Vales sin comprobar" i={0} fondo>
 			<div class="cuerpo centro">
 				{#if sinDatos}
 					<div class="cifra sin">—</div>

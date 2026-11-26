@@ -248,7 +248,7 @@
 		<!-- Ancla 2×2: la app más usada. La palabra es la cifra del ancla: lo
 		     que el pasillo tiene que leer es «Admon», no un número de seis
 		     dígitos que no cabe a 214 px. -->
-		<Celda area="1/1/3/3" tono="dark" rotulo="App más usada · 7 días" i={0}>
+		<Celda area="1/1/3/3" tono="dark" rotulo="App más usada · 7 días" i={0} fondo>
 			<div class="cuerpo centro">
 				{#if sinDatos}
 					<div class="cifra sin sobre-tinta">—</div>

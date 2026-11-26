@@ -135,6 +135,7 @@
 			rotulo="Ahora en Monterrey"
 			i={0}
 			marcaAgua="/images/oficina-eccsa.webp"
+			fondo
 		>
 			<div class="cuerpo centro">
 				{#if sinDatos}

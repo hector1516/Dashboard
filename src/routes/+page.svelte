@@ -23,6 +23,7 @@ import type { EventoKiosko, PantallaDef, Snapshot } from '$lib/kiosk/types';
 import { mascotState } from '$lib/kiosk/mascot';
 import { currentScreen } from '$lib/kiosk/currentScreen';
 import { decirVolt } from '$lib/kiosk/voltAviso';
+import { cargarFotos } from '$lib/rediseno/fotosFondo';
 import { esLluvioso, esNublado, esSoleado, haceCuanto, nombreDia, nombreMes } from '$lib/kiosk/format';
 import {
 	initAudio, tocar, apagar, setVolumen, getVolumen, estaSilenciado,
@@ -405,6 +406,11 @@ async function refrescar() {
 		const { datos: d, viaApi } = await cargarSnapshot();
 		datos = d;
 		if (viaApi) shellEstado = 'idle';
+		// Fondo de las anclas: idempotente. La primera vez precarga todas las
+		// fotos y arranca el único temporizador de rotación; en los refrescos
+		// siguientes, con la misma lista, no hace nada (ni re-descarga ni
+		// reinicia el índice).
+		cargarFotos(d.fotos?.rutas ?? []);
 		procesarEventos(d.eventos ?? []);
 		chequearClima(d);
 		chequearCelebraciones(d);

@@ -37,7 +37,7 @@ export function snapshotVacio(build = 'dev'): Snapshot {
 			semana: { inicio: '', fin: '', reset_en_segundos: 0 },
 			temporada: { clave: '', nombre: '', corto: '', inicio: '', fin: '', dias_restantes: 0 }
 		},
-		fotos: { ids: [] },
+		fotos: { ids: [], rutas: [] },
 		notas: [],
 		cumpleanos: { hoy: [], del_mes: [] },
 		aniversarios: { hoy: [], del_mes: [] },

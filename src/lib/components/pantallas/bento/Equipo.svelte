@@ -216,7 +216,7 @@
 >
 	<Bento>
 		<!-- Ancla 2×2: cuántas personas activas hay y cuántas juegan Legends. -->
-		<Celda area="1/1/3/3" tono="azul" rotulo="En el equipo" i={0}>
+		<Celda area="1/1/3/3" tono="azul" rotulo="En el equipo" i={0} fondo>
 			<div class="cuerpo centro">
 				{#if personas == null}
 					<div class="cifra sin">—</div>
