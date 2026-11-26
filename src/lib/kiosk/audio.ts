@@ -7,7 +7,8 @@
  * redesplegar.
  *
  * Reglas:
- *   · Volumen discreto por default (0.35): se oye en el pasillo, no en la sala.
+ *   · Volumen al máximo por pedido del dueño (2026-11-25): el maestro empuja
+ *     ×3 y un limitador evita que se recorte. Antes iba discreto (0.35).
  *   · Silencio automático de 22:00 a 07:00 (tonos apagados, efectos de clima
  *     siguen: son ambiente, no avisos).
  *   · Panic-mute con cualquier tecla o clic: `apagar()`.
@@ -30,6 +31,14 @@ let volumen = 1.0;
 let bloqueado = false; // el navegador no dejó crear/resumir el contexto
 let lluviaGain: GainNode | null = null;
 
+/**
+ * Ganancia del maestro. El dueño pidió el volumen al máximo: en vez de subir
+ * cada nota a mano (y distorsionar), se empuja aquí y el limitador de después
+ * se come los picos. 3.0 sobre notas de 0.2 da un kiosco que se oye en el
+ * pasillo sin sonar roto.
+ */
+const BOOST = 3.0;
+
 function recursos(): { c: AudioContext; m: GainNode } | null {
 	if (typeof window === 'undefined') return null;
 	if (!ctx) {
@@ -39,7 +48,16 @@ function recursos(): { c: AudioContext; m: GainNode } | null {
 			ctx = new AC();
 			master = ctx.createGain();
 			master.gain.value = 0;
-			master.connect(ctx.destination);
+			// Limitador: con el boost, varias notas a la vez pasarían de 0 dB y
+			// el navegador recortaría en seco. El compresor las sujeta.
+			const limitador = ctx.createDynamicsCompressor();
+			limitador.threshold.value = -6;
+			limitador.knee.value = 6;
+			limitador.ratio.value = 12;
+			limitador.attack.value = 0.003;
+			limitador.release.value = 0.25;
+			master.connect(limitador);
+			limitador.connect(ctx.destination);
 		} catch {
 			return null;
 		}
@@ -58,8 +76,11 @@ export function initAudio() {
 	// porque alguien la silenció hace tres días es un bug, no una preferencia.
 	try {
 		silenciado = localStorage.getItem(CLAVE_MUTE) === '1';
-		const v = parseFloat(localStorage.getItem(CLAVE_VOL) ?? '');
-		if (!Number.isNaN(v) && v >= 0 && v <= 1) volumen = v;
+		// Volumen al máximo (pedido del dueño, 2026-11-25): se ignora cualquier
+		// valor viejo guardado para que un 0.35 de hace semanas no deje la TV
+		// muda sin que nadie sepa por qué.
+		volumen = 1;
+		localStorage.setItem(CLAVE_VOL, '1');
 	} catch {
 		/* modo privado: se queda con los defaults */
 	}
@@ -132,7 +153,7 @@ export function apagar(): boolean {
 function aplicarVolumen() {
 	const r = recursos();
 	if (!r) return;
-	const efectiva = silenciado || enHorarioSilencioso() ? 0 : volumen;
+	const efectiva = silenciado || enHorarioSilencioso() ? 0 : Math.min(1, volumen) * BOOST;
 	// Rampa corta: un gain que salta de 0 a 0.35 se oye como clic.
 	r.m.gain.cancelScheduledValues(r.c.currentTime);
 	r.m.gain.setValueAtTime(r.m.gain.value, r.c.currentTime);
@@ -257,16 +278,16 @@ export function tocar(tono: Tono) {
 			break;
 		case 'transicion':
 			// Cambio de pantalla: un pad grave que sube media octava en 0.22 s.
-			// Suena cada 45 s, así que va MUY bajo (0.05 + 0.02) y sin nota
-			// aguda: tiene que ser aire, no un aviso. La suma queda ≤0.07.
-			pad(110, 164.81, 0.22, 0.05);
-			pad(55, 82.41, 0.24, 0.02, 'triangle');
+			// Antes iba muy bajo (0.07); con el volumen al máximo del kiosco se
+			// sube a 0.23 para que se oiga, sin volverse un aviso.
+			pad(110, 164.81, 0.22, 0.16);
+			pad(55, 82.41, 0.24, 0.07, 'triangle');
 			break;
 		case 'volt':
-			// Volt toma la palabra: dos notas cortas y amables (660 → 880), con
-			// menos volumen que un aviso. Es compañía, no una alarma.
-			nota(659.25, 0.08, 0.055);
-			nota(880, 0.08, 0.05, 0.09);
+			// Volt toma la palabra: dos notas cortas y amables (660 → 880), algo
+			// más bajas que un aviso pero ya audibles desde el pasillo.
+			nota(659.25, 0.08, 0.14);
+			nota(880, 0.08, 0.12, 0.09);
 			break;
 	}
 }
