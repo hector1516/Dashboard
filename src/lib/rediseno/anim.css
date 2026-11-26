@@ -10,8 +10,10 @@
 	Reglas:
 	  · Sólo `transform` y `opacity`: nada de position/layout animado, para no
 	    mover ni un píxel de la retícula de 1920×1080 mientras se mide.
-	  · 300–450 ms, easing de salida y `both`: el estado final es el natural,
-	    así que una captura a mitad de animación no miente sobre el diseño.
+	  · 300–450 ms, easing de salida y `backwards`: la animación no se queda
+	    aplicada al terminar (nada de stacking contexts permanentes), y el
+	    estado final es el natural, así que una captura a mitad de animación
+	    no miente sobre el diseño.
 	  · Sin animaciones infinitas.
 	  · Se apaga con `prefers-reduced-motion: reduce` y con `?sinanim=1`
 	    (la clase `.sin-anim` que `+page.svelte` pone en `.escenario`).
@@ -34,13 +36,15 @@
 	}
 }
 
-/* Barras verticales: crecen desde su base. */
+/* Barras verticales: crecen desde su base y terminan en `transform: none`.
+   Terminar en `scaleY(1)` dejaría un stacking context de por vida en cada
+   barra; el estado final es idéntico, pero sin capa propia. */
 @keyframes k-barra-y {
 	from {
 		transform: scaleY(0);
 	}
 	to {
-		transform: scaleY(1);
+		transform: none;
 	}
 }
 
@@ -50,7 +54,7 @@
 		transform: scaleX(0);
 	}
 	to {
-		transform: scaleX(1);
+		transform: none;
 	}
 }
 
@@ -80,60 +84,82 @@
 
 /* ── filas de listas y series ────────────────────────────────────────────── */
 
-.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras) > * {
-	animation: k-entra 360ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+/* `.dias` se acota a `.dcol`: en Comprobantes `.dias` es el badge de «3 días»
+   (un dato, no una serie) y animar sus `<span>`/`<small>` internos rompía la
+   lectura del vale. */
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .caras) > *,
+.bento .dias > .dcol {
+	animation: k-entra 360ms cubic-bezier(0.22, 0.8, 0.28, 1) backwards;
 }
 
-/* Escalonado de 38 ms entre hermanos, hasta diez. Más de diez ya no se
-   distingue: la animación dura lo mismo que el resto de la lista. */
-.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+/* Escalonado de 38 ms entre hermanos, hasta diez. A partir del 11 va el ÚLTIMO
+   retardo (342 ms): el shorthand de arriba resetea `animation-delay` a 0, así
+   que sin esta regla la fila 11 entraba antes que la 2 en Legends (20 filas) y
+   el histograma de 24 h perdía el orden. */
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .caras)
 	> :nth-child(1),
+.bento .dias > .dcol:nth-child(1),
 .bento .mini24 > i:nth-child(1) {
 	animation-delay: 0ms;
 }
-.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .caras)
 	> :nth-child(2),
+.bento .dias > .dcol:nth-child(2),
 .bento .mini24 > i:nth-child(2) {
 	animation-delay: 38ms;
 }
-.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .caras)
 	> :nth-child(3),
+.bento .dias > .dcol:nth-child(3),
 .bento .mini24 > i:nth-child(3) {
 	animation-delay: 76ms;
 }
-.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .caras)
 	> :nth-child(4),
+.bento .dias > .dcol:nth-child(4),
 .bento .mini24 > i:nth-child(4) {
 	animation-delay: 114ms;
 }
-.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .caras)
 	> :nth-child(5),
+.bento .dias > .dcol:nth-child(5),
 .bento .mini24 > i:nth-child(5) {
 	animation-delay: 152ms;
 }
-.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .caras)
 	> :nth-child(6),
+.bento .dias > .dcol:nth-child(6),
 .bento .mini24 > i:nth-child(6) {
 	animation-delay: 190ms;
 }
-.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .caras)
 	> :nth-child(7),
+.bento .dias > .dcol:nth-child(7),
 .bento .mini24 > i:nth-child(7) {
 	animation-delay: 228ms;
 }
-.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .caras)
 	> :nth-child(8),
+.bento .dias > .dcol:nth-child(8),
 .bento .mini24 > i:nth-child(8) {
 	animation-delay: 266ms;
 }
-.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .caras)
 	> :nth-child(9),
+.bento .dias > .dcol:nth-child(9),
 .bento .mini24 > i:nth-child(9) {
 	animation-delay: 304ms;
 }
-.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .dias, .caras)
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .caras)
 	> :nth-child(10),
+.bento .dias > .dcol:nth-child(10),
 .bento .mini24 > i:nth-child(10) {
+	animation-delay: 342ms;
+}
+.bento :is(.lista, .movs, .estaciones, .rank-lista, .pers, .barras, .caras)
+	> :nth-child(n + 11),
+.bento .dias > .dcol:nth-child(n + 11),
+.bento .mini24 > i:nth-child(n + 11) {
 	animation-delay: 342ms;
 }
 
@@ -146,7 +172,7 @@
 .bento .dbar,
 .bento .mini24 i {
 	transform-origin: bottom;
-	animation: k-barra-y 420ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+	animation: k-barra-y 420ms cubic-bezier(0.22, 0.8, 0.28, 1) backwards;
 }
 .bento .bbar {
 	animation-delay: 90ms;
@@ -163,7 +189,7 @@
 .bento .est-pista i,
 .bento .pista i {
 	transform-origin: left center;
-	animation: k-barra-x 420ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+	animation: k-barra-x 420ms cubic-bezier(0.22, 0.8, 0.28, 1) backwards;
 	animation-delay: 120ms;
 }
 
@@ -174,7 +200,7 @@
 .bento .thumb img,
 .bento .auto-foto img,
 .bento .escena .fondo {
-	animation: k-foto 420ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+	animation: k-foto 420ms cubic-bezier(0.22, 0.8, 0.28, 1) backwards;
 }
 
 /* La portada entra un poco más despacio: es una imagen grande y un zoom
@@ -186,7 +212,7 @@
 /* ── chips de la barra superior ──────────────────────────────────────────── */
 
 .marco .top .chip {
-	animation: k-chip 320ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+	animation: k-chip 320ms cubic-bezier(0.22, 0.8, 0.28, 1) backwards;
 }
 .marco .top .chip:nth-child(2) {
 	animation-delay: 45ms;

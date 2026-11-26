@@ -108,3 +108,47 @@ quieto, no una versión rápida de la fiesta.
 - El escalonado se corta en 10 hermanos; una lista de 20 (Legends en `Equipo`)
   entra con las 10 primeras escalonadas y el resto con el último retardo. Se
   prefirió eso a que la lista tarde casi un segundo en terminar.
+
+## Fix round 1
+
+1. **Hermanos 11+ con retardo.** El shorthand resetea `animation-delay` a 0 y
+   sólo había `:nth-child(1..10)`, así que la fila 11 entraba antes que la 2.
+   Se añadió `:nth-child(n + 11) { animation-delay: 342ms; }` para
+   `.bento :is(...) > *`, `.dias > .dcol` y `.mini24 > i`. Verificado en el DOM:
+   `.mini24 i:nth-child(11)` y `:nth-child(24)` → `0.342s`; el criterio se
+   aplica igual a las 20 filas de Legends (`.r-fila`).
+2. **Volt ya no suena cada 11–19 s.** `hablar(t, r, importante = false)`: el
+   tono sólo se dispara cuando el texto es un aviso nuevo del vigilante, la
+   pérdida/regreso de internet o una presencia (`importante = true`), nunca en
+   la charla de relleno. Además `tonoVolt()` limita a **una vez cada 60 s**
+   (`MS_ENTRE_VOCES`) aunque lleguen varios avisos seguidos. Sigue pasando por
+   `tocar()`, así que mudo y 22:00–07:00 siguen mandando.
+3. **`.dias` acotado.** La serie de Actividad ahora es `.bento .dias > .dcol`
+   (base y retardos). El badge de «3 días» de Comprobantes ya no se anima:
+   medido en el DOM, `.bento .dias` y su `<span>` dan `animationName: none`,
+   mientras `.bento .fila` sigue en `k-entra`.
+4. **Sin `transform` permanente.** Los keyframes `k-barra-y` / `k-barra-x`
+   terminan en `transform: none` y las animaciones usan `backwards` en vez de
+   `both`: al acabar, la animación deja de aplicarse y el elemento vuelve a su
+   `transform` natural. Medido después de la cascada: `.bbar`,
+   `.mini24 i:nth-child(11)` y `.mini24 i:nth-child(24)` →
+   `transform: none` (antes quedaba `matrix(1,0,0,1,0,0)`, que mantiene el
+   stacking context).
+5. **Comentario del import corregido.** Ya no afirma que importar al final haga
+   ganar reglas: explica que `anim.css` es global, que los estilos `scoped`
+   llevan el hash y desempatan, y que el archivo sólo añade animaciones que
+   ninguna pantalla declara.
+
+**Verificación del round:**
+
+- `npm run check` → **7 errores, 50 avisos** (baseline).
+- `npm run build` → `Wrote site to "build"`.
+- Capturas regeneradas esperando a que la pantalla monte y a que la cascada
+  termine (selector `.bento .cell` + **2 s**; en headless la hidratación tarda
+  ~2–3 s y la espera fija de 2.2 s anterior cazaba un fotograma a media
+  entrada): `capturas/t15-combustible.png` (normal),
+  `capturas/t15-combustible-sinanim.png` (`?sinanim=1`) y
+  `capturas/t15-asistencia.png`. Las cajas siguen idénticas con y sin
+  animación (`[0,76,1920,962]`, `[32,100,916,601]`, `[1000,477,84,201]`).
+- Filas: `k-entra` con retardos `0 / 0.038 / 0.076 s`. Con `?sinanim=1`, las
+  cinco medidas devuelven `animationName: none`.

@@ -41,17 +41,31 @@
 	let timer: ReturnType<typeof setTimeout>;
 	let carga: ReturnType<typeof setInterval>;
 	let ultimoAviso = 0;
+	/**
+	 * La voz de Volt no suena en cada comentario: la charla sale cada 11–19 s
+	 * y un tono así cansa. Sólo suena cuando hay algo que decir de verdad
+	 * (aviso nuevo del vigilante, internet que se va o vuelve) y, aun así,
+	 * como máximo una vez por minuto. Todo pasa por `tocar()`, que respeta el
+	 * mute y el silencio nocturno.
+	 */
+	const MS_ENTRE_VOCES = 60_000;
+	let ultimaVoz = 0;
+
+	function tonoVolt() {
+		const ahora = Date.now();
+		if (ahora - ultimaVoz < MS_ENTRE_VOCES) return;
+		ultimaVoz = ahora;
+		tocar('volt');
+	}
 
 	const REACCIONES = ['💬', '🤔', '😊', '⚡', '🤖', '💡', '🎯', '👀', '🔥', '✨', '🎉', '☕'];
 
-	function hablar(t: string, r: string) {
+	function hablar(t: string, r: string, importante = false) {
 		texto = t;
 		reaccion = r;
 		pauseWalking();
 		mascotState.set('speaking');
-		// Volt habla: dos notas amables. `tocar()` ya respeta el mute y el
-		// silencio de 22:00 a 07:00, así que aquí no se comprueba nada más.
-		tocar('volt');
+		if (importante) tonoVolt();
 		setTimeout(() => {
 			mascotState.set('idle');
 			resumeWalking();
@@ -61,15 +75,15 @@
 	function siguiente() {
 		if (volvio) {
 			volvio = false;
-			hablar(VOLVIO, '🌐');
+			hablar(VOLVIO, '🌐', true);
 		} else if (sinInternet) {
-			hablar(SIN_INTERNET, '📡');
+			hablar(SIN_INTERNET, '📡', true);
 		} else if (pendientes.length) {
 			const aviso = pendientes[0];
 			pendientes = pendientes.slice(1);
 			ultimoAviso = Math.max(ultimoAviso, aviso.id);
 			if (browser) localStorage.setItem(CLAVE_ULTIMO, String(ultimoAviso));
-			hablar(aviso.texto, aviso.nivel === 'rojo' ? '⚠️' : '👀');
+			hablar(aviso.texto, aviso.nivel === 'rojo' ? '⚠️' : '👀', true);
 		} else {
 			const screen = $currentScreen;
 			let t: string;

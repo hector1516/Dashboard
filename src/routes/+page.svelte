@@ -69,9 +69,12 @@ import SwarmRebuild from '$lib/components/SwarmRebuild.svelte';
 import LogoTraceLoader from '$lib/components/effects/LogoTraceLoader.svelte';
 
 // Animación de entrada de TODO lo que hay dentro de una pantalla (filas,
-// barras, fotos, chips). Va al final de los imports para que sus reglas ganen
-// a las del componente cuando haga falta, y se apaga con `?sinanim=1` y con
-// `prefers-reduced-motion`.
+// barras, fotos, chips). Es CSS global (Svelte no lo acota con hash), se
+// importa una sola vez aquí y se apaga con `?sinanim=1` y con
+// `prefers-reduced-motion`. Ojo: el orden del import NO hace que estas reglas
+// ganen a los estilos `scoped` de cada componente —esos llevan el hash y
+// desempatan—; el archivo no compite con ellos, sólo añade animaciones que
+// ninguna pantalla declara.
 import '$lib/rediseno/anim.css';
 
 /* ── Configuración de la pantalla ─────────────────────────────── */
