@@ -10,10 +10,11 @@
 	// El historial lo llena `voltAviso.ts`: presencia, tickets, avisos del
 	// vigilante y «sin internet». Aquí sólo se pinta, sin peticiones propias.
 	//
-	// Animaciones: Wobnimo acepta exactamente `idle`, `happy`, `sad`,
-	// `speaking` y `sleeping`. La base es `happy` en Equipo (cumples y
-	// aniversarios) e `idle` en el resto; un aviso nuevo lo pone `happy` 3 s y
-	// de vez en cuando se duerme solo (nunca en Equipo ni recién avisado).
+	// Animaciones: Wobnimo acepta `idle`, `thinking`, `listening`, `speaking`,
+	// `sleeping`, `working`, `error`, `surprised`, `celebrating` y `sad`. La
+	// base es `celebrating` en Equipo (cumples y aniversarios) e `idle` en el
+	// resto; un aviso nuevo lo pone `surprised` 3 s; y de vez en cuando se
+	// duerme solo (`sleeping`, nunca en Equipo ni recién avisado).
 	// `?sinanim=1` lo deja clavado en la base, para capturas.
 	import { onMount } from 'svelte';
 	import Celda from './Celda.svelte';
@@ -60,29 +61,23 @@
 	let visto: string | null = null;
 
 	/**
-	 * Gesto festivo. La compilación que trae Wobnimo valida contra su lista
-	 * pública y esa lista no incluye `happy`, aunque el personaje sí lo dibuja
-	 * (y `pebble.js` le da movimiento). Se intenta `happy`; si lo rechaza se
-	 * usa `celebrating`, que es su gesto festivo real.
+	 * Estados reales de Wobnimo (los publica `STATES`): idle, thinking,
+	 * listening, speaking, sleeping, working, error, surprised, celebrating,
+	 * sad. Se usan `surprised` para un aviso, `celebrating` en Equipo
+	 * (cumpleaños y aniversarios), `sleeping` para la siesta e `idle` de base.
 	 */
-	let festejo: 'happy' | 'celebrating' = 'happy';
-
-	/** `happy` es lo único que puede necesitar respaldo en esta compilación. */
-	function poner(estado: 'happy' | 'idle' | 'sleeping') {
+	function poner(estado: 'idle' | 'celebrating' | 'surprised' | 'sleeping') {
 		if (!mascota?.setState) return;
-		const real = estado === 'happy' ? festejo : estado;
 		try {
-			mascota.setState(real);
+			mascota.setState(estado);
 		} catch {
-			if (estado !== 'happy') return;
-			festejo = 'celebrating';
-			mascota.setState(festejo);
+			/* estado no soportado en esta compilación: se queda como está */
 		}
 	}
 
-	/** Estado en reposo: `happy` en Equipo, `idle` en cualquier otra. */
-	function estadoBase(): 'happy' | 'idle' {
-		return fiesta ? 'happy' : 'idle';
+	/** Estado en reposo: celebra en Equipo, idle en cualquier otra. */
+	function estadoBase(): 'idle' | 'celebrating' {
+		return fiesta ? 'celebrating' : 'idle';
 	}
 
 	/** Vuelve a la base, salvo que haya un aviso o una siesta en curso. */
@@ -100,7 +95,7 @@
 			clearTimeout(siesta);
 			siesta = null;
 		}
-		poner('happy');
+		poner('surprised');
 		if (regreso) clearTimeout(regreso);
 		regreso = setTimeout(() => {
 			regreso = null;
