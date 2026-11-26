@@ -111,7 +111,8 @@
 	<div class="volt-fallback">⚡</div>
 </div>
 
-<!-- Comentarios aleatorios de Volt -->
+<!-- Globo de Volt: sólo aparece con una notificación (aviso nuevo, sin
+     internet o internet de vuelta) y se oculta solo. -->
 <VoltComentario />
 
 <style>

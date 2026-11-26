@@ -1,20 +1,22 @@
 <script lang="ts">
 	import { mascotState } from '$lib/kiosk/mascot';
-	import { getVoltComentario, getVoltComentarioPantalla } from '$lib/kiosk/voltComentarios';
 	import { pauseWalking, resumeWalking } from '$lib/kiosk/voltWalker';
-	import { currentScreen } from '$lib/kiosk/currentScreen';
 	import { tocar } from '$lib/kiosk/audio';
 	import { onMount, onDestroy } from 'svelte';
+	import { fade } from 'svelte/transition';
 	import { browser } from '$app/environment';
 
 	/**
-	 * El globo de Volt NO se esconde: cambia lo que dice, pero se queda en su
-	 * esquina. El orden de prioridad es el que importa:
+	 * El globo de Volt aparece SÓLO cuando tiene algo que notificar:
 	 *
 	 *   1. Aviso nuevo del vigilante (lo mismo que se mandó por Telegram).
 	 *   2. No hay internet (lo detecta el servidor: clima y fondos son la
 	 *      señal; el kiosco no llama a internet para averiguarlo).
-	 *   3. Charla normal de la pantalla o del momento del día.
+	 *   3. Volvió el internet.
+	 *
+	 * No hay charla aleatoria ni comentarios de pantalla: si no hay nada que
+	 * decir, no se muestra. Cuando sale, se queda ~11 s, se va con un fundido
+	 * y no vuelve hasta la siguiente notificación.
 	 *
 	 * Lo que ya se dijo no se repite al recargar: el último id visto vive en
 	 * localStorage. La primera vez que arranca no escupe 8 avisos viejos.
@@ -28,23 +30,24 @@
 	}
 
 	const CLAVE_ULTIMO = 'volt:ultimoAviso';
+	/** Dentro de la ventana pedida (10–12 s) con algo de aire entre avisos. */
+	const MS_VISIBLE = 10_500;
+	const MS_VISIBLE_VARIA = 1_500;
 	const SIN_INTERNET =
 		'Sin internet por aquí. Lo de la oficina sigue andando; el clima y los fondos se quedan como estaban. Te aviso en cuanto vuelva.';
 	const VOLVIO = '¡Volvió el internet! Ya puedo traer el clima y los fondos otra vez.';
 
-	let texto = $state('Hola, soy Volt. Aquí ando, por si me necesitas.');
-	let reaccion = $state('💬');
-	let sinInternet = $state(false);
-	let pendientes = $state<Aviso[]>([]);
-	let volvio = false;
+	let texto = $state('');
+	let reaccion = $state('⚡');
+	let visible = $state(false);
+	/** null = todavía no se sabe; el primer sondeo no avisa de "volvió". */
+	let sinInternet: boolean | null = null;
 
-	let timer: ReturnType<typeof setTimeout>;
-	let carga: ReturnType<typeof setInterval>;
+	let ocultar: ReturnType<typeof setTimeout> | undefined;
+	let carga: ReturnType<typeof setInterval> | undefined;
 	let ultimoAviso = 0;
 	/**
-	 * La voz de Volt no suena en cada comentario: la charla sale cada 11–19 s
-	 * y un tono así cansa. Sólo suena cuando hay algo que decir de verdad
-	 * (aviso nuevo del vigilante, internet que se va o vuelve) y, aun así,
+	 * La voz de Volt sólo suena cuando aparece una notificación y, aun así,
 	 * como máximo una vez por minuto. Todo pasa por `tocar()`, que respeta el
 	 * mute y el silencio nocturno.
 	 */
@@ -58,44 +61,25 @@
 		tocar('volt');
 	}
 
-	const REACCIONES = ['💬', '🤔', '😊', '⚡', '🤖', '💡', '🎯', '👀', '🔥', '✨', '🎉', '☕'];
-
-	function hablar(t: string, r: string, importante = false) {
-		texto = t;
-		reaccion = r;
-		pauseWalking();
-		mascotState.set('speaking');
-		if (importante) tonoVolt();
-		setTimeout(() => {
-			mascotState.set('idle');
-			resumeWalking();
-		}, 3500);
+	function guardarUltimo() {
+		if (browser) localStorage.setItem(CLAVE_ULTIMO, String(ultimoAviso));
 	}
 
-	function siguiente() {
-		if (volvio) {
-			volvio = false;
-			hablar(VOLVIO, '🌐', true);
-		} else if (sinInternet) {
-			hablar(SIN_INTERNET, '📡', true);
-		} else if (pendientes.length) {
-			const aviso = pendientes[0];
-			pendientes = pendientes.slice(1);
-			ultimoAviso = Math.max(ultimoAviso, aviso.id);
-			if (browser) localStorage.setItem(CLAVE_ULTIMO, String(ultimoAviso));
-			hablar(aviso.texto, aviso.nivel === 'rojo' ? '⚠️' : '👀', true);
-		} else {
-			const screen = $currentScreen;
-			let t: string;
-			if (Math.random() < 0.5 && screen) {
-				t = getVoltComentarioPantalla(screen);
-			} else {
-				const tipos = ['idle', 'entrada', 'salida', 'usuario_nuevo', 'usuario_inactivo'];
-				t = getVoltComentario(tipos[Math.floor(Math.random() * tipos.length)]);
-			}
-			hablar(t, REACCIONES[Math.floor(Math.random() * REACCIONES.length)]);
-		}
-		timer = setTimeout(siguiente, sinInternet ? 22000 : 11000 + Math.random() * 8000);
+	function mostrar(t: string, r: string) {
+		texto = t;
+		reaccion = r;
+		visible = true;
+		pauseWalking();
+		mascotState.set('speaking');
+		tonoVolt();
+		clearTimeout(ocultar);
+		ocultar = setTimeout(ocultarGlobo, MS_VISIBLE + Math.random() * MS_VISIBLE_VARIA);
+	}
+
+	function ocultarGlobo() {
+		visible = false;
+		mascotState.set('idle');
+		resumeWalking();
 	}
 
 	async function cargar() {
@@ -108,30 +92,36 @@
 			// navegador solo puede decir si la TV perdió la red local.
 			const antes = sinInternet;
 			const ahora = !!d.sin_internet || (typeof navigator !== 'undefined' && navigator.onLine === false);
-			if (!ahora && antes) volvio = true;
 			sinInternet = ahora;
 
 			const lista: Aviso[] = (d.avisos || []).slice().sort((a: Aviso, b: Aviso) => a.id - b.id);
-			if (!ultimoAviso && lista.length) {
-				// Primer arranque del kiosco: la historia no se cuenta.
-				ultimoAviso = lista[lista.length - 1].id;
-				if (browser) localStorage.setItem(CLAVE_ULTIMO, String(ultimoAviso));
-			}
-			const ya = new Set(pendientes.map((a) => a.id));
-			for (const a of lista) {
-				if (a.id > ultimoAviso && !ya.has(a.id)) {
-					pendientes.push(a);
-					ya.add(a.id);
+			let nuevo: Aviso | null = null;
+			if (lista.length) {
+				if (!ultimoAviso) {
+					// Primer arranque del kiosco: la historia no se cuenta.
+					ultimoAviso = lista[lista.length - 1].id;
+					guardarUltimo();
+				} else {
+					const frescos = lista.filter((a) => a.id > ultimoAviso);
+					if (frescos.length) {
+						// Si llegaron varios, el que importa es el último: el
+						// resto ya es historia y no se repite en cadena.
+						nuevo = frescos[frescos.length - 1];
+						ultimoAviso = nuevo.id;
+						guardarUltimo();
+					}
 				}
 			}
-			pendientes.sort((a, b) => a.id - b.id);
-			// Un aviso del vigilante pesa más que la charla: sale ya.
-			if (pendientes.length && !sinInternet) {
-				clearTimeout(timer);
-				timer = setTimeout(siguiente, 1200);
+
+			if (nuevo) {
+				mostrar(nuevo.texto, nuevo.nivel === 'rojo' ? '⚠️' : '👀');
+			} else if (antes === true && !ahora) {
+				mostrar(VOLVIO, '🌐');
+			} else if (ahora && antes !== true) {
+				mostrar(SIN_INTERNET, '📡');
 			}
 		} catch {
-			// Sin red local no se inventa nada: el último texto se queda.
+			// Sin red local no se inventa nada: el globo se queda como está.
 		}
 	}
 
@@ -139,7 +129,6 @@
 		if (browser) ultimoAviso = Number(localStorage.getItem(CLAVE_ULTIMO) || 0) || 0;
 		cargar();
 		carga = setInterval(cargar, 60000);
-		timer = setTimeout(siguiente, 4000);
 
 		const alCambiarRed = () => cargar();
 		window.addEventListener('online', alCambiarRed);
@@ -152,25 +141,36 @@
 	});
 
 	onDestroy(() => {
-		clearTimeout(timer);
+		clearTimeout(ocultar);
 		clearInterval(carga);
+		if (visible) {
+			mascotState.set('idle');
+			resumeWalking();
+		}
 	});
 </script>
 
-<!-- Siempre visible: el texto cambia con un fundido corto, pero el globo no
-     se va a ningún lado. -->
-<div class="volt-comentario">
-	<div class="comentario-avatar">
-		<span class="avatar-icon">🤖</span>
+<!-- Sólo existe en el DOM mientras hay una notificación. Al ocultarse no
+     queda nada montado: no hay globo fijo ni texto de relleno. -->
+{#if visible}
+	<div
+		class="volt-comentario"
+		role="status"
+		aria-live="polite"
+		transition:fade={{ duration: 240 }}
+	>
+		<div class="comentario-avatar">
+			<span class="avatar-icon">🤖</span>
+		</div>
+		<div class="comentario-bubble">
+			{#key texto}
+				<span class="comentario-reaccion">{reaccion}</span>
+				<span class="comentario-texto">{texto}</span>
+			{/key}
+		</div>
+		<div class="comentario-flecha"></div>
 	</div>
-	<div class="comentario-bubble">
-		{#key texto}
-			<span class="comentario-reaccion">{reaccion}</span>
-			<span class="comentario-texto">{texto}</span>
-		{/key}
-	</div>
-	<div class="comentario-flecha"></div>
-</div>
+{/if}
 
 <style>
 	/* El globo vive ENCIMA de la placa de Volt, pegado a la esquina: no sigue a
