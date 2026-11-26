@@ -1,5 +1,5 @@
-// Comentarios hilarantes de Volt segun el tipo de evento/notificacion
-// Volt es un robot LED industrial con personalidad sarcastica pero amable
+// Comentarios hilarantes de The Penguin segun el tipo de evento/notificacion
+// The Penguin es un robot LED industrial con personalidad sarcastica pero amable
 
 const COMENTARIOS: Record<string, string[]> = {
 	// Kilometros registrados
@@ -298,7 +298,7 @@ const COMENTARIOS: Record<string, string[]> = {
 	// Default / idle
 	idle: [
 		'Aqui estoy, como siempre. Sin que nadie me haga caso.',
-		'Volt en servicio. Nadie me pregunta como estoy.',
+		'The Penguin en servicio. Nadie me pregunta como estoy.',
 		'Funcionando al 100%. O al 80%. No estoy seguro.',
 		'Observando, analizando, juzgando... digo, ayudando.',
 		'Alguien necesita algo? No, solo pregunto.',

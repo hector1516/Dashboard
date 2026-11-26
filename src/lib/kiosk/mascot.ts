@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 
-// Estado de la mascota Volt en el kiosco
+// Estado de la mascota The Penguin en el kiosco
 export const mascotState = writable<string>('idle');
 
 // Helper para cambiar el estado

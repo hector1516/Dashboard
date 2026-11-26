@@ -2,7 +2,7 @@ import { browser } from '$app/environment';
 import { registrarVolt, tonoVolt } from './voltAviso';
 
 /**
- * Vigilante de Volt, sin personaje ni globo.
+ * Vigilante de The Penguin, sin personaje ni globo.
  *
  * Antes esto vivía dentro de `VoltComentario` (el globo flotante). Ahora las
  * notificaciones se cuentan en la celda de «últimas notificaciones», así que

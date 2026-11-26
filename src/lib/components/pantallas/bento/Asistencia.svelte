@@ -6,7 +6,7 @@
 	// llegaron» y «cuántos ya se fueron»; y «Últimos movimientos» resume los
 	// tres eventos más recientes de la red.
 	//
-	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// CELDA DE THE PENGUIN: la 3/4/4/5 (la esquina inferior derecha) la ocupa
 	// `<CeldaVolt />` con las últimas tres notificaciones. Antes estaba
 	// reservada al personaje flotante; ahora es una celda más y la retícula
 	// queda completa: ancla 2×2, lista 2×2 y tres 1×1 en la banda de abajo.

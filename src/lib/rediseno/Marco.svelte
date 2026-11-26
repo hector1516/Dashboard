@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Marco común de las pantallas del rediseño: barra de 76 px arriba,
-	// contenido en medio y pie de Volt abajo. Es tonto a propósito: no
+	// contenido en medio y pie de The Penguin abajo. Es tonto a propósito: no
 	// consulta el snapshot ni el reloj; todo le llega por props, para que
 	// cada pantalla pueda probarse con datos de ejemplo.
 	//
@@ -24,9 +24,9 @@
 		posicion: string;
 		/** Bloques degradados del snapshot (`['bd']`, `['clima']`…). */
 		degradado?: string[];
-		/** La frase de Volt del pie. Sin ella el pie queda en «— Volt». */
+		/** La frase de The Penguin del pie. Sin ella el pie queda en «— The Penguin». */
 		volt?: string;
-		/** Portada: sin la firma de Volt en el pie (ahí Volt no aparece). */
+		/** Portada: sin la firma de The Penguin en el pie (ahí no aparece). */
 		sinVolt?: boolean;
 		children: Snippet;
 	}

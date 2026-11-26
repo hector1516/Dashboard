@@ -284,7 +284,7 @@ export function tocar(tono: Tono) {
 			pad(55, 82.41, 0.24, 0.07, 'triangle');
 			break;
 		case 'volt':
-			// Volt toma la palabra: dos notas cortas y amables (660 → 880), algo
+			// The Penguin toma la palabra: dos notas cortas y amables (660 → 880), algo
 			// más bajas que un aviso pero ya audibles desde el pasillo.
 			nota(659.25, 0.08, 0.14);
 			nota(880, 0.08, 0.12, 0.09);

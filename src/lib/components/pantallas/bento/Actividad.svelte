@@ -8,7 +8,7 @@
 	// qué días de la semana se mueve la oficina; y la cifra chica es quien más
 	// reportes lleva de la semana.
 	//
-	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// CELDA DE THE PENGUIN: la 3/4/4/5 (la esquina inferior derecha) la ocupa
 	// `<CeldaVolt />` con las últimas tres notificaciones. Es una celda más de
 	// la retícula; ya no hay personaje flotante que reservar.
 	//
@@ -22,7 +22,7 @@
 	//     y hora, últimos 14 días), y de ahí salen las barras por día. La
 	//     etiqueta dice «dos semanas», que es la ventana real.
 	//   `cotizaciones_lista` no tiene celda (las cuatro piezas ya llenan las
-	//   once de la retícula): va en la frase de Volt, que es donde el pasillo
+	//   once de la retícula): va en la frase de The Penguin, que es donde el pasillo
 	//   lee lo que no cabe arriba.
 	//
 	// Los datos salen del snapshot. Si todavía es el vacío del arranque

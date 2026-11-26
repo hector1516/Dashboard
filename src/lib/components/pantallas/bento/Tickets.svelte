@@ -7,7 +7,7 @@
 	// publica el snapshot, con foto entre los cuatro en pantalla); y la cifra
 	// chica con el auto que más carga.
 	//
-	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// CELDA DE THE PENGUIN: la 3/4/4/5 (la esquina inferior derecha) la ocupa
 	// `<CeldaVolt />` con las últimas tres notificaciones. Es una celda más de
 	// la retícula; ya no hay personaje flotante que reservar.
 	//

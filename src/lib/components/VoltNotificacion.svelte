@@ -14,7 +14,7 @@
 	let visible = $state(false);
 	let comentario = $state('');
 
-	// Estado de Volt según el tipo de evento
+	// Estado de The Penguin según el tipo de evento
 	$effect(() => {
 		if (!aviso) {
 			visible = false;
@@ -23,7 +23,7 @@
 		}
 		visible = true;
 		comentario = getVoltComentario(getTipoEvento(aviso));
-		// Determinar estado de Volt según el evento
+		// Determinar estado de The Penguin según el evento
 		const titulo = (aviso.titulo || '').toLowerCase();
 		const nivel = aviso.nivel || '';
 		if (nivel === 'pantalla') {
@@ -101,7 +101,7 @@
 				</button>
 			</div>
 		</div>
-		<!-- Flecha del speech bubble hacia Volt -->
+		<!-- Flecha del speech bubble hacia The Penguin -->
 		<div class="volt-notif-flecha"></div>
 	</div>
 {/if}

@@ -9,8 +9,8 @@
 	de más ni se sale de la pantalla (el bug de la primera versión: las filas
 	crecían con el contenido y la banda de abajo quedaba cortada).
 
-	El rincón inferior derecho (3 columnas × 2 filas) está RESERVADO: ahí vive
-	Volt, con su placa y su globo. Ningún dato se dibuja debajo.
+	El rincón inferior derecho (3 columnas × 2 filas) queda libre: no se dibuja
+	ningún dato debajo.
 
 	Los datos llegan del snapshot (`datos.combustible`), que arma el snapshotter
 	desde SQL. El kiosco es de solo lectura.
@@ -65,8 +65,7 @@
 </script>
 
 <div class="maquina">
-	<!-- Cabecera: marca, mes y Volt. Volt va EN EL FLUJO: reserva su espacio y
-	     nunca puede taparse con un dato. -->
+	<!-- Cabecera: marca, mes y saldo. -->
 	<header class="cab">
 		<div class="cab-izq">
 			<span class="cab-logo">⛽</span>
@@ -201,7 +200,7 @@
 			</div>
 		</section>
 
-		<!-- ── Banda C (el rincón derecho queda libre para Volt) ── -->
+		<!-- ── Banda C (el rincón derecho queda libre) ── -->
 		<section class="slot c-usr cobalt" style="--i:7">
 			<div class="slot-hd">Quién más pide</div>
 			<div class="slot-bd">
@@ -243,9 +242,6 @@
 			</div>
 		</section>
 
-		<!-- Columna 10-12: reservada para Volt. Vacía a propósito; el globo y su
-		     placa viven aquí y no tapan nada. -->
-		<div class="rincon-volt" aria-hidden="true"></div>
 	</main>
 </div>
 
@@ -316,7 +312,6 @@
 	.c-usr   { grid-area: 5 / 1 / 7 / 4; }
 	.c-horas { grid-area: 5 / 4 / 7 / 6; }
 	.c-cli   { grid-area: 5 / 6 / 7 / 9; }
-	.rincon-volt { grid-area: 5 / 10 / 7 / 13; }
 
 	.slot {
 		/* min-height: 0 es la clave: sin esto, el contenido empuja la fila y la

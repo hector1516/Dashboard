@@ -12,7 +12,7 @@
 <script lang="ts">
 	// Uso de las apps (Admon y Field), en la retícula bento.
 	//
-	// Cuatro piezas en once celdas (la 12.ª es la celda de Volt):
+	// Cuatro piezas en once celdas (la 12.ª es la celda de The Penguin):
 	//   · ancla 2×2: la app más usada, con sus llamadas
 	//   · lista 2×2: quiénes son los que más la usan
 	//   · serie 2×1: llamadas por app (barras)
@@ -30,7 +30,7 @@
 	//     la cifra chica es «usuarios activos» (distintos en 7 días), que es
 	//     el otro dato real del endpoint.
 	//
-	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// CELDA DE THE PENGUIN: la 3/4/4/5 (la esquina inferior derecha) la ocupa
 	// `<CeldaVolt />` con las últimas tres notificaciones. Antes estaba
 	// reservada al personaje flotante; ahora cierra la retícula.
 	import { onMount } from 'svelte';

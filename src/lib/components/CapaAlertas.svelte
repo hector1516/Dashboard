@@ -86,7 +86,7 @@
 	llamativo y sin perder legibilidad. El blanco del texto lleva sombra porque
 	encima de un color saturado un blanco plano vibra y deja de leerse.
 -->
-<!-- Reemplazado por VoltNotificacion: las notificaciones ahora las dice Volt -->
+<!-- Reemplazado por VoltNotificacion: las notificaciones ahora las dice The Penguin -->
 <VoltNotificacion {aviso} onCerrar={onCerrarAviso} />
 
 

@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import { tocar } from './audio';
 
-/** Una notificación de Volt, con la hora LOCAL en que se dijo. */
+/** Una notificación de The Penguin, con la hora LOCAL en que se dijo. */
 export interface AvisoVolt {
 	texto: string;
 	/** `HH:MM` local, para la celda de «últimas notificaciones». */
@@ -14,7 +14,7 @@ const MAX = 3;
 const interno = writable<AvisoVolt[]>([]);
 
 /**
- * Las últimas tres notificaciones de Volt, la más nueva arriba. La llena
+ * Las últimas tres notificaciones de The Penguin, la más nueva arriba. La llena
  * cualquier módulo que llame a `decirVolt` (presencia, tickets) y el vigilante
  * de `/api/dashboard/volt` con sus avisos, «sin internet» y «volvió».
  */
@@ -43,7 +43,7 @@ export function registrarVolt(texto: string, ahora = new Date()) {
 }
 
 /**
- * La voz de Volt suena como máximo una vez por minuto. Todo pasa por
+ * La voz de The Penguin suena como máximo una vez por minuto. Todo pasa por
  * `tocar()`, que respeta el mute y el silencio nocturno.
  */
 const MS_ENTRE_VOCES = 60_000;
@@ -57,7 +57,7 @@ export function tonoVolt() {
 }
 
 /**
- * Notificación corta para Volt. Se guarda en el historial y suena (con el
+ * Notificación corta para The Penguin. Se guarda en el historial y suena (con el
  * tope de una voz por minuto). El `reaccion` se conserva en la firma porque
  * los módulos que avisan ya lo pasan, pero la celda muestra sólo el texto.
  */

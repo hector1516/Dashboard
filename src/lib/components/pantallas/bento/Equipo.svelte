@@ -14,7 +14,7 @@
 	// —que no cumple nadie— quedaba vacía once meses al año. Un cumpleaños de
 	// enero se anuncia en diciembre, que es cuando sirve.
 	//
-	// CELDA DE VOLT: la esquina inferior derecha (3/3 y 3/4) la ocupa
+	// CELDA DE THE PENGUIN: la esquina inferior derecha (3/3 y 3/4) la ocupa
 	// `<CeldaVolt area="3/3/4/5" />`: dos columnas para que no quede un
 	// segundo recuadro vacío. Ya no hay personaje flotante que reservar.
 	//

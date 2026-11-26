@@ -1,16 +1,16 @@
 <script lang="ts">
-	// Pie del marco: la línea de Volt a la izquierda y la versión a la
+	// Pie del marco: la línea de The Penguin a la izquierda y la versión a la
 	// derecha. 42 px de alto y 20 px de letra (nada baja de 20 px).
 	//
 	// Ya no reserva el rincón derecho: el personaje flotante se retiró y su
 	// hueco lo ocupa la celda `CeldaVolt` dentro de la retícula. La portada
-	// pasa `sinVolt`, porque ahí Volt no aparece en ninguna parte.
+	// pasa `sinVolt`, porque ahí The Penguin no aparece en ninguna parte.
 	import { APP_VERSION } from '$lib/shell.js';
 
 	interface Props {
-		/** Lo que dice Volt. Puede venir vacío: entonces solo firma. */
+		/** Lo que dice The Penguin. Puede venir vacío: entonces solo firma. */
 		linea: string;
-		/** Sin la firma de Volt (portada). Queda solo la versión. */
+		/** Sin la firma de The Penguin (portada). Queda solo la versión. */
 		sinVolt?: boolean;
 	}
 	let { linea, sinVolt = false }: Props = $props();
@@ -19,7 +19,7 @@
 <footer class="pie">
 	{#if !sinVolt}
 		<span class="volt">
-			— <b>Volt</b>{#if linea}: {linea}{/if}
+			— <b>The Penguin</b>{#if linea}: {linea}{/if}
 		</span>
 	{/if}
 	<span class="fin">ECCSA · Centro de Operaciones · v{APP_VERSION}</span>

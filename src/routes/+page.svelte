@@ -275,7 +275,7 @@ $effect(() => {
 	};
 });
 
-// Actualizar store de pantalla actual para Volt
+// Actualizar store de pantalla actual para The Penguin
 $effect(() => {
 	currentScreen.set(pantalla.id);
 });
@@ -462,7 +462,7 @@ function anunciar(e: EventoKiosko) {
 	eventoAvatar = e.titulo;
 	personaAvatar = e.persona ?? null;
 
-	// El globo de Volt lo cuenta en corto, además de lo que se vea en la
+	// El historial de The Penguin lo cuenta en corto, además de lo que se vea en la
 	// pantalla completa o en la banda. Entradas/salidas y tickets nuevos son
 	// noticia de la oficina, no ruido: una línea y se va solo.
 	if (e.titulo === 'Entró' || e.titulo === 'Salió') {

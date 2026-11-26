@@ -1,10 +1,10 @@
 ﻿<script lang="ts">
-	// La celda que llena el hueco inferior derecho de la retícula: Volt y sus
-	// últimas tres notificaciones, cada una con su hora.
+	// La celda que llena el hueco inferior derecho de la retícula: The Penguin
+	// y sus últimas tres notificaciones, cada una con su hora.
 	//
-	// Es la ÚNICA representación de Volt en las pantallas del bento (el
+	// Es la ÚNICA representación de The Penguin en las pantallas del bento (el
 	// personaje 3D y el globo flotante se retiraron). Por eso la marca es el
-	// rayo del logo en un círculo naranja: pesa cero y no tapa nada.
+	// pingüino en un círculo naranja: pesa cero y no tapa nada.
 	//
 	// El historial lo llena `voltAviso.ts`: presencia, tickets, avisos del
 	// vigilante y «sin internet». Aquí sólo se pinta, sin peticiones propias.
@@ -28,20 +28,18 @@
 	onMount(() => voltHistorial.subscribe((v) => (avisos = v)));
 </script>
 
-<Celda {area} {i} rotulo="Volt · últimas notificaciones">
+<Celda {area} {i} rotulo="The Penguin · últimas notificaciones">
 	<div class="volt">
 		<div class="marca" aria-hidden="true">
-			<!-- El rayo del logo, en vector: el emoji ⚡ sale en un amarillo
-			     que no contrasta sobre el naranja de marca. -->
-			<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-				<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" />
-			</svg>
+			<!-- La marca de The Penguin: el emoji 🐧 dentro del círculo
+			     naranja. Sin rayos. -->
+			<span class="pinguino">🐧</span>
 		</div>
 
 		{#if avisos.length === 0}
 			<div class="sin-avisos">
 				<b>Sin novedades</b>
-				<span>Los avisos de Volt aparecerán aquí.</span>
+				<span>Los avisos de The Penguin aparecerán aquí.</span>
 			</div>
 		{:else}
 			<div class="lista">
@@ -65,9 +63,8 @@
 		gap: 6px;
 	}
 
-	/* El rayo del logo en un círculo naranja de marca. Sobre naranja el
-	   glifo va en tinta: blanco sobre #F26D26 se queda en 2.9:1. Con 30 px
-	   deja sitio a las tres filas: la celda 1×1 mide ~289 px de alto. */
+	/* El pingüino en un círculo naranja de marca. Con 30 px deja sitio a
+	   las tres filas: la celda 1×1 mide ~289 px de alto. */
 	.marca {
 		width: 30px;
 		height: 30px;
@@ -79,6 +76,10 @@
 		align-items: center;
 		justify-content: center;
 		box-shadow: 0 2px 0 rgba(18, 20, 26, 0.08);
+	}
+	.pinguino {
+		font-size: 20px;
+		line-height: 1;
 	}
 
 	.lista {

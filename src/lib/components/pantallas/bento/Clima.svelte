@@ -1,7 +1,7 @@
 <script lang="ts">
 	// Clima de la oficina, en la retícula bento.
 	//
-	// Seis piezas en once celdas (la 12.ª es la celda de Volt):
+	// Seis piezas en once celdas (la 12.ª es la celda de The Penguin):
 	//   · ancla 2×2: la temperatura de ahora, con su icono y la descripción
 	//   · 2×1 «Hoy» y 2×1 «Mañana»: máxima y mínima de cada día
 	//   · 1×1 lluvia (probabilidad), 1×1 viento, 1×1 humedad
@@ -13,13 +13,13 @@
 	// 2×1 apilado a la derecha del ancla: son las mismas dos celdas que pedía
 	// el brief y además llenan la retícula sin dejar un hueco en medio.
 	//
-	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// CELDA DE THE PENGUIN: la 3/4/4/5 (la esquina inferior derecha) la ocupa
 	// `<CeldaVolt />` con las últimas tres notificaciones. Antes estaba
 	// reservada al personaje flotante; ahora cierra la retícula.
 	//
 	// Sin dato no hay cero: si `clima.actual.temperatura` viene `null` (el
 	// snapshot del arranque, o el servidor sin salida a internet en el primer
-	// ciclo) las celdas dicen «—» y Volt lo explica. Si el snapshot trae la
+	// ciclo) las celdas dicen «—» y The Penguin lo explica. Si el snapshot trae la
 	// última lectura buena con `degradado: ['clima']`, el dato SÍ es real: se
 	// pinta, y el chip ámbar del marco avisa de que es la lectura anterior.
 	import Bento from '$lib/rediseno/Bento.svelte';

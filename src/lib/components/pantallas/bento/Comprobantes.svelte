@@ -11,7 +11,7 @@
 	// 0-2 gris); el cerrado va atenuado con «✓ con foto». Así se lee como una
 	// bandeja de trabajo y no como un muro de la vergüenza.
 	//
-	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// CELDA DE THE PENGUIN: la 3/4/4/5 (la esquina inferior derecha) la ocupa
 	// `<CeldaVolt />` con las últimas tres notificaciones. Antes estaba
 	// reservada al personaje flotante; ahora cierra la retícula.
 	//

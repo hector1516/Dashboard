@@ -7,7 +7,7 @@
 	// queda, cómo va la semana, a qué hora cargan, a cuánto está el litro y
 	// quién carga en cada gasolinera, y qué auto es el que más pide.
 	//
-	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// CELDA DE THE PENGUIN: la 3/4/4/5 (la esquina inferior derecha) la ocupa
 	// `<CeldaVolt />`. La maqueta ponía ahí «A qué hora cargan»; se movió a
 	// 2/4/3/5 y «Gasto por semana» a 2/3/3/4 para que las dos series queden
 	// juntas en la fila de en medio. El hueco de la última columna ya no es

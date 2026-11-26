@@ -17,7 +17,7 @@
 	sirven cuando no hay nadie que haga clic.
 	Ver ECCSA-Shell/docs/CONTRATO.md 2b.
 
-	Volt ya NO flota: ni personaje 3D en el rincon ni globo encima. Las
+	The Penguin ya NO flota: ni personaje 3D en el rincon ni globo encima. Las
 	notificaciones se cuentan en la celda `CeldaVolt` de cada pantalla y el
 	sondeo que las alimenta vive en `voltVigia.ts` (sin DOM).
 -->
@@ -46,7 +46,7 @@
 			});
 		}
 
-		// El sondeo de Volt (avisos del vigilante, internet, audio) corre una
+		// El sondeo de The Penguin (avisos del vigilante, internet, audio) corre una
 		// sola vez para todo el kiosco: el historial sobrevive a la rotación.
 		return iniciarVoltVigia();
 	});

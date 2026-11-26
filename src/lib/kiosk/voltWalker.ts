@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import { mascotState } from './mascot';
 
-// Estado de posición de Volt en pantalla
+// Estado de posición de The Penguin en pantalla
 export const voltPosition = writable({ x: 0, y: 0 });
 
 // Configuración del caminar

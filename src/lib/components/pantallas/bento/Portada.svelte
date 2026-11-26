@@ -202,7 +202,7 @@
 	   escena es el mes, que va abajo en grande. */
 
 	/* El rótulo del mes: abajo a la izquierda y con el ancho de la escena.
-	   Ya no hay que cortarlo antes de ningún rincón de Volt. */
+	   Ya no hay que cortarlo antes de ningún rincón reservado. */
 	.rotulo,
 	.sin-portada {
 		position: absolute;
