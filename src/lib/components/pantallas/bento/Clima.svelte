@@ -395,4 +395,36 @@
 		font-weight: 700;
 		opacity: 0.6;
 	}
+
+	/* Fondo completo: el dueño quiere la casa llenando la celda, como las fotos
+	   de los reportes en las otras anclas. El JPEG/WebP viene con alfa, así que
+	   se pinta sobre la tinta y un velo en degradado deja la cifra y el texto
+	   sobre la zona oscura de la izquierda. */
+	.casa-img {
+		inset: 0;
+		right: auto;
+		bottom: auto;
+		width: 100%;
+		height: 100%;
+		aspect-ratio: auto;
+		z-index: -2;
+		background: url('/images/casa-eccsa.webp') no-repeat center / cover;
+		-webkit-mask-image: none;
+		mask-image: none;
+		opacity: 0.62;
+	}
+	.casa-luz {
+		inset: 0;
+		right: auto;
+		bottom: auto;
+		width: 100%;
+		height: 100%;
+		z-index: -1;
+		background: linear-gradient(
+			90deg,
+			rgba(18, 20, 26, 0.94) 0%,
+			rgba(18, 20, 26, 0.72) 38%,
+			rgba(18, 20, 26, 0.22) 100%
+		);
+	}
 </style>
