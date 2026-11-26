@@ -13,7 +13,20 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
 
-  let { activo = false, duracion = 2800, objetivo = null } = $props();
+  let { activo = false, duracion = 2800, objetivo = null, fondo = '#E9ECF1', tinta = '#12141A' } = $props();
+
+  /**
+   * `rgba()` a partir de un color en hex. El efecto pinta el fondo del lienzo
+   * con el color base del kiosco —antes un azul noche fijo— y lo va destapando:
+   * con el bento claro, el valor oscuro hacía un parpadeo azul en cada
+   * transición. Se pasa por prop para que el modo clásico (oscuro) siga igual.
+   */
+  function rgba(hex: string, alfa: number): string {
+    const h = (hex || '').replace('#', '').trim();
+    const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+    if (!Number.isFinite(n)) return `rgba(233, 236, 241, ${alfa})`;
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alfa})`;
+  }
 
   let canvas: HTMLCanvasElement | null = null;
   let ctx: CanvasRenderingContext2D | null = null;
@@ -196,7 +209,7 @@
     const fadeOut = progreso < 0.08 ? progreso / 0.08 : 1;
     const fadeIn = progreso > 0.92 ? (progreso - 0.92) / 0.08 : 0;
     const alpha = 1 - fadeOut * 0.95 + fadeIn * 0.95;
-    ctx.fillStyle = `rgba(15, 23, 42, ${1 - alpha})`;
+    ctx.fillStyle = rgba(fondo, 1 - alpha);
     ctx.fillRect(0, 0, ancho, alto);
 
     // Dibujar elementos ya construidos
@@ -214,12 +227,12 @@
         }
         ctx.fill();
         // Borde sutil
-        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.strokeStyle = rgba(tinta, 0.12);
         ctx.lineWidth = 1;
         ctx.stroke();
       } else if (el.tipo === 'texto') {
         ctx.font = `${el.peso === '700' || el.peso === 'bold' ? 'bold' : 'normal'} 14px ${el.fuente}, system-ui, sans-serif`;
-        ctx.fillStyle = '#F1F5F9';
+        ctx.fillStyle = tinta;
         ctx.fillText(el.texto, el.x, el.y + 14);
       }
     }
@@ -295,7 +308,7 @@
         ctx.setLineDash([]);
         // Texto tipeado
         ctx.font = `${el.peso === '700' || el.peso === 'bold' ? 'bold' : 'normal'} 14px ${el.fuente}, system-ui, sans-serif`;
-        ctx.fillStyle = '#F1F5F9';
+        ctx.fillStyle = tinta;
         ctx.fillText(visible, el.x, el.y + 14);
         // Caret parpadeante
         cursor.caretTimer += 1;

@@ -1074,7 +1074,7 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 		/>
 
 		<!-- Escenario fijo 1920×1080 escalado al viewport. Determinista. -->
-		<div class="escenario" bind:this={escenarioRef}>
+		<div class="escenario" class:fondo-claro={pantallaBento} bind:this={escenarioRef}>
 			<div class="pantalla-caja" class:saliendo class:entrando={!saliendo}>
 				<!-- Las pantallas bento traen su propio marco: con ellas no se monta
 				     la barra de producción (serían dos cabeceras). -->
@@ -1142,7 +1142,13 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 			<canvas class="confeti" bind:this={canvasRef} aria-hidden="true"></canvas>
 
 <!-- Swarm Rebuild: se activa en cada transición de pantalla -->
-<SwarmRebuild activo={swarmActivo} duracion={2800} objetivo={escenarioRef} />
+<SwarmRebuild
+	activo={swarmActivo}
+	duracion={2800}
+	objetivo={escenarioRef}
+	fondo={pantallaBento ? '#E9ECF1' : '#0F172A'}
+	tinta={pantallaBento ? '#12141A' : '#F1F5F9'}
+/>
 
 			<CapaAlertas {banda} {toast} {aviso} onCerrarAviso={sacarSiguienteAviso} />
 
@@ -1191,9 +1197,15 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 <style>
 	/* El contenedor real es 1920×1080 y se escala al viewport: la pantalla se
 	   ve idéntica en cualquier TV y nunca aparece scroll. */
+	:global(html),
+	:global(body) {
+		/* El base del bento, no el azul de antes: al arrancar, al recargar y en
+		   el hueco entre pantallas lo que se ve es el MISMO gris que las
+		   pantallas. El azul #020617 se asomaba en cada fundido y en la carga. */
+		background: #e9ecf1;
+	}
 	:global(body) {
 		margin: 0;
-		background: #020617;
 		font-family: 'Outfit', system-ui, sans-serif;
 		overflow: hidden;
 		cursor: none;
@@ -1213,6 +1225,12 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 		flex-direction: column;
 		overflow: hidden;
 	}
+
+	/* Base del bento: lo que queda detrás cuando la pantalla se funde en un
+	   cambio. Es el mismo gris de las pantallas, así que el relevo se lee como
+	   un fundido y no como un destello. Con `?clasico=1` se deja transparente
+	   porque ahí el Fondo (la foto) tiene que seguir viéndose. */
+	.escenario.fondo-claro { background: #e9ecf1; }
 
 	.pantalla-caja { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 	.pantalla-caja.saliendo { opacity: 0; transform: scale(0.97) translateY(8px); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -1240,12 +1258,15 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 	.sin-pantalla {
 		display: flex; align-items: center; justify-content: center;
 		height: 100%; padding: 0 24px; text-align: center;
-		font-size: 28px; font-weight: 600; color: #94a3b8;
+		font-size: 28px; font-weight: 600; color: rgba(18,20,26,0.55);
 	}
 
-	.cargando { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; color: #475569; animation: fadeIn 0.3s ease; }
-	.cargando-texto { font-size: 1.2rem; font-weight: 600; color: #94a3b8; }
-	.cargando-sub { font-size: 0.9rem; color: #475569; animation: pulse 1.5s ease-in-out infinite; }
+	/* Carga inicial sobre el base claro: tinta para el texto, grises legibles
+	   para el resto. Antes eran colores pensados para el fondo azul y al
+	   arrancar la pantalla se veía el kiosco viejo por un segundo. */
+	.cargando { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; color: rgba(18,20,26,0.62); animation: fadeIn 0.3s ease; }
+	.cargando-texto { font-size: 1.2rem; font-weight: 600; color: #12141a; }
+	.cargando-sub { font-size: 0.9rem; color: rgba(18,20,26,0.55); animation: pulse 1.5s ease-in-out infinite; }
 	@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 	@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 	.spinner {

@@ -117,7 +117,9 @@
 	.label {
 		font-size: 14px;
 		font-weight: 600;
-		color: #94a3b8;
+		/* Tinta sobre el base claro del kiosco: antes era un gris de fondo
+		   oscuro y en la carga se perdía. */
+		color: rgba(18, 20, 26, 0.6);
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		animation: pulse 1.5s ease-in-out infinite;

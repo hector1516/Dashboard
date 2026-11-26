@@ -126,8 +126,17 @@
 	degradado={datos?.degradado ?? []}
 >
 	<Bento>
-		<!-- Ancla 2×2: la temperatura de ahora, el icono y el estado del cielo. -->
-		<Celda area="1/1/3/3" tono="dark" rotulo="Ahora en Monterrey" i={0}>
+		<!-- Ancla 2×2: la temperatura de ahora, el icono y el estado del cielo.
+		     Lleva el dibujo isométrico de la oficina como marca de agua, muy
+		     tenue y al pie: sobre la tinta se ve el trazo, no una foto, y la
+		     cifra y el texto quedan por delante. -->
+		<Celda
+			area="1/1/3/3"
+			tono="dark"
+			rotulo="Ahora en Monterrey"
+			i={0}
+			marcaAgua="/images/oficina-eccsa.webp"
+		>
 			<div class="cuerpo centro">
 				{#if sinDatos}
 					<div class="cifra sin sobre-tinta">—</div>
