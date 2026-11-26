@@ -13,7 +13,8 @@
 	    (`23 vales · promedio $500`, `datos de hace 1 min`) no es una cifra: se
 	    salta entero, para no animar media frase ni romper la lectura.
 	  · Se respeta el formato original: prefijo `$`, separador de miles,
-	    decimales y sufijo (`%`, `°`, `°C`).
+	    decimales y sufijo (unidad de hasta tres letras, `%`, `°`, `°C` o
+	    `km/h`).
 	  · No toca lo que esté dentro de `[data-numero]` (el ancla ya usa
 	    `<Numero>`) ni de `[data-sin-contar]` (relojes y cuentas que cambian
 	    solos, como la cuenta de rotación).
@@ -24,8 +25,15 @@
 	movimiento.
 */
 
-/** Un número formateado y nada más. `°C` va antes que `°` para no dejar la C. */
-const NUMERO = /^(\s*)(\$?)(\d+(?:,\d{3})*)(\.\d+)?(\s?(?:°C|°|%))?(\s*)$/;
+/**
+ * Un número formateado con su unidad y nada más.
+ *
+ * Unidad: `%`, `°C`, `°`, `km/h` o hasta tres letras (`h`, `L`, `km`, `min`).
+ * Exige que empiece con dígitos: una placa (`SAJ-722-B`) o un código que
+ * empieza con letras no casa. `°C` va antes que `°` y `km/h` antes que las
+ * letras para no dejar la cola suelta.
+ */
+const NUMERO = /^(\s*)(\$?)(\d+(?:,\d{3})*)(\.\d+)?(\s?(?:°C|°|%|km\/h|[A-Za-z]{1,3}))?(\s*)$/;
 
 interface Formato {
 	/** Espacios iniciales y finales del texto original. */

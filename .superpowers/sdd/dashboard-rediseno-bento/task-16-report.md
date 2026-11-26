@@ -100,3 +100,46 @@ barrido caería sobre el esqueleto de carga y no volvería a correr).
   refresco de 30 s reinicie las cifras.
 - La cuenta de rotación (`.rot`) quedó marcada `data-sin-contar`: cambia cada
   segundo y animarla la haría pelear con su propio contador.
+
+## Fix round 1
+
+**Pedido:** todos los números, también los que llevan unidad de letras.
+«12 h», «895 L», «2,112 km» y «9 h» se saltaban porque el patrón sólo aceptaba
+`%`, `°` y `°C`.
+
+**Cambio:** el sufijo de `NUMERO` (`src/lib/rediseno/contar.ts`) ahora acepta
+`%`, `°C`, `°`, `km/h` o hasta **tres letras** (`h`, `L`, `km`, `min`), con
+espacio opcional:
+
+```ts
+/^(\s*)(\$?)(\d+(?:,\d{3})*)(\.\d+)?(\s?(?:°C|°|%|km\/h|[A-Za-z]{1,3}))?(\s*)$/
+```
+
+Sigue exigiendo que el texto sea **sólo** número + unidad (y que empiece con
+dígitos, así que una placa o un código con letras delante no casa).
+
+**Verificación:**
+
+- `npm run check` → **7 errores, 50 avisos** (baseline). `npm run build` →
+  `Wrote site to "build"`.
+- DOM con el `contar.ts` real transpilado y un contenedor de prueba (muestreo
+  cada 30 ms):
+  - `12 h` → `0 h … 11 h → 12 h`.
+  - `895 L` → `0 L … 894 L → 895 L`.
+  - `2,112 km` → `0 km … 2,111 km → 2,112 km`.
+  - `9.4 km/h` → `0.0 km/h … 9.3 → 9.4 km/h` (un decimal conservado).
+  - `21°C` → `0°C … 21°C`; `1,234.50` → `1,234.50` (miles y dos decimales).
+  - Quietos: `23 vales · promedio $500` (frase), `SAJ-722-B` (placa),
+    `45` dentro de `[data-sin-contar]` y `<b>895 L</b> en 4 semanas` (cifra
+    dentro de una frase, misma regla que en el task 16).
+- App real (Combustible): `12 h` ahora cuenta (`0 h → 3 h → … → 12 h`) y
+  termina en su valor; «23 vales · promedio $5,400» sigue con **un solo
+  valor** en todo el muestreo; `?sinanim=1` y `prefers-reduced-motion` dan los
+  valores finales desde la primera muestra; `.fila` conserva `k-entra`
+  (`0 / 0.038 / 0.076 / 0.114 s`); `pageerror` vacío.
+- Captura `capturas/t16-combustible.png` regenerada con este build.
+
+**Nota:** los números cuya unidad va en un `<span>` aparte (Clima: `{n}<span
+class="uni">km/h</span>`, humedad y lluvia igual) siguen fuera del barrido,
+porque el elemento ya tiene un hijo con forma de elemento. El pedido era el
+patrón; unificarlos pide tocar esas tres cifras del Clima.
