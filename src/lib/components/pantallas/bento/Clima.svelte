@@ -1,7 +1,7 @@
 <script lang="ts">
 	// Clima de la oficina, en la retícula bento.
 	//
-	// Seis piezas en once celdas (la 12.ª es el rincón de Volt):
+	// Seis piezas en once celdas (la 12.ª es la celda de Volt):
 	//   · ancla 2×2: la temperatura de ahora, con su icono y la descripción
 	//   · 2×1 «Hoy» y 2×1 «Mañana»: máxima y mínima de cada día
 	//   · 1×1 lluvia (probabilidad), 1×1 viento, 1×1 humedad
@@ -13,9 +13,9 @@
 	// 2×1 apilado a la derecha del ancla: son las mismas dos celdas que pedía
 	// el brief y además llenan la retícula sin dejar un hueco en medio.
 	//
-	// RESERVA DE VOLT: la celda 3/4/4/5 (la esquina inferior derecha) no se
-	// usa. La placa mide 112 px a 18 px del borde y su globo se apila encima;
-	// al no dibujar nada ahí, no tapan ningún dato.
+	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// `<CeldaVolt />` con las últimas tres notificaciones. Antes estaba
+	// reservada al personaje flotante; ahora cierra la retícula.
 	//
 	// Sin dato no hay cero: si `clima.actual.temperatura` viene `null` (el
 	// snapshot del arranque, o el servidor sin salida a internet en el primer
@@ -24,6 +24,7 @@
 	// pinta, y el chip ámbar del marco avisa de que es la lectura anterior.
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Celda from '$lib/rediseno/Celda.svelte';
+	import CeldaVolt from '$lib/rediseno/CeldaVolt.svelte';
 	import Marco from '$lib/rediseno/Marco.svelte';
 	import '$lib/rediseno/tokens.css';
 	import { relojKiosco } from '$lib/rediseno/relojKiosco.svelte';
@@ -236,7 +237,7 @@
 			</div>
 		</Celda>
 
-		<!-- 3/4/4/5 NO se usa: es el rincón de Volt (placa de 112 px + globo). -->
+		<CeldaVolt />
 	</Bento>
 </Marco>
 

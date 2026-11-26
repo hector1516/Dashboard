@@ -7,13 +7,11 @@
 	// queda, cómo va la semana, a qué hora cargan, a cuánto está el litro y
 	// quién carga en cada gasolinera, y qué auto es el que más pide.
 	//
-	// RESERVA DE VOLT: la celda 3/4/4/5 (la esquina inferior derecha) NO se
-	// usa. La maqueta ponía ahí «A qué hora cargan»; se movió a 2/4/3/5 y
-	// «Gasto por semana» pasó a 2/3/3/4 para que ese hueco quede limpio. La
-	// spec §3 lo pide explícito: el espacio de Volt se reserva en la retícula
-	// (la última columna de la banda inferior), no se tapa con una celda.
-	// Así las dos series quedan juntas en la fila de en medio, que además se
-	// lee mejor que tenerlas separadas.
+	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// `<CeldaVolt />`. La maqueta ponía ahí «A qué hora cargan»; se movió a
+	// 2/4/3/5 y «Gasto por semana» a 2/3/3/4 para que las dos series queden
+	// juntas en la fila de en medio. El hueco de la última columna ya no es
+	// una reserva del personaje: es la celda de notificaciones.
 	//
 	// Los datos salen del snapshot (`datos.combustible`), que el snapshotter
 	// arma desde SQL cada 10 minutos. El bloque es OPCIONAL (snapshot viejo o
@@ -21,6 +19,7 @@
 	// viene se pinta «—» con su porqué, nunca un cero fingido.
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Celda from '$lib/rediseno/Celda.svelte';
+	import CeldaVolt from '$lib/rediseno/CeldaVolt.svelte';
 	import Numero from '$lib/rediseno/Numero.svelte';
 	import Marco from '$lib/rediseno/Marco.svelte';
 	import '$lib/rediseno/tokens.css';
@@ -428,7 +427,7 @@
 			</div>
 		</Celda>
 
-		<!-- 3/4/4/5 NO se usa: es el rincón de Volt (placa de 112 px + globo). -->
+		<CeldaVolt />
 	</Bento>
 </Marco>
 

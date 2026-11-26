@@ -4,9 +4,8 @@
 	// consulta el snapshot ni el reloj; todo le llega por props, para que
 	// cada pantalla pueda probarse con datos de ejemplo.
 	//
-	// El rincón inferior derecho (148 × 148 px) se RESERVA para Volt: aquí
-	// no se dibuja nada y el pie termina antes de esa zona. El tablero que
-	// va en `children` también debe dejar ese cuadro libre.
+	// El rincón inferior derecho ya no se reserva: ahí va la celda `CeldaVolt`
+	// dentro de la retícula. El pie ocupa todo el ancho.
 	import type { Snippet } from 'svelte';
 	import PieVolt from './PieVolt.svelte';
 
@@ -27,6 +26,8 @@
 		degradado?: string[];
 		/** La frase de Volt del pie. Sin ella el pie queda en «— Volt». */
 		volt?: string;
+		/** Portada: sin la firma de Volt en el pie (ahí Volt no aparece). */
+		sinVolt?: boolean;
 		children: Snippet;
 	}
 	let {
@@ -38,6 +39,7 @@
 		posicion,
 		degradado = [],
 		volt = '',
+		sinVolt = false,
 		children
 	}: Props = $props();
 
@@ -93,15 +95,11 @@
 		{@render children()}
 	</div>
 
-	<PieVolt linea={volt} />
+	<PieVolt linea={volt} {sinVolt} />
 </div>
 
 <style>
 	.marco {
-		/* Cuadro que Volt ocupa en la esquina (dock de 112 px + márgenes).
-		   Lo usan el pie y, a través de la herencia, el tablero de cada
-		   pantalla: nadie dibuja dentro. */
-		--k-volt: 148px;
 		position: relative;
 		width: 100%;
 		height: 100%;

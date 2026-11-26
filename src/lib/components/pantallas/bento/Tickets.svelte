@@ -7,9 +7,9 @@
 	// publica el snapshot, con foto entre los cuatro en pantalla); y la cifra
 	// chica con el auto que más carga.
 	//
-	// RESERVA DE VOLT: la celda 3/4/4/5 (la esquina inferior derecha) NO se
-	// usa. La placa y el globo viven ahí; sin dibujar nada, no tapan ningún
-	// dato.
+	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// `<CeldaVolt />` con las últimas tres notificaciones. Es una celda más de
+	// la retícula; ya no hay personaje flotante que reservar.
 	//
 	// TRES COSAS QUE EL DATO NO PERMITE Y NO SE FINGEN:
 	//   · El ancla NO dice «tickets de la semana». `tickets.total_semana` es
@@ -31,6 +31,7 @@
 	// falla, se sigue leyendo el ticket.
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Celda from '$lib/rediseno/Celda.svelte';
+	import CeldaVolt from '$lib/rediseno/CeldaVolt.svelte';
 	import Numero from '$lib/rediseno/Numero.svelte';
 	import Marco from '$lib/rediseno/Marco.svelte';
 	import '$lib/rediseno/tokens.css';
@@ -330,7 +331,7 @@
 			</div>
 		</Celda>
 
-		<!-- 3/4/4/5 NO se usa: es el rincón de Volt (placa de 112 px + globo). -->
+		<CeldaVolt />
 	</Bento>
 </Marco>
 

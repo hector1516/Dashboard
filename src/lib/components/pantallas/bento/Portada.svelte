@@ -19,10 +19,9 @@
 	// parecería una portada de verdad y no lo es. Tampoco se usa
 	// `datos.fondos`: esos wallpapers son el ambiente del kiosco, no contenido.
 	//
-	// RESERVA DE VOLT: la escena ocupa toda la retícula, pero el rótulo vive
-	// abajo a la IZQUIERDA y su ancho se corta antes del cuadro de Volt
-	// (448 px a la derecha). La placa y su globo flotan sobre la foto sin
-	// tapar una sola letra.
+	// VOLT NO APARECE: ni personaje, ni globo, ni celda de notificaciones, ni
+	// firma en el pie. La escena ocupa toda la retícula y el rótulo usa el
+	// ancho completo (con margen de 32 px a cada lado).
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Marco from '$lib/rediseno/Marco.svelte';
 	import '$lib/rediseno/tokens.css';
@@ -104,6 +103,7 @@
 	temperatura={datos?.clima?.actual?.temperatura}
 	posicion={posicion ?? '—'}
 	volt={linea}
+	sinVolt
 	degradado={datos?.degradado ?? []}
 >
 	<Bento>
@@ -201,13 +201,13 @@
 	   la barra del marco y repetirlo aquí era ruido sobre la foto. El dato de la
 	   escena es el mes, que va abajo en grande. */
 
-	/* El rótulo del mes: abajo a la izquierda y cortado antes del rincón de
-	   Volt (448 px de ancho en el borde derecho). */
+	/* El rótulo del mes: abajo a la izquierda y con el ancho de la escena.
+	   Ya no hay que cortarlo antes de ningún rincón de Volt. */
 	.rotulo,
 	.sin-portada {
 		position: absolute;
 		left: 32px;
-		right: 480px;
+		right: 32px;
 		bottom: 30px;
 		display: flex;
 		flex-direction: column;

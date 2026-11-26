@@ -14,15 +14,16 @@
 	// —que no cumple nadie— quedaba vacía once meses al año. Un cumpleaños de
 	// enero se anuncia en diciembre, que es cuando sirve.
 	//
-	// RESERVA DE VOLT: la esquina inferior derecha (3/3 y 3/4 de la retícula)
-	// NO se usa. Sin dibujar nada ahí, la placa y el globo no tapan ningún
-	// dato; el hueco es a propósito y no un hueco olvidado.
+	// CELDA DE VOLT: la esquina inferior derecha (3/3 y 3/4) la ocupa
+	// `<CeldaVolt area="3/3/4/5" />`: dos columnas para que no quede un
+	// segundo recuadro vacío. Ya no hay personaje flotante que reservar.
 	//
 	// Los bloques pueden venir vacíos o no venir: `proximos_*` es opcional
 	// porque el snapshot en disco puede ser de antes del cambio. Se dice «sin
 	// datos» en vez de inventar un cero o un cumpleaños.
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Celda from '$lib/rediseno/Celda.svelte';
+	import CeldaVolt from '$lib/rediseno/CeldaVolt.svelte';
 	import Numero from '$lib/rediseno/Numero.svelte';
 	import Marco from '$lib/rediseno/Marco.svelte';
 	import '$lib/rediseno/tokens.css';
@@ -356,7 +357,7 @@
 			</div>
 		</Celda>
 
-		<!-- 3/3 y 3/4 NO se usan: es el rincón de Volt (placa de 112 px + globo). -->
+		<CeldaVolt area="3/3/4/5" />
 	</Bento>
 </Marco>
 

@@ -6,16 +6,14 @@
 	// llegaron» y «cuántos ya se fueron»; y «Últimos movimientos» resume los
 	// tres eventos más recientes de la red.
 	//
-	// RESERVA DE VOLT: la celda 3/4/4/5 (la esquina inferior derecha) NO se
-	// usa. La placa (112 px a 18 px del borde) y su globo viven ahí; al no
-	// dibujar nada, no tapan ningún dato. Con eso quedan 11 celdas ocupadas y
-	// las cinco piezas caben así: ancla 2×2, lista 2×2 y tres celdas de una
-	// en la banda de abajo.
+	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// `<CeldaVolt />` con las últimas tres notificaciones. Antes estaba
+	// reservada al personaje flotante; ahora es una celda más y la retícula
+	// queda completa: ancla 2×2, lista 2×2 y tres 1×1 en la banda de abajo.
 	//
-	// El plan pedía «últimos movimientos» en 2×1, pero eso pedía 12 celdas
-	// (ancla 4 + lista 4 + 1 + 1 + 2) cuando la retícula solo tiene 11 con el
-	// rincón de Volt apartado. Se queda 1×1 con las mismas tres filas: en 446
-	// px caben nombre y hora en la misma línea.
+	// El plan pedía «últimos movimientos» en 2×1, pero eso pedía 12 celdas de
+	// datos. Se queda 1×1 con las mismas tres filas: en 446 px caben nombre y
+	// hora en la misma línea.
 	//
 	// Los datos salen del snapshot (`datos.asistencia`), que el snapshotter
 	// arma de `HUB_NetworkPresence`. Si el snapshot todavía es el vacío del
@@ -23,6 +21,7 @@
 	// hay dato. Un cero de verdad (nadie se ha conectado hoy) sí se pinta.
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Celda from '$lib/rediseno/Celda.svelte';
+	import CeldaVolt from '$lib/rediseno/CeldaVolt.svelte';
 	import Numero from '$lib/rediseno/Numero.svelte';
 	import Marco from '$lib/rediseno/Marco.svelte';
 	import '$lib/rediseno/tokens.css';
@@ -319,7 +318,7 @@
 			</div>
 		</Celda>
 
-		<!-- 3/4/4/5 NO se usa: es el rincón de Volt (placa de 112 px + globo). -->
+		<CeldaVolt />
 	</Bento>
 </Marco>
 

@@ -12,7 +12,7 @@
 <script lang="ts">
 	// Uso de las apps (Admon y Field), en la retícula bento.
 	//
-	// Cuatro piezas en once celdas (la 12.ª es el rincón de Volt):
+	// Cuatro piezas en once celdas (la 12.ª es la celda de Volt):
 	//   · ancla 2×2: la app más usada, con sus llamadas
 	//   · lista 2×2: quiénes son los que más la usan
 	//   · serie 2×1: llamadas por app (barras)
@@ -30,12 +30,13 @@
 	//     la cifra chica es «usuarios activos» (distintos en 7 días), que es
 	//     el otro dato real del endpoint.
 	//
-	// RESERVA DE VOLT: la celda 3/4/4/5 (la esquina inferior derecha) no se
-	// usa. La placa mide 112 px a 18 px del borde y su globo se apila encima;
-	// al no dibujar nada ahí, no tapan ningún dato.
+	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// `<CeldaVolt />` con las últimas tres notificaciones. Antes estaba
+	// reservada al personaje flotante; ahora cierra la retícula.
 	import { onMount } from 'svelte';
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Celda from '$lib/rediseno/Celda.svelte';
+	import CeldaVolt from '$lib/rediseno/CeldaVolt.svelte';
 	import Marco from '$lib/rediseno/Marco.svelte';
 	import '$lib/rediseno/tokens.css';
 	import { relojKiosco } from '$lib/rediseno/relojKiosco.svelte';
@@ -351,7 +352,7 @@
 			</div>
 		</Celda>
 
-		<!-- 3/4/4/5 NO se usa: es el rincón de Volt (placa de 112 px + globo). -->
+		<CeldaVolt />
 	</Bento>
 </Marco>
 

@@ -2,22 +2,26 @@
 	// Pie del marco: la línea de Volt a la izquierda y la versión a la
 	// derecha. 42 px de alto y 20 px de letra (nada baja de 20 px).
 	//
-	// No llega hasta el borde derecho: el último tramo es el cuadro que
-	// Volt ocupa en su esquina, así que el pie termina antes. Es el único
-	// elemento del marco que se mete hacia dentro por ese motivo.
+	// Ya no reserva el rincón derecho: el personaje flotante se retiró y su
+	// hueco lo ocupa la celda `CeldaVolt` dentro de la retícula. La portada
+	// pasa `sinVolt`, porque ahí Volt no aparece en ninguna parte.
 	import { APP_VERSION } from '$lib/shell.js';
 
 	interface Props {
 		/** Lo que dice Volt. Puede venir vacío: entonces solo firma. */
 		linea: string;
+		/** Sin la firma de Volt (portada). Queda solo la versión. */
+		sinVolt?: boolean;
 	}
-	let { linea }: Props = $props();
+	let { linea, sinVolt = false }: Props = $props();
 </script>
 
 <footer class="pie">
-	<span class="volt">
-		— <b>Volt</b>{#if linea}: {linea}{/if}
-	</span>
+	{#if !sinVolt}
+		<span class="volt">
+			— <b>Volt</b>{#if linea}: {linea}{/if}
+		</span>
+	{/if}
 	<span class="fin">ECCSA · Centro de Operaciones · v{APP_VERSION}</span>
 </footer>
 
@@ -28,9 +32,7 @@
 		display: flex;
 		align-items: center;
 		gap: 14px;
-		/* 32 px de margen + el cuadro de Volt (148 px) y 12 px de aire:
-		   nada se dibuja bajo el personaje. */
-		padding: 0 calc(var(--k-volt, 148px) + 12px) 0 32px;
+		padding: 0 32px;
 		font-size: var(--k-f-strip);
 		font-weight: 600;
 		opacity: 0.62;

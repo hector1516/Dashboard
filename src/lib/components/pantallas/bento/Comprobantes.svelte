@@ -11,17 +11,16 @@
 	// 0-2 gris); el cerrado va atenuado con «✓ con foto». Así se lee como una
 	// bandeja de trabajo y no como un muro de la vergüenza.
 	//
-	// RESERVA DE VOLT: la celda 3/4/4/5 de la retícula (la esquina inferior
-	// derecha) no se usa. La placa de Volt mide 112 px y vive a 18 px del
-	// borde, y su globo se apila encima hasta ~250 px sobre el pie; por eso la
-	// lista acaba dos filas más arriba. Al no dibujar nada ahí, la placa y el
-	// globo no tapan ningún dato.
+	// CELDA DE VOLT: la 3/4/4/5 (la esquina inferior derecha) la ocupa
+	// `<CeldaVolt />` con las últimas tres notificaciones. Antes estaba
+	// reservada al personaje flotante; ahora cierra la retícula.
 	//
 	// Los datos salen del snapshot (`datos.pendientes`). El bloque es
 	// OPCIONAL: tras un deploy, el primer ciclo del snapshotter todavía no lo
 	// trae. Todo se lee con `?.` y con valores por defecto.
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Celda from '$lib/rediseno/Celda.svelte';
+	import CeldaVolt from '$lib/rediseno/CeldaVolt.svelte';
 	import Numero from '$lib/rediseno/Numero.svelte';
 	import Marco from '$lib/rediseno/Marco.svelte';
 	import '$lib/rediseno/tokens.css';
@@ -240,7 +239,7 @@
 			</div>
 		</Celda>
 
-		<!-- 3/4/4/5 NO se usa: es el rincón de Volt (placa de 112 px + globo). -->
+		<CeldaVolt />
 	</Bento>
 </Marco>
 
