@@ -1,10 +1,12 @@
 ﻿<script lang="ts">
 	// La celda que llena el hueco inferior derecho de la retícula: The Penguin
-	// y sus últimas tres notificaciones, cada una con su hora.
+	// (el robot 3D de Wobnimo) y sus últimas tres notificaciones, cada una con
+	// su hora.
 	//
-	// Es la ÚNICA representación de The Penguin en las pantallas del bento (el
-	// personaje 3D y el globo flotante se retiraron). Por eso la marca es el
-	// pingüino en un círculo naranja: pesa cero y no tapa nada.
+	// El personaje vive DENTRO de la celda, no en un dock fijo: se va con la
+	// pantalla y no tapa la retícula. Wobnimo no tiene pingüino, así que se
+	// monta el personaje `volt` y se sigue llamando The Penguin: es la mascota,
+	// no el modelo. Si el import o el montaje fallan, queda el 🐧 de respaldo.
 	//
 	// El historial lo llena `voltAviso.ts`: presencia, tickets, avisos del
 	// vigilante y «sin internet». Aquí sólo se pinta, sin peticiones propias.
@@ -25,15 +27,94 @@
 	let { area = '3/4/4/5', i = 9 }: Props = $props();
 
 	let avisos = $state<AvisoVolt[]>([]);
-	onMount(() => voltHistorial.subscribe((v) => (avisos = v)));
+	/** Caja donde Wobnimo crea su `<canvas>`. */
+	let escena: HTMLDivElement | null = $state(null);
+	/** El personaje 3D ya está montado: se esconde el 🐧 de respaldo. */
+	let montado = $state(false);
+
+	/** Instancia de Wobnimo (`mount()`): setState y dispose. */
+	type Mascota = { setState?: (estado: string) => void; dispose?: () => void };
+	let mascota: Mascota | null = null;
+	/** Vuelve a `idle` cuando termina de hablar. */
+	let regreso: ReturnType<typeof setTimeout> | null = null;
+
+	/** Lo último que se vio en el historial: una fila nueva dispara `speaking`. */
+	let visto: string | null = null;
+
+	function hablar() {
+		if (!mascota?.setState) return;
+		mascota.setState('speaking');
+		if (regreso) clearTimeout(regreso);
+		regreso = setTimeout(() => {
+			regreso = null;
+			mascota?.setState?.('idle');
+		}, 3200);
+	}
+
+	async function montarPersonaje() {
+		if (!escena) return;
+		// Se sirve del propio contenedor (`static/vendor`), no de un CDN: la
+		// regla del kiosco es no depender de internet. El `@vite-ignore` deja
+		// la URL literal para que Vite no intente empaquetarla.
+		const base = '/vendor/wobnimo';
+		try {
+			const [wobnimo, voltModule] = await Promise.all([
+				import(/* @vite-ignore */ `${base}/wobnimo.js`),
+				import(/* @vite-ignore */ `${base}/characters/volt.js`)
+			]);
+			if (!escena || !wobnimo?.mount || !voltModule?.volt) return;
+			const instancia = wobnimo.mount(escena, voltModule.volt) as Mascota;
+			// La celda pudo desmontarse mientras cargaba el módulo.
+			if (!escena?.isConnected) {
+				instancia.dispose?.();
+				return;
+			}
+			mascota = instancia;
+			instancia.setState?.('idle');
+			montado = true;
+		} catch (e) {
+			// Sin personaje 3D la celda no queda vacía: sigue el 🐧.
+			console.error('The Penguin 3D no cargó; queda el 🐧 de respaldo', e);
+		}
+	}
+
+	onMount(() => {
+		const soltar = voltHistorial.subscribe((v) => {
+			avisos = v;
+			const frente = v[0];
+			const marca = frente ? `${frente.hora}·${frente.texto}` : '';
+			// La primera foto es lo que ya había al entrar: no se habla. A
+			// partir de ahí, cualquier fila nueva (o el primero que llega a una
+			// lista vacía) pone al personaje a hablar.
+			if (visto === null) {
+				visto = marca;
+				return;
+			}
+			if (marca && marca !== visto) hablar();
+			visto = marca;
+		});
+
+		void montarPersonaje();
+
+		return () => {
+			soltar();
+			if (regreso) clearTimeout(regreso);
+			mascota?.dispose?.();
+			mascota = null;
+		};
+	});
 </script>
 
 <Celda {area} {i} rotulo="The Penguin · últimas notificaciones">
 	<div class="volt">
-		<div class="marca" aria-hidden="true">
-			<!-- La marca de The Penguin: el emoji 🐧 dentro del círculo
-			     naranja. Sin rayos. -->
-			<span class="pinguino">🐧</span>
+		<!-- El personaje a la izquierda. `aria-hidden`: es la mascota, no un
+		     dato; lo que se lee son los avisos de la derecha. -->
+		<div class="escena" aria-hidden="true">
+			<div class="personaje" bind:this={escena}></div>
+			{#if !montado}
+				<!-- Respaldo: si Wobnimo no carga queda el 🐧, no un hueco. -->
+				<div class="marca"><span class="pinguino">🐧</span></div>
+			{/if}
 		</div>
 
 		{#if avisos.length === 0}
@@ -55,20 +136,48 @@
 </Celda>
 
 <style>
+	/* Personaje a la izquierda y avisos a la derecha, en la misma fila. La
+	   celda 1×1 mide ~446×289 con 24/28 de relleno: quedan ~208 px de alto,
+	   sitio de sobra para 112 px de personaje y tres filas de 20 px. */
 	.volt {
 		flex: 1;
 		min-height: 0;
 		display: flex;
-		flex-direction: column;
-		gap: 6px;
+		flex-direction: row;
+		align-items: flex-start;
+		gap: 16px;
 	}
 
-	/* El pingüino en un círculo naranja de marca. Con 30 px deja sitio a
-	   las tres filas: la celda 1×1 mide ~289 px de alto. */
+	/* La caja del personaje. 112 px, como la placa que tenía en el dock, y
+	   nunca se estira ni se encoge: si el contenido aprieta, se recorta la
+	   lista (con elipsis), no la letra. */
+	.escena {
+		position: relative;
+		flex: 0 0 112px;
+		width: 112px;
+		height: 112px;
+		border-radius: 24px;
+		background: radial-gradient(circle at 50% 38%, #eef2fb 0%, #f7f8fc 62%, rgba(18, 20, 26, 0.03) 100%);
+		overflow: hidden;
+	}
+	.personaje {
+		position: absolute;
+		inset: 0;
+	}
+	/* El canvas de Wobnimo ya llena la caja; sin interacción: la TV no tiene
+	   ratón y el personaje no debe robar clics. */
+	.personaje :global(canvas) {
+		pointer-events: none;
+	}
+
+	/* Respaldo: el pingüino en un círculo naranja de marca, centrado en la
+	   misma caja. */
 	.marca {
-		width: 30px;
-		height: 30px;
-		flex: 0 0 30px;
+		position: absolute;
+		inset: 0;
+		margin: auto;
+		width: 78px;
+		height: 78px;
 		border-radius: 50%;
 		background: var(--k-rojo);
 		color: var(--k-tinta);
@@ -78,23 +187,24 @@
 		box-shadow: 0 2px 0 rgba(18, 20, 26, 0.08);
 	}
 	.pinguino {
-		font-size: 20px;
+		font-size: 40px;
 		line-height: 1;
 	}
 
 	.lista {
 		flex: 1;
+		min-width: 0;
 		min-height: 0;
 		display: flex;
 		flex-direction: column;
-		justify-content: flex-start;
+		justify-content: center;
 		gap: 0;
 	}
 	.fila {
 		display: flex;
 		align-items: flex-start;
-		gap: 12px;
-		padding: 4px 0;
+		gap: 10px;
+		padding: 5px 0;
 		border-bottom: 1px solid rgba(18, 20, 26, 0.08);
 	}
 	.fila:last-child {
@@ -125,6 +235,8 @@
 	}
 
 	.sin-avisos {
+		flex: 1;
+		min-width: 0;
 		margin: auto 0;
 		display: flex;
 		flex-direction: column;
