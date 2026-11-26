@@ -110,6 +110,25 @@ export interface Aniversariero {
 	foto?: string | null;
 }
 
+/**
+ * Celebración RODANTE: la próxima vez que cae, caiga en el mes que caiga.
+ * La calcula el backend en `celebraciones()` y el snapshotter le pega la foto.
+ */
+export interface ProximoCumple {
+	nombre: string;
+	/** Ruta local de la foto real; `null` si la persona no tiene. */
+	foto: string | null;
+	/** `YYYY-MM-DD` de la próxima ocurrencia. */
+	fecha: string;
+	/** Días que faltan desde el día del snapshot (0 = hoy). */
+	dias: number;
+}
+
+/** Igual que `ProximoCumple`, más los años que cumple en esa fecha. */
+export interface ProximoAniversario extends ProximoCumple {
+	anos: number;
+}
+
 export interface LegendRow {
 	id_usuario?: number;
 	nombre: string;
@@ -210,8 +229,22 @@ export interface Snapshot {
 
 	notas: Nota[];
 
-	cumpleanos: { hoy: Cumpleanero[]; del_mes: Cumpleanero[] };
-	aniversarios: { hoy: Aniversariero[]; del_mes: Aniversariero[] };
+	/**
+	 * Celebraciones. Las listas `proximos_*` son OPCIONALES: el snapshot en
+	 * disco se sirve tal cual vino y uno viejo no las trae (o el bloque cayó).
+	 */
+	cumpleanos: {
+		hoy: Cumpleanero[];
+		del_mes: Cumpleanero[];
+		proximos_cumpleanos?: ProximoCumple[];
+	};
+	aniversarios: {
+		hoy: Aniversariero[];
+		del_mes: Aniversariero[];
+		proximos_aniversarios?: ProximoAniversario[];
+	};
+	/** Personas activas de la plantilla (ancla de la pantalla Equipo). */
+	equipo?: { personas: number | null };
 
 	cotizaciones_lista: CotizacionLista;
 

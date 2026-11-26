@@ -91,6 +91,9 @@ def _sin_datos() -> dict:
         # `pendientes` se omite a propósito: un bloque con ceros se leería como
         # «Todo al día» cuando en realidad no se sabe nada. El front lo trata
         # como opcional y pinta «—».
+        # Por lo mismo no van `equipo` ni las listas rodantes
+        # (`proximos_cumpleanos` / `proximos_aniversarios`): un 0 de plantilla o
+        # una lista vacía se leerían como «no hay nadie», y aquí no se sabe.
         "imagen": {"hay": False},
         "fondos": [],
         "eventos": [],

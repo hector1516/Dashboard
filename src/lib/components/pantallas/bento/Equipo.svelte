@@ -1,49 +1,49 @@
 <script lang="ts">
-	// Equipo, en la retícula bento: cuántos andan en ECCSA Legends y quién
-	// celebra algo este mes.
+	// Equipo, en la retícula bento: cuánta gente hay, quién juega Legends y
+	// quién celebra algo, en cualquier mes.
 	//
-	// Cuatro celdas: el ancla con el número de participantes; la lista con los
-	// cumpleaños del mes (con foto); una banda 2×1 con los aniversarios y una
-	// cifra chica con los ingresos del mes.
+	// Cuatro celdas:
+	//   · ancla 2×2 → personas activas y la línea de ECCSA Legends;
+	//   · lista 2×2 → TODOS los integrantes de Legends con sus puntos (la
+	//     tabla se corta en 8 y dice «+N más»);
+	//   · dos 1×1   → los próximos cumpleaños y los próximos aniversarios.
 	//
-	// RESERVA DE VOLT: la celda 3/4/4/5 (la esquina inferior derecha) NO se
-	// usa. Sin dibujar nada ahí, la placa y el globo no tapan ningún dato.
+	// Las celebraciones son RODANTES (`proximos_cumpleanos` y
+	// `proximos_aniversarios` del snapshot): los 3 más cercanos, cuente el mes
+	// que cuente. Antes esta pantalla enseñaba el mes en curso y en noviembre
+	// —que no cumple nadie— quedaba vacía once meses al año. Un cumpleaños de
+	// enero se anuncia en diciembre, que es cuando sirve.
 	//
-	// El plan pedía dos 1×1 (aniversarios y nuevos), pero eso dejaba una celda
-	// vacía en 3/3/4/4 —un hueco visible que no es el rincón de Volt—. Con 11
-	// celdas disponibles, los aniversarios van en 2×1: así el dato tiene sitio
-	// para tres nombres y se llena la banda inferior.
+	// RESERVA DE VOLT: la esquina inferior derecha (3/3 y 3/4 de la retícula)
+	// NO se usa. Sin dibujar nada ahí, la placa y el globo no tapan ningún
+	// dato; el hueco es a propósito y no un hueco olvidado.
 	//
-	// Los datos salen del snapshot (`datos.legends`, `datos.cumpleanos` y
-	// `datos.aniversarios`). El bloque de celebraciones puede venir vacío sin
-	// que eso signifique un error: en noviembre no siempre cumple nadie. Se
-	// dice «sin cumpleaños» en vez de inventar uno.
+	// Los bloques pueden venir vacíos o no venir: `proximos_*` es opcional
+	// porque el snapshot en disco puede ser de antes del cambio. Se dice «sin
+	// datos» en vez de inventar un cero o un cumpleaños.
 	import Bento from '$lib/rediseno/Bento.svelte';
 	import Celda from '$lib/rediseno/Celda.svelte';
 	import Numero from '$lib/rediseno/Numero.svelte';
 	import Marco from '$lib/rediseno/Marco.svelte';
 	import '$lib/rediseno/tokens.css';
 	import { relojKiosco } from '$lib/rediseno/relojKiosco.svelte';
-	import { iniciales, nombreMes } from '$lib/kiosk/format';
+	import { iniciales } from '$lib/kiosk/format';
+	import type { ProximoAniversario, ProximoCumple } from '$lib/kiosk/types';
 
-	interface Cumple {
-		Nombre?: string;
-		dia?: number | null;
-		mes?: number | null;
-		edad?: number | null;
+	interface FilaRank {
+		id_usuario?: number;
+		nombre?: string;
+		nickname?: string;
+		puntos_semana?: number | null;
+		puntos_temporada?: number | null;
 		avatar?: string | null;
-		foto?: string | null;
 	}
-	interface Aniv {
-		Nombre?: string;
-		dia?: number | null;
-		anos?: number | null;
-		avatar?: string | null;
-		foto?: string | null;
-	}
+
+	/** Cuántos caben en la celda antes de resumir; el resto va en «+N más». */
+	const TOPE_RANKING = 8;
 
 	interface Props {
-		/** Snapshot del kiosco. Solo se leen `legends`, `cumpleanos` y `aniversarios`. */
+		/** Snapshot del kiosco. Solo se leen `equipo`, `legends` y celebraciones. */
 		datos?: any;
 		/** Hora `HH:MM` ya formateada. Sin ella la toma del reloj. */
 		reloj?: string;
@@ -67,92 +67,51 @@
 
 	const cargando = $derived((datos?.degradado ?? []).includes('cargando'));
 
-	// ── Legends: cuántos andan en el equipo ──────────────────────
+	// ── Ancla: cuánta gente activa hay ───────────────────────────
+	const eq = $derived(datos?.equipo ?? null);
+	const personas = $derived(aNumero(eq?.personas));
+
+	// ── Legends: participantes y tabla completa ──────────────────
 	const lg = $derived(datos?.legends ?? null);
 	const sinLegends = $derived(!lg || cargando);
-	const ranking = $derived(Array.isArray(lg?.ranking) ? lg.ranking : []);
-	// `participantes` es el conteo que publica el backend. Si el snapshot es
-	// viejo y no lo trae, se cuenta el ranking, que es la misma lista.
+	const ranking = $derived(
+		(Array.isArray(lg?.ranking) ? (lg.ranking as FilaRank[]) : []).filter(Boolean)
+	);
+	// `participantes` lo publica el backend; si el snapshot es viejo y no lo
+	// trae, se cuenta el ranking, que es la misma lista.
 	const participantes = $derived(aNumero(lg?.participantes) ?? ranking.length);
 	const puntos = $derived(aNumero(lg?.total_puntos));
+	const filasRank = $derived(ranking.slice(0, TOPE_RANKING));
+	const masRank = $derived(Math.max(0, ranking.length - filasRank.length));
 
-	// ── Celebraciones del mes ────────────────────────────────────
-	const hayBloque = $derived(!!datos?.cumpleanos && !!datos?.aniversarios && !cargando);
+	// ── Celebraciones rodantes ───────────────────────────────────
+	// `undefined` = el snapshot no trae la lista (es opcional y puede ser de
+	// antes del cambio). `[]` = la trae y no hay nadie. No es lo mismo.
+	const crudoCumples = $derived(datos?.cumpleanos?.proximos_cumpleanos);
+	const crudoAnivs = $derived(datos?.aniversarios?.proximos_aniversarios);
+	const hayCumples = $derived(Array.isArray(crudoCumples));
+	const hayAnivs = $derived(Array.isArray(crudoAnivs));
 	const cumples = $derived(
-		(hayBloque && Array.isArray(datos.cumpleanos.del_mes)
-			? (datos.cumpleanos.del_mes as Cumple[])
-			: []
-		).filter(Boolean)
+		(hayCumples ? (crudoCumples as ProximoCumple[]) : []).filter(Boolean).slice(0, 3)
 	);
-	const todosAnivs = $derived(
-		(hayBloque && Array.isArray(datos.aniversarios.del_mes)
-			? (datos.aniversarios.del_mes as Aniv[])
-			: []
-		).filter(Boolean)
-	);
-	/**
-	 * «Nuevos del mes» son los ingresos de este mes. En `aniversarios.del_mes`
-	 * llegan con `anos: 0` porque su `FechaIngreso` cae en el mes en curso; es
-	 * el mismo dato que el backend ya calcula, no se inventa un conteo nuevo.
-	 */
-	const nuevos = $derived(
-		todosAnivs.filter((a) => a?.anos != null && Number(a.anos) === 0)
-	);
-	/**
-	 * Un ingreso de este mes NO es un aniversario: `anos: 0` es su primer mes,
-	 * no un año cumplido. Si contara aquí, la misma persona saldría dos veces
-	 * («3 aniversarios» con una fila «nuevo» al lado). Se queda solo en
-	 * «Nuevos del mes».
-	 */
 	const anivs = $derived(
-		todosAnivs.filter((a) => a?.anos != null && Number(a.anos) > 0)
+		(hayAnivs ? (crudoAnivs as ProximoAniversario[]) : []).filter(Boolean).slice(0, 3)
 	);
-
-	/**
-	 * El mes y el día salen del MISMO instante que el bloque: `generado_en`.
-	 * La lista la calcula SQL con el reloj del servidor al armar el snapshot;
-	 * con el reloj del navegador, el día 1 (o con un snapshot viejo) la
-	 * pantalla rotularía «diciembre» sobre la lista de noviembre.
-	 */
-	const sello = $derived(instanteDeSnapshot(datos?.generado_en, datos?.cumpleanos?.del_mes));
-
-	function instanteDeSnapshot(
-		iso: unknown,
-		cumples: unknown
-	): { mes: number | null; dia: number | null } {
-		const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? ''));
-		if (m) {
-			const mes = Number(m[2]);
-			const dia = Number(m[3]);
-			if (mes >= 1 && mes <= 12) return { mes, dia: dia >= 1 && dia <= 31 ? dia : null };
-		}
-		// Sin `generado_en` legible (snapshot manipulado en pruebas): el mes de
-		// los propios cumpleaños es el del bloque; el día no se puede afirmar.
-		const deLista = Array.isArray(cumples) ? Number((cumples[0] as Cumple)?.mes) : NaN;
-		return {
-			mes: Number.isFinite(deLista) && deLista >= 1 && deLista <= 12 ? deLista : null,
-			dia: null
-		};
-	}
-
-	const mes = $derived(
-		sello.mes ? nombreMes(new Date(2026, sello.mes - 1, 1)).toLowerCase() : ''
-	);
-	const mesCorto = $derived(mes.slice(0, 3));
-	/** «en noviembre» o «este mes» si el snapshot no deja afirmar cuál es. */
-	const enMes = $derived(mes ? `en ${mes}` : 'este mes');
-
-	const enLista = $derived(cumples.slice(0, 4));
-	const masCumples = $derived(Math.max(0, cumples.length - enLista.length));
-	const anivLista = $derived(anivs.slice(0, 3));
-	const masAnivs = $derived(Math.max(0, anivs.length - anivLista.length));
 
 	const entero = (n: number) => String(Math.round(n));
-	const miles = (n: number) => Math.round(n).toLocaleString('es-MX');
+	const miles = (n: number | null) => (n == null ? '—' : Math.round(n).toLocaleString('es-MX'));
 
-	/** `dia` del bloque contra el día del snapshot: solo para el rótulo «hoy». */
-	function esHoy(dia: unknown): boolean {
-		return dia != null && sello.dia != null && Number(dia) === sello.dia;
+	/** «hoy» o «en N días». El día 0 se dice hoy, no «en 0 días». */
+	function cuando(dias: unknown): string {
+		const d = Math.max(0, Math.round(Number(dias ?? 0) || 0));
+		if (d === 0) return 'hoy';
+		return d === 1 ? 'en 1 día' : `en ${d} días`;
+	}
+
+	/** «1 año» / «5 años», sin NaN si el snapshot trae basura. */
+	function anosTexto(n: unknown): string {
+		const a = Math.max(0, Math.round(Number(n ?? 0) || 0));
+		return a === 1 ? '1 año' : `${a} años`;
 	}
 
 	// Reloj, fecha y antigüedad: el mismo módulo en todas las pantallas bento.
@@ -160,16 +119,23 @@
 
 	const linea = $derived(volt ?? frase());
 	function frase(): string {
-		if (sinLegends) return 'El snapshot todavía no trae al equipo; no invento un cero.';
-		const c = cumples.length;
-		const nv = nuevos.length;
-		const partes: string[] = [];
-		if (c) partes.push(c === 1 ? `un cumpleaños ${enMes}` : `${c} cumpleaños ${enMes}`);
-		if (nv) partes.push(nv === 1 ? 'un ingreso nuevo' : `${nv} ingresos nuevos`);
-		if (!partes.length) {
-			return `Sin cumpleaños ni ingresos ${enMes}; ${participantes} en ECCSA Legends.`;
+		if (personas == null && sinLegends) {
+			return 'El snapshot todavía no trae al equipo; no invento un cero.';
 		}
-		return `${partes.join(' y ')}; ${participantes} en ECCSA Legends.`;
+		const partes: string[] = [];
+		if (personas != null) {
+			partes.push(
+				personas === 1 ? '1 persona activa' : `${personas} personas activas`
+			);
+		}
+		if (!sinLegends) {
+			partes.push(
+				participantes === 1
+					? '1 en ECCSA Legends'
+					: `${participantes} en ECCSA Legends`
+			);
+		}
+		return `${partes.join(' · ')}.`;
 	}
 </script>
 
@@ -184,137 +150,146 @@
 	degradado={datos?.degradado ?? []}
 >
 	<Bento>
-		<!-- Ancla 2×2: cuántos andan en Legends y cuánto suman esta semana. -->
+		<!-- Ancla 2×2: cuántas personas activas hay y cuántas juegan Legends. -->
 		<Celda area="1/1/3/3" tono="dark" rotulo="En el equipo" i={0}>
 			<div class="cuerpo centro">
-				{#if sinLegends}
+				{#if personas == null}
 					<div class="cifra sin">—</div>
 					<div class="sub">sin datos del snapshot</div>
 				{:else}
-					<div class="cifra ancla"><Numero valor={participantes} formato={entero} /></div>
-					<div class="sub"><b>en ECCSA Legends</b></div>
-					{#if puntos != null && puntos > 0}
-						<div class="delta">{miles(puntos)} pts <span>esta semana</span></div>
+					<div class="cifra ancla"><Numero valor={personas} formato={entero} /></div>
+					<div class="sub">
+						<b>{personas === 1 ? 'persona activa' : 'personas activas'}</b>
+					</div>
+				{/if}
+				<!-- La línea de Legends, siempre; sin bloque se dice, no se deja vacía. -->
+				<div class="delta" class:vacio={sinLegends}>
+					{#if sinLegends}
+						<span>sin datos de ECCSA Legends</span>
 					{:else}
-						<div class="delta neutro"><span>sin puntos esta semana</span></div>
+						<b>{participantes}</b>
+						<span>en ECCSA Legends</span>
+						{#if puntos != null && puntos > 0}
+							<span>· {miles(puntos)} pts esta semana</span>
+						{/if}
 					{/if}
+				</div>
+			</div>
+		</Celda>
+
+		<!-- Tabla 2×2: todos los integrantes de Legends, con sus puntos. -->
+		<Celda area="1/3/3/5" rotulo="ECCSA Legends · semana" i={1}>
+			<div class="rank">
+				{#if sinLegends}
+					<div class="sin-filas">
+						<b>Sin datos todavía</b>
+						<span>El snapshot no trae el bloque de ECCSA Legends.</span>
+					</div>
+				{:else if filasRank.length === 0}
+					<div class="sin-filas">
+						<b>Sin participantes</b>
+						<span>Nadie de la plantilla juega ECCSA Legends todavía.</span>
+					</div>
+				{:else}
+					<div class="rank-lista">
+						{#each filasRank as r, i (r.id_usuario ?? i)}
+							<div class="r-fila">
+								<span class="pos">{i + 1}</span>
+								<b class="nom">{r.nombre || r.nickname || 'Sin nombre'}</b>
+								<span class="pts">
+									{aNumero(r.puntos_semana) == null ? '—' : miles(aNumero(r.puntos_semana))}
+									<small>pts</small>
+								</span>
+							</div>
+						{/each}
+						{#if masRank > 0}
+							<div class="r-mas">+{masRank} más</div>
+						{/if}
+					</div>
+					<div class="rank-pie">
+						{participantes}
+						{participantes === 1 ? 'participante' : 'participantes'}{#if puntos != null && puntos > 0}
+							· {miles(puntos)} pts en la semana{/if}
+					</div>
 				{/if}
 			</div>
 		</Celda>
 
-		<!-- Lista 2×2: los cumpleaños del mes, con foto y día. -->
-		<Celda area="1/3/3/5" rotulo={mes ? `Cumpleaños · ${mes}` : 'Cumpleaños'} i={1}>
-			<div class="lista">
-				{#if enLista.length === 0}
+		<!-- 1×1: los 3 cumpleaños más cercanos, sin importar el mes. -->
+		<Celda area="3/1/4/2" rotulo="Próximos cumpleaños" i={2}>
+			<div class="pers">
+				{#if !hayCumples}
 					<div class="sin-filas">
-						<b>{hayBloque ? `Sin cumpleaños ${enMes}` : 'Sin datos todavía'}</b>
-						<span>
-							{hayBloque
-								? 'El snapshot no trae cumpleaños este mes.'
-								: 'El snapshot no trae el bloque de celebraciones.'}
-						</span>
+						<b>Sin datos todavía</b>
+						<span>El snapshot no trae las próximas fechas.</span>
+					</div>
+				{:else if cumples.length === 0}
+					<div class="sin-filas">
+						<b>Sin fechas</b>
+						<span>Ninguna persona activa tiene fecha de nacimiento.</span>
 					</div>
 				{:else}
-					{#each enLista as c, i (i)}
-						<div class="fila">
+					{#each cumples as p, i (p.nombre + i)}
+						<div class="p-fila">
 							<div class="ava" aria-hidden="true">
-								<span>{iniciales(c?.Nombre)}</span>
-								{#if c?.foto ?? c?.avatar}
+								<span>{iniciales(p.nombre)}</span>
+								{#if p.foto}
 									<img
-										src={c.foto ?? c.avatar ?? ''}
+										src={p.foto}
 										alt=""
 										onerror={(e) => (e.currentTarget as HTMLImageElement).remove()}
 									/>
 								{/if}
 							</div>
 							<div class="quien">
-								<b>{c?.Nombre || 'Sin nombre'}</b>
-								<span>
-									{#if esHoy(c?.dia)}
-										<em class="hoy">hoy</em>
-									{/if}
-									{#if c?.edad != null}
-										cumple {c.edad}
-									{:else}
-										cumpleaños
-									{/if}
-								</span>
-							</div>
-							<div class="dia" class:hoy={esHoy(c?.dia)}>
-								<b>{c?.dia ?? '—'}</b><span>{mesCorto}</span>
+								<b>{p.nombre || 'Sin nombre'}</b>
+								<span class:hoy={Number(p.dias) === 0}>{cuando(p.dias)}</span>
 							</div>
 						</div>
 					{/each}
-					{#if masCumples > 0}
-						<div class="mas-fila">+{masCumples} más {enMes}</div>
-					{/if}
 				{/if}
 			</div>
 		</Celda>
 
-		<!-- Aniversarios 2×1: cuántos años cumplen y quiénes (solo `anos > 0`). -->
-		<Celda area="3/1/4/3" rotulo={mes ? `Aniversarios · ${mes}` : 'Aniversarios'} i={2}>
-			<div class="cuerpo">
-				{#if !hayBloque}
-					<div class="cifra sin">—</div>
-					<div class="sub">sin datos del snapshot</div>
+		<!-- 1×1: los 3 aniversarios más cercanos (sólo años cumplidos). -->
+		<Celda area="3/2/4/3" rotulo="Próximos aniversarios" i={3}>
+			<div class="pers">
+				{#if !hayAnivs}
+					<div class="sin-filas">
+						<b>Sin datos todavía</b>
+						<span>El snapshot no trae las próximas fechas.</span>
+					</div>
+				{:else if anivs.length === 0}
+					<div class="sin-filas">
+						<b>Sin fechas</b>
+						<span>Nadie con un año cumplido tiene fecha de ingreso.</span>
+					</div>
 				{:else}
-					<div class="aniv">
-						<div class="aniv-cifra">
-							<div class="cifra">{anivs.length}</div>
-							<div class="sub">
-								{#if anivs.length === 1}
-									aniversario {enMes}
-								{:else}
-									aniversarios {enMes}
+					{#each anivs as a, i (a.nombre + i)}
+						<div class="p-fila">
+							<div class="ava" aria-hidden="true">
+								<span>{iniciales(a.nombre)}</span>
+								{#if a.foto}
+									<img
+										src={a.foto}
+										alt=""
+										onerror={(e) => (e.currentTarget as HTMLImageElement).remove()}
+									/>
 								{/if}
 							</div>
+							<div class="quien">
+								<b>{a.nombre || 'Sin nombre'}</b>
+								<span class:hoy={Number(a.dias) === 0}>
+									{anosTexto(a.anos)} · {cuando(a.dias)}
+								</span>
+							</div>
 						</div>
-						<div class="aniv-lista">
-							{#if anivLista.length === 0}
-								<div class="sin-aniv">sin aniversarios este mes</div>
-							{:else}
-								{#each anivLista as a, i (i)}
-									<div class="mini">
-										<b>{a?.Nombre || 'Sin nombre'}</b>
-										<span>
-											{a?.dia ?? '—'} {mesCorto}{#if a?.anos != null}
-												· <em>{a.anos} años</em>{/if}
-										</span>
-									</div>
-								{/each}
-								{#if masAnivs > 0}
-									<div class="mas-fila">+{masAnivs} más</div>
-								{/if}
-							{/if}
-						</div>
-					</div>
+					{/each}
 				{/if}
 			</div>
 		</Celda>
 
-		<!-- Cifra 1×1: ingresos de este mes (aniversarios de 0 años). -->
-		<Celda area="3/3/4/4" rotulo="Nuevos del mes" i={3}>
-			<div class="cuerpo">
-				{#if !hayBloque}
-					<div class="cifra sin">—</div>
-					<div class="sub">sin datos del snapshot</div>
-				{:else}
-					<div class="cifra">{nuevos.length}</div>
-					<div class="sub">
-						{#if nuevos.length === 0}
-							sin ingresos {enMes}
-						{:else if nuevos.length === 1}
-							ingreso {enMes}
-						{:else}
-							ingresos {enMes}
-						{/if}
-					</div>
-				{/if}
-			</div>
-		</Celda>
-
-		<!-- 3/4/4/5 NO se usa: es el rincón de Volt (placa de 112 px + globo). -->
+		<!-- 3/3 y 3/4 NO se usan: es el rincón de Volt (placa de 112 px + globo). -->
 	</Bento>
 </Marco>
 
@@ -363,45 +338,116 @@
 
 	.delta {
 		display: flex;
-		align-items: center;
-		gap: 10px;
-		font-size: 20px;
-		font-weight: 800;
+		align-items: baseline;
+		flex-wrap: wrap;
+		gap: 8px;
+		font-size: 22px;
+		font-weight: 700;
 		color: #7fe3cf;
 	}
-	.delta.neutro {
-		color: #f7f3ea;
+	.delta b {
+		font-weight: 900;
 	}
 	.delta span {
 		font-weight: 600;
-		opacity: 0.6;
+		color: #f7f3ea;
+		opacity: 0.72;
+	}
+	.delta.vacio span {
+		color: #f7f3ea;
+		opacity: 0.45;
 	}
 
-	/* ── lista de cumpleaños ──────────────────────────────────── */
-	.lista {
+	/* ── tabla de ECCSA Legends ───────────────────────────────── */
+	.rank {
 		flex: 1;
 		min-height: 0;
 		display: flex;
 		flex-direction: column;
+		justify-content: center;
+		gap: 8px;
 	}
-	.fila {
-		flex: 1 1 0;
-		max-height: 116px;
-		min-height: 0;
+	.rank-lista {
+		display: flex;
+		flex-direction: column;
+	}
+	/* Filas compactas de 26 px: 8 caben sin scroll y se leen de un vistazo. */
+	.r-fila {
+		height: 26px;
+		flex: 0 0 26px;
 		display: flex;
 		align-items: center;
-		gap: 18px;
-		padding: 8px 0;
-		border-bottom: 1px solid rgba(18, 20, 26, 0.08);
+		gap: 14px;
+		border-bottom: 1px solid rgba(18, 20, 26, 0.07);
+		font-size: 21px;
 	}
-	.fila:last-child {
+	.r-fila:last-child {
 		border-bottom: 0;
+	}
+	.pos {
+		flex: 0 0 22px;
+		text-align: right;
+		font-weight: 700;
+		opacity: 0.35;
+		font-variant-numeric: tabular-nums;
+	}
+	.nom {
+		flex: 1;
+		min-width: 0;
+		font-weight: 800;
+		letter-spacing: -0.2px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.pts {
+		flex: 0 0 auto;
+		font-weight: 900;
+		font-variant-numeric: tabular-nums;
+		letter-spacing: -0.4px;
+	}
+	.pts small {
+		/* 20 px: en este sistema nada baja de ahí (se lee a 3 m). */
+		font-size: 20px;
+		font-weight: 700;
+		opacity: 0.55;
+		margin-left: 2px;
+	}
+	.r-mas {
+		height: 26px;
+		display: flex;
+		align-items: center;
+		font-size: 20px;
+		font-weight: 700;
+		opacity: 0.5;
+	}
+	/* La suma de la semana: contexto de los puntos de arriba, no otra cifra. */
+	.rank-pie {
+		font-size: 20px;
+		font-weight: 600;
+		opacity: 0.45;
+	}
+
+	/* ── cumpleaños y aniversarios (1×1) ─────────────────────── */
+	.pers {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		gap: 6px;
+	}
+	.p-fila {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		min-width: 0;
 	}
 	.ava {
 		position: relative;
-		width: 68px;
-		height: 68px;
-		flex: 0 0 68px;
+		width: 44px;
+		height: 44px;
+		flex: 0 0 44px;
 		border-radius: 50%;
 		background: #e6ddcd;
 		color: #6d6455;
@@ -409,7 +455,8 @@
 		align-items: center;
 		justify-content: center;
 		overflow: hidden;
-		font-size: 26px;
+		/* 20 px: el mínimo de letra del sistema, también en las iniciales. */
+		font-size: 20px;
 		font-weight: 900;
 		letter-spacing: 0.5px;
 	}
@@ -426,60 +473,33 @@
 		min-width: 0;
 		display: flex;
 		flex-direction: column;
+		gap: 1px;
 	}
 	.quien b {
-		font-size: 30px;
+		font-size: 23px;
 		font-weight: 800;
-		letter-spacing: -0.4px;
+		letter-spacing: -0.3px;
+		line-height: 1.15;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 	.quien span {
-		font-size: 21px;
+		font-size: 20px;
 		font-weight: 600;
 		opacity: 0.55;
+		line-height: 1.15;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
-	/* El día, en columna: el número se lee desde el otro lado del pasillo. */
-	.dia {
-		flex: 0 0 auto;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		min-width: 74px;
-	}
-	.dia b {
-		font-size: 44px;
-		font-weight: 900;
-		line-height: 0.9;
-		letter-spacing: -1.5px;
-		font-variant-numeric: tabular-nums;
-	}
-	.dia span {
-		font-size: 20px;
-		font-weight: 700;
-		letter-spacing: 1.2px;
-		text-transform: uppercase;
-		opacity: 0.45;
-	}
-	/* Hoy sí se pinta en rojo: es el único cumpleaños que cambia de un día a otro. */
-	.dia.hoy b,
-	.dia.hoy span,
-	.hoy {
+	/* Hoy sí se pinta en rojo: es el único dato que cambia de un día a otro. */
+	.quien span.hoy {
 		color: var(--k-rojo);
 		opacity: 1;
-		font-style: normal;
 		font-weight: 800;
 	}
-	.mas-fila {
-		font-size: 21px;
-		font-weight: 700;
-		opacity: 0.5;
-		padding-top: 8px;
-	}
+
 	.sin-filas {
 		margin: auto 0;
 		display: flex;
@@ -487,7 +507,7 @@
 		gap: 6px;
 	}
 	.sin-filas b {
-		font-size: 24px;
+		font-size: 22px;
 		font-weight: 800;
 		opacity: 0.45;
 	}
@@ -495,59 +515,5 @@
 		font-size: 20px;
 		font-weight: 600;
 		opacity: 0.4;
-	}
-
-	/* ── aniversarios (2×1) ───────────────────────────────────── */
-	.aniv {
-		display: flex;
-		align-items: center;
-		gap: 36px;
-		min-height: 0;
-	}
-	.aniv-cifra {
-		flex: 0 0 auto;
-	}
-	.aniv-cifra .cifra {
-		margin-bottom: 2px;
-	}
-	.aniv-cifra .sub {
-		max-width: 210px;
-	}
-	.aniv-lista {
-		flex: 1;
-		min-width: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-	}
-	.mini {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 16px;
-		font-size: 21px;
-		line-height: 1.25;
-	}
-	.mini b {
-		font-weight: 700;
-		min-width: 0;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-	.mini span {
-		font-weight: 600;
-		opacity: 0.55;
-		white-space: nowrap;
-	}
-	.mini em {
-		font-style: normal;
-		font-weight: 800;
-		opacity: 1;
-	}
-	.sin-aniv {
-		font-size: 21px;
-		font-weight: 600;
-		opacity: 0.45;
 	}
 </style>

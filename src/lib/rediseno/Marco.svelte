@@ -76,7 +76,9 @@
 			<div class="reloj">{reloj}</div>
 			{#if temperatura != null && Number.isFinite(temperatura)}
 				<span class="sep-temp"></span>
-				<div class="temp">{temperatura}°</div>
+				<!-- Entero: el kiosco no muestra «18.7°». El decimal no se lee a
+				     3 metros y ensancha la barra sin decir nada más. -->
+				<div class="temp">{Math.round(temperatura)}°</div>
 			{/if}
 		</div>
 		<div class="der">

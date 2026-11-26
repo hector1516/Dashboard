@@ -146,7 +146,9 @@ def _forma(clave: str) -> dict:
 
     Con la red de seguridad por bloque, un ciclo puede seguir con `{}` y el
     código de después (avatares, rankings, celebraciones) revienta al indexar.
-    Estas formas son las mismas de `api/main.py::_sin_datos()`.
+    Estas formas son las mismas de `api/main.py::_sin_datos()`, salvo
+    `pendientes` y `equipo`: esos se omiten allí a propósito porque un cero se
+    leería como un dato (ver el comentario de `_sin_datos`).
     """
     if clave == "legends":
         return {"ranking": [], "ganador_semana": None, "total_puntos": 0,
@@ -157,8 +159,10 @@ def _forma(clave: str) -> dict:
     if clave == "asistencia":
         return {"personas": [], "total": 0, "dentro": 0, "salieron": 0}
     if clave == "celebraciones":
-        return {"cumpleanos": {"hoy": [], "del_mes": []},
-                "aniversarios": {"hoy": [], "del_mes": []}}
+        return {"cumpleanos": {"hoy": [], "del_mes": [], "proximos_cumpleanos": []},
+                "aniversarios": {"hoy": [], "del_mes": [], "proximos_aniversarios": []},
+                # `None`, no 0: sin datos no se sabe cuánta gente hay.
+                "equipo": {"personas": None}}
     return {}
 
 
@@ -333,11 +337,20 @@ def ciclo() -> dict:
         _p["avatar"] = rutas_avatar.get(_p.get("id_usuario"))
         _p["foto"] = rutas_foto.get(_p.get("id_usuario"))
     # Celebraciones: foto real primero, avatar IA como respaldo (lo decide el
-    # front, pero aquí se mandan las dos rutas).
-    for clave in ("cumpleanos", "aniversarios"):
-        for grupo in ("hoy", "del_mes"):
-            bloques["celebraciones"][clave][grupo] = _con_caras(
-                bloques["celebraciones"][clave][grupo], rutas_avatar, rutas_foto)
+    # front, pero aquí se mandan las dos rutas). Las listas rodantes de Equipo
+    # (`proximos_cumpleanos` / `proximos_aniversarios`) llevan su propia forma
+    # (nombre/fecha/dias), así que se firman igual: por `id_usuario`.
+    for clave, rodante in (("cumpleanos", "proximos_cumpleanos"),
+                           ("aniversarios", "proximos_aniversarios")):
+        bloque = (bloques["celebraciones"] or {}).get(clave) or {}
+        for grupo in ("hoy", "del_mes", rodante):
+            # Solo se firma lo que viene: si un bloque viejo no trae la lista
+            # rodante, se queda sin la clave (el front dirá «sin datos») en
+            # vez de inventar una lista vacía.
+            if grupo in bloque:
+                bloque[grupo] = _con_caras(
+                    bloque.get(grupo) or [], rutas_avatar, rutas_foto)
+        bloques["celebraciones"][clave] = bloque
 
     # 5) Eventos (deltas contra state.json) ---------------------------------
     state = _leer_json(C.STATE, {})
@@ -430,6 +443,9 @@ def ciclo() -> dict:
         "notas": bloques["notas"],
         "cumpleanos": bloques["celebraciones"]["cumpleanos"],
         "aniversarios": bloques["celebraciones"]["aniversarios"],
+        # Cuántas personas activas hay: el ancla de la pantalla Equipo. Si el
+        # bloque cayó y no había ciclo previo, viaja `None` (no un cero).
+        "equipo": (bloques["celebraciones"] or {}).get("equipo") or {"personas": None},
         "metricas": bloques["metricas"],
         "asistencia": bloques["asistencia"],
         "ubicaciones": bloques["ubicaciones"],

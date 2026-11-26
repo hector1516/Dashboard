@@ -921,28 +921,141 @@ def _aniversarios(cur, mes: int) -> list:
     return cur.fetchall()
 
 
+def _fecha_en_anio(mes: int, dia: int, anio: int) -> "_dt.date | None":
+    """La fecha `mes/dia` de `anio`, sin reventar con la que no existe.
+
+    El 29 de febrero solo cae en bisiesto y un día 31 puede venir en un mes de
+    30 (dato capturado a mano). En esos casos se retrocede al último día válido
+    de ese mes: se avisa un día antes, nunca después de la fecha real.
+    """
+    for d in range(min(dia, 31), 0, -1):
+        try:
+            return _dt.date(anio, mes, d)
+        except ValueError:
+            continue
+    return None
+
+
+def _proxima_fecha(mes: int, dia: int, hoy: _dt.date) -> "_dt.date | None":
+    """La próxima vez que cae `mes/dia`, contando desde HOY (inclusive).
+
+    Si ya pasó este año, cuenta para el siguiente: la lista es rodante y no se
+    vacía el 2 de enero.
+    """
+    f = _fecha_en_anio(mes, dia, hoy.year)
+    if f is not None and f < hoy:
+        f = _fecha_en_anio(mes, dia, hoy.year + 1)
+    return f
+
+
+def _rodantes(cur, hoy: _dt.date) -> tuple:
+    """
+    Las dos listas rodantes de la pantalla Equipo, en UNA pasada a `HUB_Users`.
+
+    · `proximos_cumpleanos`: los 3 cumpleaños más cercanos, **sin importar el
+      mes** (el 26 de noviembre ya no interesa quién cumplió en noviembre,
+      interesa quién cumple en diciembre).
+    · `proximos_aniversarios`: los 3 ingresos más cercanos, con `anos >= 1`
+      (los años que cumple EN ESA FECHA: el que entró este año aparece en su
+      primer aniversario, y quien ya cumplió aparece con el año que viene).
+
+    Devuelve además cuántas personas activas hay: es el número del ancla y no
+    se puede deducir de las listas (sólo traen tres).
+    """
+    cur.execute("""
+        SELECT u.Id AS id_usuario, u.Nombre,
+            CASE
+                WHEN u.FechaNacimiento IS NOT NULL THEN DAY(u.FechaNacimiento)
+                WHEN u.CurpRfc IS NOT NULL AND LEN(u.CurpRfc) >= 10
+                    THEN CAST(SUBSTRING(u.CurpRfc, 9, 2) AS INT)
+                ELSE NULL
+            END AS dia,
+            CASE
+                WHEN u.FechaNacimiento IS NOT NULL THEN MONTH(u.FechaNacimiento)
+                WHEN u.CurpRfc IS NOT NULL AND LEN(u.CurpRfc) >= 10
+                    THEN CAST(SUBSTRING(u.CurpRfc, 7, 2) AS INT)
+                ELSE NULL
+            END AS mes,
+            CONVERT(VARCHAR(10), u.FechaIngreso, 120) AS ingreso
+        FROM HUB_Users u
+        WHERE u.Activo = 1
+    """)
+    filas = cur.fetchall() or []
+
+    cumples, aniversarios = [], []
+    for f in filas:
+        mes, dia = f.get("mes"), f.get("dia")
+        if mes and dia:
+            fecha = _proxima_fecha(int(mes), int(dia), hoy)
+            if fecha is not None:
+                cumples.append({
+                    "id_usuario": f.get("id_usuario"),
+                    "nombre": f.get("Nombre"),
+                    "foto": None,
+                    "fecha": fecha.isoformat(),
+                    "dias": (fecha - hoy).days,
+                })
+        ingreso = str(f.get("ingreso") or "")[:10]
+        try:
+            alta = _dt.date.fromisoformat(ingreso)
+        except ValueError:
+            alta = None
+        if alta is not None:
+            fecha = _proxima_fecha(alta.month, alta.day, hoy)
+            if fecha is not None:
+                anos = fecha.year - alta.year
+                if anos >= 1:
+                    aniversarios.append({
+                        "id_usuario": f.get("id_usuario"),
+                        "nombre": f.get("Nombre"),
+                        "foto": None,
+                        "fecha": fecha.isoformat(),
+                        "dias": (fecha - hoy).days,
+                        "anos": anos,
+                    })
+
+    # Por cercanía y, a igualdad, por nombre: una lista que no cambia de orden
+    # entre ciclos no parpadea en la TV.
+    cumples.sort(key=lambda p: (p["dias"], p["nombre"] or ""))
+    aniversarios.sort(key=lambda p: (p["dias"], p["nombre"] or ""))
+    return cumples[:3], aniversarios[:3], len(filas)
+
+
 def celebraciones() -> dict:
     """
     Devuelve el mes Y el día de hoy, separados. Lo de "hoy" es lo que en Field
     quedaba mezclado con el mes: en una pantalla del pasillo lo que importa es
     quién cumple HOY, y eso además dispara la toma de pantalla con confeti.
+
+    Desde la pantalla Equipo del rediseño se suman las listas RODANTES: los 3
+    próximos cumpleaños y los 3 próximos aniversarios cuenten el mes que
+    cuenten. `hoy` y `del_mes` no cambian (los usa el widget de la rotación
+    clásica y el aviso de cumpleaños).
     """
     conn = get_connection()
     with conn.cursor(as_dict=True) as cur:
-        mes = _dt.date.today().month
-        hoy = _dt.date.today().day
+        hoy_dt = _ahora_mx().date()
+        mes = hoy_dt.month
+        hoy = hoy_dt.day
         cumpleanos = _personas(cur, mes)
         aniversarios = _aniversarios(cur, mes)
+        proximos_cumpleanos, proximos_aniversarios, personas = _rodantes(cur, hoy_dt)
 
     return {
         "cumpleanos": {
             "hoy": [p for p in cumpleanos if p["dia"] == hoy],
             "del_mes": cumpleanos,
+            "proximos_cumpleanos": proximos_cumpleanos,
         },
         "aniversarios": {
             "hoy": [a for a in aniversarios if a["dia"] == hoy],
             "del_mes": aniversarios,
+            "proximos_aniversarios": proximos_aniversarios,
         },
+        # Cuántas personas activas hay en la plantilla. Va aquí porque es la
+        # misma tabla y el mismo ciclo; el ancla de Equipo es lo único que lo
+        # usa. `None` (no 0) si la consulta no se pudo armar.
+        "equipo": {"personas": personas},
     }
 
 
