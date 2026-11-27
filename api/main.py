@@ -39,6 +39,9 @@ app = FastAPI(title="Dashboard ECCSA", version="1.0.0")
 # Caché del resumen de uso (60 s). La consulta agrega 32 mil filas y el kiosco
 # la pide cada minuto; sin esto el primer pintado paga la cuenta entera.
 _USO_CACHE = {"t": 0.0, "datos": None}
+# Misma idea para el ranking del bot: la tarjeta lo pide cada minuto y la
+# ventana es de 30 días, así que un minuto de caché no cambia nada visible.
+_WA_CACHE = {"t": 0.0, "datos": None}
 
 _cache = {"datos": None, "ts": 0.0}
 _CACHE_TTL = 5.0        # segundos: el snapshot cambia cada 2 min
@@ -356,6 +359,29 @@ def uso_resumen():
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+@app.get("/api/whatsapp/ranking")
+def whatsapp_ranking():
+    """Ranking de usuarios que más escriben al bot (últimos 30 días).
+
+    Es el respaldo «en vivo» de la tarjeta: el dato de siempre viaja en el
+    snapshot, pero la pantalla puede pedirlo aquí con la misma ventana y sin
+    esperar al ciclo de 2 min. Solo lectura; 60 s de caché por el costo de la
+    consulta. Si la base falla se devuelve error, nunca una lista vacía: una
+    lista vacía se leería como «nadie escribió».
+    """
+    ahora = time.time()
+    if _WA_CACHE["datos"] is not None and (ahora - _WA_CACHE["t"]) < 60:
+        return JSONResponse(_WA_CACHE["datos"], headers={"Cache-Control": "no-store"})
+    try:
+        import datos as D
+        payload = D.wa_ranking()
+        _WA_CACHE["datos"] = payload
+        _WA_CACHE["t"] = time.time()
+        return JSONResponse(payload, headers={"Cache-Control": "no-store"})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 @app.get("/api/shell/state")
 def shell_state(request: Request):
     """
@@ -431,7 +457,7 @@ def raiz():
         "app": "Dashboard ECCSA · Centro de Operaciones",
         "pantalla": "/ (esta misma)",
         "api": ["/api/dashboard/snapshot", "/api/dashboard/version",
-                "/api/shell/state", "/healthz"],
+                "/api/whatsapp/ranking", "/api/shell/state", "/healthz"],
         "build": C.leer_build(),
     }
 

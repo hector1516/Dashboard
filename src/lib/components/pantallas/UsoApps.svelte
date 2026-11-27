@@ -1,13 +1,22 @@
 <!-- UsoApps.svelte - Estadísticas de uso de las apps Admon y Field -->
 <script lang="ts">
 	let datos = $state<any>(null);
+	let wa = $state<{ posicion: number; nombre: string; mensajes: number }[]>([]);
 	let cargando = $state(true);
 
 	async function cargar() {
 		try {
-			const r = await fetch('/api/uso/resumen');
-			if (r.ok) datos = await r.json();
-		} catch { /* sin datos */ }
+			const [ru, rw] = await Promise.all([
+				fetch('/api/uso/resumen'),
+				fetch('/api/whatsapp/ranking')
+			]);
+			if (ru.ok) datos = await ru.json();
+			if (rw.ok) {
+				const j = await rw.json();
+				// Un `{error}` no es un ranking: se conserva la última lectura.
+				if (!j?.error) wa = Array.isArray(j?.items) ? j.items : [];
+			}
+		} catch { /* sin datos: se conserva lo anterior */ }
 		cargando = false;
 	}
 
@@ -139,7 +148,30 @@
 					</div>
 				</div>
 
-				<!-- Inactivos -->
+			</div>
+
+			<!-- Columna del bot: ranking de WhatsApp + inactivos -->
+			<div class="col-bot">
+				<div class="bloque wa">
+					<div class="bloque-titulo">
+						Bot de WhatsApp
+						<span class="bloque-sub">Top 5 · 30 días</span>
+					</div>
+					{#if wa.length}
+						<div class="wa-lista">
+							{#each wa.slice(0, 5) as w, i}
+								<div class="wa-fila" class:primero={i === 0}>
+									<span class="wa-pos">{w.posicion}</span>
+									<span class="wa-nombre">{w.nombre}</span>
+									<span class="wa-msj">{w.mensajes} <small>mensajes</small></span>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<div class="vacio">Sin interacciones registradas</div>
+					{/if}
+				</div>
+
 				{#if inactivos.length}
 					<div class="bloque inactivos">
 						<div class="bloque-titulo">😴 Sin actividad (7 días)</div>
@@ -165,11 +197,12 @@
 	.kpi-val { display: block; font-size: 38px; font-weight: 800; color: var(--color-primary-light); line-height: 1; }
 	.kpi-lab { display: block; font-size: 13px; color: var(--color-text-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
 
-	.contenido { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; overflow: hidden; }
-	.col-izq, .col-der { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+	.contenido { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; overflow: hidden; }
+	.col-izq, .col-der, .col-bot { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
 
 	.bloque { flex: 1; min-height: 0; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; padding: 0.75rem; overflow: hidden; display: flex; flex-direction: column; }
 	.bloque-titulo { font-size: 18px; font-weight: 700; color: var(--color-primary-light); margin-bottom: 0.5rem; flex-shrink: 0; }
+	.bloque-sub { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-text-muted); }
 	.bloque.inactivos { flex: 0 0 auto; }
 
 	/* Barras de hora */
@@ -195,6 +228,19 @@
 	.nombre { flex: 1; font-size: 0.85rem; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.endpoint { flex: 1; font-size: 13px; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
 	.val { font-size: 0.85rem; font-weight: 800; color: var(--color-primary-light); min-width: 40px; text-align: right; }
+
+	/* Ranking del bot: el primero con acento; el resto, en segundo plano. */
+	.wa-lista { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.4rem; overflow: hidden; }
+	.wa-fila { display: flex; align-items: center; gap: 0.55rem; padding: 0.34rem 0.55rem; border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); }
+	.wa-fila.primero { background: rgba(96, 165, 250, 0.13); border-color: rgba(96, 165, 250, 0.34); }
+	.wa-pos { flex: 0 0 26px; text-align: center; font-size: 22px; font-weight: 900; line-height: 1; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+	.wa-fila.primero .wa-pos { color: var(--color-primary-light); }
+	.wa-nombre { flex: 1; min-width: 0; font-size: 0.92rem; font-weight: 600; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.wa-fila.primero .wa-nombre { font-weight: 800; color: var(--color-text); }
+	.wa-fila:not(.primero) .wa-nombre { opacity: 0.78; }
+	.wa-msj { flex: 0 0 auto; font-size: 0.86rem; font-weight: 800; color: var(--color-primary-light); white-space: nowrap; font-variant-numeric: tabular-nums; }
+	.wa-fila:not(.primero) .wa-msj { opacity: 0.72; }
+	.wa-msj small { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-muted); }
 
 	.inactivos-list { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 	.inactivo-chip { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 999px; background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }

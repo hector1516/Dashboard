@@ -1356,6 +1356,62 @@ def fotos_usuarios() -> dict:
         return {r["IdUsuario"]: r["Archivo"] for r in cur.fetchall() if r.get("Archivo")}
 
 
+# ── RANKING DEL BOT DE WHATSAPP ─────────────────────────────────────────────
+# Un mensaje entrante (`Direccion='IN'`) cuenta para el usuario cuyo WhatsApp
+# termina en los mismos 10 dígitos. El Id 1 es la cuenta del bot (IT Support):
+# no es una persona y contarla infla el ranking con lo que hace el sistema.
+# `CROSS APPLY` + `TOP 1` evita que un número repetido en dos usuarios cuente
+# cada mensaje dos veces. Los teléfonos ajenos a la plantilla se caen solos.
+def _tel10_sql(col: str) -> str:
+    """Últimos 10 dígitos de un teléfono, quitando espacios, guiones y '+'."""
+    return ("RIGHT(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(ISNULL("
+            f"{col}, ''))), ' ', ''), '-', ''), '+', ''), 10)")
+
+
+def wa_ranking(dias: int = 30, limite: int = 10) -> dict:
+    """Usuarios que más escriben al bot de WhatsApp en la ventana reciente.
+
+    Sin `try/except` a propósito: un fallo de la base tiene que llegar a
+    `_bloque` en el snapshotter, que conserva la última lectura buena y marca
+    el ciclo como degradado. Devolver aquí una lista vacía borraría la tarjeta
+    y se leería como «nadie escribió», que es justo el cero falso prohibido.
+    """
+    tel_e = _tel10_sql("e.Telefono")
+    tel_w = _tel10_sql("w.Telefono")
+    conn = get_connection()
+    with conn.cursor(as_dict=True) as cur:
+        cur.execute(f"""
+            SELECT TOP {int(limite)} x.id_usuario AS id_usuario,
+                   x.nombre AS nombre, COUNT(*) AS mensajes
+            FROM HUB_WhatsappEntrante e
+            CROSS APPLY (
+                SELECT TOP 1 w.IdUsuario AS id_usuario, u.Nombre AS nombre
+                FROM HUB_UsuariosWhatsapp w
+                JOIN HUB_Users u ON u.Id = w.IdUsuario
+                WHERE w.IdUsuario <> 1
+                  AND LEN({tel_w}) >= 10
+                  AND {tel_w} = {tel_e}
+                ORDER BY w.IdUsuario
+            ) x
+            WHERE e.Direccion = 'IN'
+              AND e.Fecha >= DATEADD(day, -{int(dias)}, GETDATE())
+              AND LEN({tel_e}) >= 10
+            GROUP BY x.id_usuario, x.nombre
+            ORDER BY mensajes DESC, x.nombre
+        """)
+        filas = cur.fetchall() or []
+
+    items = []
+    for i, f in enumerate(filas[:limite], start=1):
+        items.append({
+            "posicion": i,
+            "nombre": (f.get("nombre") or "—").strip(),
+            "mensajes": int(f.get("mensajes") or 0),
+        })
+    return {"generado": _ahora_mx().strftime("%Y-%m-%d %H:%M:%S"),
+            "items": items}
+
+
 def _dump(x) -> str:
     """Para depurar desde la consola."""
     return json.dumps(x, ensure_ascii=False, default=str, indent=2)

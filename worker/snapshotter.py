@@ -223,6 +223,11 @@ def ciclo() -> dict:
             "notas": _bloque(D.notas, previo.get("notas") or []),
             "celebraciones": _bloque(D.celebraciones, previo.get("celebraciones") or _forma("celebraciones")),
             "metricas": _bloque(D.metricas, previo.get("metricas") or {}, sunday),
+            # Ranking del bot de WhatsApp. Si la consulta falla se queda la
+            # última lectura buena (`generado` incluido): no se vacía la lista.
+            "wa_ranking": _bloque(
+                D.wa_ranking,
+                previo.get("wa_ranking") or {"generado": None, "items": []}),
             "asistencia": _bloque(D.asistencia_hoy, previo.get("asistencia") or _forma("asistencia")),
             "ubicaciones": _bloque(D.ubicaciones_hoy, previo.get("ubicaciones") or {}),
             "imagen": _bloque(D.imagen_pantalla, previo.get("imagen") or {"hay": False}, "PORTADA"),
@@ -447,6 +452,7 @@ def ciclo() -> dict:
         # bloque cayó y no había ciclo previo, viaja `None` (no un cero).
         "equipo": (bloques["celebraciones"] or {}).get("equipo") or {"personas": None},
         "metricas": bloques["metricas"],
+        "wa_ranking": bloques["wa_ranking"],
         "asistencia": bloques["asistencia"],
         "ubicaciones": bloques["ubicaciones"],
         "imagen": bloques["imagen"],

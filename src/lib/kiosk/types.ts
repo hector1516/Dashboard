@@ -166,6 +166,24 @@ export interface LegendGanador {
 	avatar?: string | null;
 }
 
+/** Una fila del ranking de usuarios que escriben al bot de WhatsApp. */
+export interface WaRankingItem {
+	/** 1 = el que más escribió. */
+	posicion: number;
+	nombre: string;
+	mensajes: number;
+}
+
+/**
+ * Top 10 de usuarios del bot en los últimos 30 días (`Direccion='IN'`).
+ * `generado` es cuándo se leyó de la base; `null` si todavía no hay lectura.
+ * OPCIONAL en el snapshot: un archivo viejo no lo trae hasta el primer ciclo.
+ */
+export interface WaRanking {
+	generado: string | null;
+	items: WaRankingItem[];
+}
+
 export interface CotizacionLista {
 	total: number;
 	verdes: number;
@@ -271,6 +289,9 @@ export interface Snapshot {
 		/** % de reportes de la semana que ya están firmados. */
 		tasa_firma: number;
 	};
+
+	/** Ranking del bot de WhatsApp (opcional hasta el primer ciclo nuevo). */
+	wa_ranking?: WaRanking;
 
 	/**
 	 * Asistencia del DÍA, calculada desde `HUB_NetworkPresence` (la red).

@@ -46,6 +46,12 @@
 		llamadas?: number;
 	}
 
+	interface WaRankingItem {
+		posicion?: number;
+		nombre?: string;
+		mensajes?: number;
+	}
+
 	interface Props {
 		/** Snapshot del kiosco: solo se usa para los chips del marco. */
 		datos?: any;
@@ -155,6 +161,21 @@
 	);
 
 	const inactivos = $derived(Array.isArray(uso?.inactivos) ? uso.inactivos.length : null);
+
+	/**
+	 * Ranking del bot de WhatsApp. Viaja en el snapshot (no se pide aparte):
+	 * la pantalla bento ya lo tiene en `datos`, y si el bloque cayó el
+	 * snapshotter conserva la última lectura buena. Un snapshot viejo no trae
+	 * el campo: eso NO es «nadie escribió», es «sin dato» y se dice así.
+	 */
+	const waItems = $derived(
+		(Array.isArray(datos?.wa_ranking?.items)
+			? (datos.wa_ranking.items as WaRankingItem[])
+			: []
+		)
+			.filter((w) => w && (aNumero(w.mensajes) ?? 0) > 0)
+			.slice(0, 5)
+	);
 
 	/**
 	 * Cómo se llama el «no hay dato»: no es lo mismo un resumen que todavía no
@@ -282,8 +303,9 @@
 			</div>
 		</Celda>
 
-		<!-- Lista 2×2: quién usa más las apps. -->
-		<Celda area="1/3/3/5" rotulo="Quién usa más · 7 días" i={1}>
+		<!-- Lista 2×1: quién usa más las apps. Comparte la columna derecha con
+		     el ranking del bot, así el resto de la retícula no se mueve. -->
+		<Celda area="1/3/2/5" rotulo="Quién usa más · 7 días" i={1}>
 			<div class="lista">
 				{#if topUsuarios.length === 0}
 					<div class="sin-filas">
@@ -305,8 +327,32 @@
 			</div>
 		</Celda>
 
+		<!-- Lista 2×1: usuarios que más escriben al bot de WhatsApp. El primero
+		     lleva acento; los demás, en segundo plano. Sin scroll: cinco filas
+		     caben en el alto fijo de una fila de la retícula. -->
+		<Celda area="2/3/3/5" rotulo="Bot de WhatsApp · 30 días" i={2}>
+			<div class="wa-lista">
+				{#if waItems.length === 0}
+					<div class="sin-filas">
+						<b>Sin interacciones registradas</b>
+						<span>Ningún usuario de la plantilla escribió al bot en 30 días.</span>
+					</div>
+				{:else}
+					{#each waItems as w, n (w.nombre ?? n)}
+						<div class="wa-fila" class:primero={n === 0}>
+							<div class="wa-pos">{w.posicion ?? n + 1}</div>
+							<div class="wa-quien">
+								<b>{w.nombre || 'Sin nombre'}</b>
+								<span>{cuenta(aNumero(w.mensajes))} mensajes</span>
+							</div>
+						</div>
+					{/each}
+				{/if}
+			</div>
+		</Celda>
+
 		<!-- Serie 2×1: llamadas por app, de mayor a menor. -->
-		<Celda area="3/1/4/3" rotulo="Llamadas por app · 7 días" i={2}>
+		<Celda area="3/1/4/3" rotulo="Llamadas por app · 7 días" i={3}>
 			<div class="cuerpo">
 				{#if apps.length === 0}
 					<div class="sin-dato">
@@ -338,7 +384,7 @@
 		</Celda>
 
 		<!-- 1×1: usuarios activos (distintos) en la semana. -->
-		<Celda area="3/3/4/4" rotulo="Usuarios activos" i={3}>
+		<Celda area="3/3/4/4" rotulo="Usuarios activos" i={4}>
 			<div class="cuerpo">
 				{#if activos == null}
 					<div class="cifra sin">—</div>
@@ -431,17 +477,17 @@
 		min-height: 0;
 		display: flex;
 		align-items: center;
-		gap: 20px;
-		padding: 8px 0;
+		gap: 16px;
+		padding: 4px 0;
 		border-bottom: 1px solid rgba(18, 20, 26, 0.08);
 	}
 	.fila:last-child {
 		border-bottom: 0;
 	}
 	.puesto {
-		width: 44px;
-		flex: 0 0 44px;
-		font-size: 30px;
+		width: 36px;
+		flex: 0 0 36px;
+		font-size: 24px;
 		font-weight: 900;
 		font-variant-numeric: tabular-nums;
 		opacity: 0.32;
@@ -453,7 +499,7 @@
 		flex-direction: column;
 	}
 	.quien b {
-		font-size: 30px;
+		font-size: 24px;
 		font-weight: 800;
 		letter-spacing: -0.4px;
 		white-space: nowrap;
@@ -461,15 +507,80 @@
 		text-overflow: ellipsis;
 	}
 	.quien span {
-		font-size: 20px;
+		font-size: 17px;
 		font-weight: 600;
 		opacity: 0.5;
 	}
 	.cuenta {
-		font-size: 30px;
+		font-size: 24px;
 		font-weight: 800;
 		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
+	}
+
+	/* ── ranking del bot ──────────────────────────────────────── */
+	.wa-lista {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.wa-fila {
+		flex: 1 1 0;
+		min-height: 0;
+		display: flex;
+		align-items: center;
+		padding: 4px 12px;
+		border-radius: 10px;
+		background: rgba(18, 20, 26, 0.035);
+	}
+	/* El primero es el dato que el pasillo tiene que leer: acento de marca,
+	   el resto en gris para que no compita. */
+	.wa-fila.primero {
+		background: rgba(242, 109, 38, 0.12);
+		box-shadow: inset 4px 0 0 var(--k-rojo);
+	}
+	.wa-pos {
+		width: 40px;
+		flex: 0 0 40px;
+		font-size: 26px;
+		font-weight: 900;
+		font-variant-numeric: tabular-nums;
+		opacity: 0.4;
+	}
+	.wa-fila.primero .wa-pos {
+		color: var(--k-rojo-texto);
+		opacity: 1;
+	}
+	.wa-quien {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
+	}
+	.wa-quien b {
+		font-size: 23px;
+		font-weight: 700;
+		letter-spacing: -0.3px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.wa-fila.primero .wa-quien b {
+		font-weight: 800;
+	}
+	.wa-quien span {
+		flex: 0 0 auto;
+		font-size: 17px;
+		font-weight: 600;
+		opacity: 0.55;
+		font-variant-numeric: tabular-nums;
+	}
+	.wa-fila.primero .wa-quien span {
+		opacity: 0.78;
 	}
 
 	.sin-filas,
