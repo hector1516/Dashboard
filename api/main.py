@@ -220,12 +220,14 @@ def uso_resumen():
         from db import get_connection
         conn = get_connection()
         with conn.cursor(as_dict=True) as cur:
-            # Usuarios activos últimos 7 días
+            # Usuarios activos últimos 7 días.
+            # El Id 1 es la cuenta del bot (IT Support): no es una persona y
+            # contarla infla «activos» con lo que hace el propio sistema.
             cur.execute("""
                 SELECT COUNT(DISTINCT Usuario) as activos_7d
                 FROM HUB_ApiUsage
                 WHERE Fecha >= DATEADD(day, -7, GETDATE())
-                  AND Usuario IS NOT NULL
+                  AND Usuario IS NOT NULL AND Usuario <> '1'
             """)
             activos_7d = (cur.fetchone() or {}).get("activos_7d", 0)
 
@@ -311,6 +313,7 @@ def uso_resumen():
                 FROM HUB_ApiUsage a
                 LEFT JOIN HUB_Users u ON CAST(u.Id AS varchar(20)) = a.Usuario
                 WHERE a.Fecha >= DATEADD(day, -7, GETDATE()) AND a.Usuario IS NOT NULL
+                  AND a.Usuario <> '1'
                 GROUP BY a.Usuario, u.Nombre
                 ORDER BY llamadas DESC
             """)
@@ -330,7 +333,7 @@ def uso_resumen():
                 WHERE Fecha >= DATEADD(day, -7, GETDATE()) AND Usuario IS NOT NULL
             """)
             activos = {str(r["Usuario"]) for r in (cur.fetchall() or [])}
-            cur.execute("SELECT Id, Nombre FROM HUB_Users WHERE Activo = 1")
+            cur.execute("SELECT Id, Nombre FROM HUB_Users WHERE Activo = 1 AND Id <> 1")
             inactivos = [r["Nombre"] for r in (cur.fetchall() or [])
                          if str(r["Id"]) not in activos]
 
