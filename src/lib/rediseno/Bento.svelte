@@ -1,10 +1,14 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	interface Props { children: Snippet }
-	let { children }: Props = $props();
+	interface Props {
+		children: Snippet;
+		/** Filas de la retícula. 3 por omisión; Uso de apps usa 4. */
+		filas?: number;
+	}
+	let { children, filas = 3 }: Props = $props();
 </script>
 
-<main class="bento">{@render children()}</main>
+<main class="bento" style="grid-template-rows: repeat({filas}, 1fr)">{@render children()}</main>
 
 <style>
 	.bento {

@@ -18,10 +18,13 @@
 	//   · serie 2×1: llamadas por app (barras)
 	//   · 1×1: usuarios activos
 	//
-	// DE DÓNDE SALEN LOS DATOS: no están en el snapshot. Se piden a
-	// `/api/uso/resumen`, que es del PROPIO servidor del kiosco (lee
-	// `HUB_ApiUsage` y devuelve JSON). No hay ninguna petición a internet; si
-	// el endpoint no responde, la pantalla lo dice y no pinta ceros.
+	// DE DÓNDE SALEN LOS DATOS: el resumen viaja en el snapshot (`datos.uso`),
+	// que lo calcula el snapshotter en su ciclo y lo deja en disco. Antes el
+	// componente pedía `/api/uso/resumen` y el endpoint calculaba la consulta
+	// en la petición: tardaba 30-80 s y nginx respondía 504 (pantalla sin
+	// datos). Ahora el endpoint solo lee el snapshot y responde al instante;
+	// queda como respaldo por si `datos.uso` todavía no llegó. No hay ninguna
+	// petición a internet; si no hay dato, la pantalla lo dice y no pinta ceros.
 	//
 	// DESVÍOS DEL BRIEF:
 	//   · «minutos por app»: el resumen publica LLAMADAS por app, no minutos
@@ -68,18 +71,30 @@
 	}
 	let { datos, reloj, fecha, antiguedad, posicion, volt }: Props = $props();
 
-	/** El resumen de uso. `null` = todavía no llegó (o no responde). */
-	let uso = $state<any>(null);
+	/** El resumen que llegó por la API (respaldo del que viaja en el snapshot). */
+	let usoLive = $state<any>(null);
+	/**
+	 * El resumen de uso: primero el del snapshot (`datos.uso`, ya calculado por
+	 * el snapshotter, sin petición ni espera) y si no, el de la API.
+	 */
+	const uso = $derived(datos?.uso ?? usoLive);
 	let cargando = $state(true);
 	/** La última petición falló. Con `uso` en mano, el dato bueno se conserva. */
 	let fallo = $state(false);
 
 	async function cargar() {
+		// El snapshot ya trae el resumen: no hay que pedir nada.
+		if (datos?.uso) {
+			usoLive = datos.uso;
+			fallo = false;
+			cargando = false;
+			return;
+		}
 		// La rotación remonta la pantalla cada 45 s y el resumen pega en la BD
 		// (es lo más caro del kiosco): si la última lectura tiene menos de un
 		// minuto se reusa en vez de volver a pedirla.
 		if (cache && Date.now() - cache.en < CACHE_MS) {
-			uso = cache.datos;
+			usoLive = cache.datos;
 			fallo = false;
 			cargando = false;
 			return;
@@ -101,7 +116,7 @@
 			// El endpoint devuelve `{error}` con 200 en algunos fallos: eso no es
 			// un resumen, es un error disfrazado.
 			if (!j || typeof j !== 'object' || 'error' in j) throw new Error('forma');
-			uso = j;
+			usoLive = j;
 			cache = { datos: j, en: Date.now() };
 			fallo = false;
 		} catch {
@@ -175,6 +190,26 @@
 		)
 			.filter((w) => w && (aNumero(w.mensajes) ?? 0) > 0)
 			.slice(0, 5)
+	);
+
+	/** Largo máximo de un mensaje en la tarjeta: 5 líneas sin scroll. */
+	const RECORTE_VOLT = 140;
+	/** Recorta a `RECORTE_VOLT` con puntos suspensivos (una sola línea). */
+	function recortaVolt(t: string): string {
+		const s = String(t ?? '').replace(/\s+/g, ' ').trim();
+		return s.length > RECORTE_VOLT ? s.slice(0, RECORTE_VOLT - 1).trimEnd() + '…' : s;
+	}
+
+	/**
+	 * Los últimos mensajes sarcásticos de Volt, tal como se enviaron (solo el
+	 * texto: sin destinatario, teléfono, chat ni fecha). Viajan en el snapshot
+	 * y el snapshotter conserva la última lista buena si la consulta falla.
+	 */
+	const voltMensajes = $derived(
+		(Array.isArray(datos?.volt_mensajes) ? (datos.volt_mensajes as string[]) : [])
+			.filter((m) => typeof m === 'string' && m.trim())
+			.slice(0, 5)
+			.map(recortaVolt)
 	);
 
 	/**
@@ -266,7 +301,7 @@
 	volt={linea}
 	degradado={datos?.degradado ?? []}
 >
-	<Bento>
+	<Bento filas={4}>
 		<!-- Ancla 2×2: la app más usada. La palabra es la cifra del ancla: lo
 		     que el pasillo tiene que leer es «Admon», no un número de seis
 		     dígitos que no cabe a 214 px. -->
@@ -394,6 +429,24 @@
 				{:else}
 					<div class="cifra">{cuenta(activos)}</div>
 					<div class="sub">en los últimos 7 días</div>
+				{/if}
+			</div>
+		</Celda>
+
+		<!-- Fila completa: los últimos mensajes sarcásticos de Volt, tal como se
+		     enviaron. Sin destinatario, teléfono, chat ni fecha, y sin emojis:
+		     es para leer el chiste. Cinco líneas caben sin scroll. -->
+		<Celda area="4/1/5/5" rotulo="Mensajes de Volt · 30 días" i={5}>
+			<div class="volt-lista">
+				{#if voltMensajes.length === 0}
+					<div class="sin-filas">
+						<b>Sin mensajes todavía</b>
+						<span>Volt no ha mandado ningún mensaje en los últimos 30 días.</span>
+					</div>
+				{:else}
+					{#each voltMensajes as mensaje, n (n)}
+						<p class="volt-linea">{mensaje}</p>
+					{/each}
 				{/if}
 			</div>
 		</Celda>
@@ -581,6 +634,41 @@
 	}
 	.wa-fila.primero .wa-quien span {
 		opacity: 0.78;
+	}
+
+	/* ── mensajes de Volt ─────────────────────────────────────── */
+	.volt-lista {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		gap: 4px;
+		overflow: hidden;
+	}
+	.volt-linea {
+		margin: 0;
+		flex: 0 0 auto;
+		position: relative;
+		padding-left: 16px;
+		font-size: 21px;
+		font-weight: 600;
+		letter-spacing: -0.2px;
+		line-height: 1.3;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.volt-linea::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		top: 0.32em;
+		bottom: 0.32em;
+		width: 4px;
+		border-radius: 2px;
+		background: var(--k-rojo);
+		opacity: 0.55;
 	}
 
 	.sin-filas,

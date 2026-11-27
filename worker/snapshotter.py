@@ -40,6 +40,10 @@ import config as C          # noqa: E402
 
 # Cada cuánto se recalcula el tablero de combustible (segundos).
 CACHE_COMBUSTIBLE_SEG = int(os.getenv("COMBUSTIBLE_CADA_SEG", "600"))
+# Lo mismo para el resumen de uso: es la consulta más cara del kiosco (agrega
+# 32 mil filas y ha tardado 30-80 s). Se recalcula cada 10 min en su propio
+# hueco del ciclo; entre ciclos se reusa el valor del snapshot.
+CACHE_USO_SEG = int(os.getenv("USO_CADA_SEG", "600"))
 import datos as D           # noqa: E402
 import eventos as E         # noqa: E402
 import medios as M          # noqa: E402
@@ -205,6 +209,19 @@ def ciclo() -> dict:
             # el próximo ciclo lo vuelve a intentar.
             combustible_en = ahora if nuevo else hecho
 
+        # Resumen de uso de las apps. Mismo patrón que el combustible: la
+        # consulta es cara y el endpoint del kiosco ya no la hace (antes tardaba
+        # 30-80 s y nginx respondía 504). Si falla, se conserva la última
+        # lectura buena y el reloj NO avanza.
+        uso_hecho = float(previo.get("uso_en") or 0)
+        if previo.get("uso") and (ahora - uso_hecho) < CACHE_USO_SEG:
+            uso = previo["uso"]
+            uso_en = uso_hecho
+        else:
+            uso_nuevo = _bloque(D.uso_resumen, None)
+            uso = uso_nuevo or previo.get("uso")
+            uso_en = ahora if uso_nuevo else uso_hecho
+
         bloques = {
             # Cada bloque con su red de seguridad: si uno tarda más de la
             # cuenta y el SQL lo mata, se queda el valor del snapshot anterior
@@ -228,6 +245,11 @@ def ciclo() -> dict:
             "wa_ranking": _bloque(
                 D.wa_ranking,
                 previo.get("wa_ranking") or {"generado": None, "items": []}),
+            # Mensajes sarcásticos de Volt (solo el texto). Si la consulta falla
+            # se queda la última lista buena: no se vacía la tarjeta.
+            "volt_mensajes": _bloque(
+                D.volt_mensajes,
+                previo.get("volt_mensajes") or [], 5),
             "asistencia": _bloque(D.asistencia_hoy, previo.get("asistencia") or _forma("asistencia")),
             "ubicaciones": _bloque(D.ubicaciones_hoy, previo.get("ubicaciones") or {}),
             "imagen": _bloque(D.imagen_pantalla, previo.get("imagen") or {"hay": False}, "PORTADA"),
@@ -453,6 +475,12 @@ def ciclo() -> dict:
         "equipo": (bloques["celebraciones"] or {}).get("equipo") or {"personas": None},
         "metricas": bloques["metricas"],
         "wa_ranking": bloques["wa_ranking"],
+        "volt_mensajes": bloques["volt_mensajes"],
+        # Resumen de uso de las apps: lo calcula aquí el ciclo y el endpoint
+        # `/api/uso/resumen` solo lo sirve. `uso_en` es el reloj del último
+        # cálculo bueno (epoch), para saber si el dato está viejo.
+        "uso": uso,
+        "uso_en": uso_en,
         "asistencia": bloques["asistencia"],
         "ubicaciones": bloques["ubicaciones"],
         "imagen": bloques["imagen"],

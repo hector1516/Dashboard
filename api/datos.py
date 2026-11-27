@@ -1412,6 +1412,198 @@ def wa_ranking(dias: int = 30, limite: int = 10) -> dict:
             "items": items}
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Uso de las apps (HUB_ApiUsage) y mensajes sarcásticos de Volt
+# ═══════════════════════════════════════════════════════════════════════════
+def uso_resumen() -> dict:
+    """Resumen de uso de las apps (Admon y Field), últimos 7/30 días.
+
+    Vive aquí y no en `api/main.py` porque ahora lo calcula el snapshotter en
+    su ciclo: la consulta agrega 32 mil filas y tardaba 30-80 s en la petición
+    (el 2026-11-25 nginx la tumbaba con 504). El endpoint solo lee el
+    snapshot, así que responde en milisegundos.
+
+    Sin `try/except` a propósito: un fallo de la base tiene que llegar a
+    `_bloque` en el snapshotter, que conserva la última lectura buena. Devolver
+    aquí ceros borraría la pantalla con datos falsos.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor(as_dict=True) as cur:
+            # Usuarios activos últimos 7 días.
+            # El Id 1 es la cuenta del bot (IT Support): no es una persona y
+            # contarla infla «activos» con lo que hace el propio sistema.
+            cur.execute("""
+                SELECT COUNT(DISTINCT Usuario) as activos_7d
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE())
+                  AND Usuario IS NOT NULL AND Usuario <> '1'
+            """)
+            activos_7d = (cur.fetchone() or {}).get("activos_7d", 0)
+
+            # Total de llamadas últimos 7 días
+            cur.execute("""
+                SELECT COUNT(*) as total_7d
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE())
+            """)
+            total_7d = (cur.fetchone() or {}).get("total_7d", 0)
+
+            # Llamadas por app (últimos 7 días)
+            cur.execute("""
+                SELECT App, COUNT(*) as llamadas
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE())
+                GROUP BY App
+            """)
+            por_app = {r["App"]: r["llamadas"] for r in (cur.fetchall() or [])}
+
+            # Uso por día (últimos 7 días)
+            cur.execute("""
+                SELECT CAST(Fecha AS DATE) as dia, COUNT(*) as llamadas,
+                       COUNT(DISTINCT Usuario) as usuarios
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE())
+                GROUP BY CAST(Fecha AS DATE)
+                ORDER BY dia
+            """)
+            por_dia = [{"dia": str(r["dia"]), "llamadas": r["llamadas"],
+                        "usuarios": r["usuarios"]} for r in (cur.fetchall() or [])]
+
+            # Horas pico (últimos 7 días)
+            cur.execute("""
+                SELECT DATEPART(hour, Fecha) as hora, COUNT(*) as llamadas
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE())
+                GROUP BY DATEPART(hour, Fecha)
+                ORDER BY hora
+            """)
+            por_hora = [{"hora": r["hora"], "llamadas": r["llamadas"]}
+                        for r in (cur.fetchall() or [])]
+
+            # Días de la semana (últimos 30 días).
+            #
+            # OJO: aquí estaba DATENAME(weekday, Fecha) y tardaba 33 s (el
+            # endpoint entero se caía con 504). DATENAME depende del idioma de
+            # la sesión y con el SQL sin memoria hace un plan malísimo.
+            # El día de la semana se saca con aritmética de fechas: 1900-01-07
+            # fue domingo, así que el módulo 7 da 0=domingo … 6=sábado, igual
+            # en cualquier idioma y sin función por fila.
+            cur.execute("""
+                SELECT (DATEDIFF(day, '19000107', CAST(Fecha AS date)) % 7) AS dow,
+                       COUNT(*) as llamadas
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -30, GETDATE())
+                GROUP BY (DATEDIFF(day, '19000107', CAST(Fecha AS date)) % 7)
+                ORDER BY llamadas DESC
+            """)
+            DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
+            por_dia_semana = [
+                {"dia": DIAS[int(r["dow"]) % 7], "llamadas": r["llamadas"]}
+                for r in (cur.fetchall() or [])
+            ]
+
+            # Top 10 endpoints (últimos 7 días)
+            cur.execute("""
+                SELECT TOP 10 Endpoint, COUNT(*) as usos
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE())
+                GROUP BY Endpoint
+                ORDER BY usos DESC
+            """)
+            top_endpoints = [{"endpoint": r["Endpoint"], "usos": r["usos"]}
+                             for r in (cur.fetchall() or [])]
+
+            # Top 10 usuarios (últimos 7 días).
+            #
+            # `HUB_ApiUsage.Usuario` guarda el **Id** del usuario (texto), no su
+            # nombre: sin el JOIN la pantalla enseñaba «3, 7, 12». Se cruza con
+            # HUB_Users y se cae al id solo si el usuario ya no existe.
+            cur.execute("""
+                SELECT TOP 10 a.Usuario AS id,
+                       ISNULL(u.Nombre, a.Usuario) AS nombre,
+                       COUNT(*) as llamadas
+                FROM HUB_ApiUsage a
+                LEFT JOIN HUB_Users u ON CAST(u.Id AS varchar(20)) = a.Usuario
+                WHERE a.Fecha >= DATEADD(day, -7, GETDATE()) AND a.Usuario IS NOT NULL
+                  AND a.Usuario <> '1'
+                GROUP BY a.Usuario, u.Nombre
+                ORDER BY llamadas DESC
+            """)
+            top_usuarios = [
+                {"usuario": r["nombre"], "id": r["id"], "llamadas": r["llamadas"]}
+                for r in (cur.fetchall() or [])
+            ]
+
+            # Usuarios inactivos (no usaron en 7 días).
+            #
+            # Antes esto era un NOT IN con subconsulta sobre HUB_ApiUsage y
+            # tardaba 10-30 s (el endpoint entero se caía). El conjunto de
+            # activos es pequeño, así que se trae y la resta se hace aquí.
+            cur.execute("""
+                SELECT DISTINCT Usuario
+                FROM HUB_ApiUsage
+                WHERE Fecha >= DATEADD(day, -7, GETDATE()) AND Usuario IS NOT NULL
+            """)
+            activos = {str(r["Usuario"]) for r in (cur.fetchall() or [])}
+            cur.execute("SELECT Id, Nombre FROM HUB_Users WHERE Activo = 1 AND Id <> 1")
+            inactivos = [r["Nombre"] for r in (cur.fetchall() or [])
+                         if str(r["Id"]) not in activos]
+    finally:
+        conn.close()
+
+    return {
+        "activos_7d": activos_7d,
+        "total_7d": total_7d,
+        "por_app": por_app,
+        "por_dia": por_dia,
+        "por_hora": por_hora,
+        "por_dia_semana": por_dia_semana,
+        "top_endpoints": top_endpoints,
+        "top_usuarios": top_usuarios,
+        "inactivos": inactivos,
+    }
+
+
+# Lo que escribe Volt cuando el mensaje es un roast y no un aviso de negocio.
+# Se filtra por el texto y no por el tipo porque la tabla no lo clasifica.
+_VOLT_ROASTS = ("Acepto la queja", "Por qué:", "El tráfico ya te conoce")
+
+
+def volt_mensajes(limite: int = 5, dias: int = 30) -> list:
+    """Últimos mensajes sarcásticos que mandó el bot (`Direccion='OUT'`).
+
+    Solo el TEXTO, tal cual se envió: ni destinatario, ni teléfono, ni chat,
+    ni fecha (pedido explícito: la tarjeta es para leer el chiste, no para
+    señalar a quién se le mandó). Los 30 días y el tope de 5 se aplican en SQL.
+
+    Sin `try/except`, igual que `wa_ranking`: si la base falla, el snapshotter
+    conserva la lista anterior en vez de borrar la tarjeta.
+    """
+    filtros = " OR ".join(f"Texto LIKE '%{t}%'" for t in _VOLT_ROASTS)
+    conn = get_connection()
+    try:
+        with conn.cursor(as_dict=True) as cur:
+            cur.execute(f"""
+                SELECT TOP {int(limite)} Texto
+                FROM HUB_WhatsappEntrante
+                WHERE Direccion = 'OUT'
+                  AND Fecha >= DATEADD(day, -{int(dias)}, GETDATE())
+                  AND ({filtros})
+                ORDER BY Fecha DESC
+            """)
+            filas = cur.fetchall() or []
+    finally:
+        conn.close()
+
+    mensajes = []
+    for f in (filas or [])[:int(limite)]:
+        texto = str(f.get("Texto") or "").strip()
+        if texto:
+            mensajes.append(texto)
+    return mensajes
+
+
 def _dump(x) -> str:
     """Para depurar desde la consola."""
     return json.dumps(x, ensure_ascii=False, default=str, indent=2)

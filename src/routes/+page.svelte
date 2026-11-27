@@ -1167,7 +1167,7 @@ function cambiarVolumen(_v: number) { /* no-op: volumen fijo al máximo */ }
 			{:else if p.id === 'portada' && esBento}<PortadaBento {datos} posicion={posicionRotacion} />
 			{:else if p.id === 'portada'}<Portada {datos} />
 			{:else if p.id === 'uso_apps' && esBento}<UsoAppsBento {datos} posicion={posicionRotacion} />
-			{:else if p.id === 'uso_apps'}<UsoApps />
+			{:else if p.id === 'uso_apps'}<UsoApps {datos} />
 			{:else}
 				<div class="sin-pantalla">
 					Sin pantalla para «{p.label}».

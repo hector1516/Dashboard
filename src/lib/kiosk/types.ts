@@ -184,6 +184,27 @@ export interface WaRanking {
 	items: WaRankingItem[];
 }
 
+/**
+ * Resumen de uso de las apps (`HUB_ApiUsage`). Lo calcula el snapshotter y
+ * viaja en `snapshot.uso`; `/api/uso/resumen` solo lo sirve. Todos los campos
+ * pueden faltar (`null`) si todavía no hay lectura: eso NO es un cero.
+ */
+export interface UsoResumen {
+	activos_7d: number | null;
+	total_7d: number | null;
+	por_app: Record<string, number> | null;
+	por_dia: { dia: string; llamadas: number; usuarios: number }[] | null;
+	por_hora: { hora: number; llamadas: number }[] | null;
+	por_dia_semana: { dia: string; llamadas: number }[] | null;
+	top_endpoints: { endpoint: string; usos: number }[] | null;
+	top_usuarios: { usuario: string; id?: string; llamadas: number }[] | null;
+	inactivos: string[] | null;
+	/** `true` = se está sirviendo la última lectura buena (o ninguna). */
+	degradado?: boolean;
+	/** Cuándo se calculó el resumen (`generado_en` del snapshot). */
+	generado_en?: string | null;
+}
+
 export interface CotizacionLista {
 	total: number;
 	verdes: number;
@@ -292,6 +313,21 @@ export interface Snapshot {
 
 	/** Ranking del bot de WhatsApp (opcional hasta el primer ciclo nuevo). */
 	wa_ranking?: WaRanking;
+
+	/**
+	 * Mensajes sarcásticos de Volt (solo el texto, tal como se envió: sin
+	 * destinatario, teléfono, chat ni fecha). Últimos 5 de 30 días. OPCIONAL:
+	 * un snapshot viejo no lo trae hasta el primer ciclo.
+	 */
+	volt_mensajes?: string[];
+
+	/**
+	 * Resumen de uso de las apps. OPCIONAL por la misma razón: el snapshotter
+	 * lo agrega en su ciclo y hasta entonces el endpoint responde degradado.
+	 */
+	uso?: UsoResumen;
+	/** Epoch del último cálculo bueno de `uso` (0 si nunca). */
+	uso_en?: number;
 
 	/**
 	 * Asistencia del DÍA, calculada desde `HUB_NetworkPresence` (la red).

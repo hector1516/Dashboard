@@ -36,9 +36,6 @@ from lugar import lugar_de
 
 app = FastAPI(title="Dashboard ECCSA", version="1.0.0")
 
-# Caché del resumen de uso (60 s). La consulta agrega 32 mil filas y el kiosco
-# la pide cada minuto; sin esto el primer pintado paga la cuenta entera.
-_USO_CACHE = {"t": 0.0, "datos": None}
 # Misma idea para el ranking del bot: la tarjeta lo pide cada minuto y la
 # ventana es de 30 días, así que un minuto de caché no cambia nada visible.
 _WA_CACHE = {"t": 0.0, "datos": None}
@@ -207,156 +204,33 @@ def version():
 
 @app.get("/api/uso/resumen")
 def uso_resumen():
-    """Resumen de uso de las apps (Admon y Field).
+    """Resumen de uso de las apps (Admon y Field), desde el snapshot.
 
-    Se cachea 60 s en memoria: es una consulta agregada sobre 32 mil filas y el
-    kiosco la pide cada minuto. Sin caché, el primer pintado siempre paga la
-    cuenta completa.
+    NO calcula nada en la petición: el snapshotter lo deja en `snapshot.uso` y
+    aquí solo se lee el archivo (cacheado 5 s en memoria). Antes la consulta
+    agregaba 32 mil filas y el 2026-11-25 tardaba 30-80 s: nginx la mataba con
+    504 y la pantalla se quedaba sin datos.
 
-    (2026-11-25: dos consultas de este endpoint tardaban 30-80 s y lo tumbaban
-    con 504; ver los comentarios de `por_dia_semana` e `inactivos`.)
+    Si todavía no hay lectura (primer arranque) se devuelve la forma con
+    `null` y `degradado: true` —nunca 504—. Los `null` no son ceros: un 0 se
+    leería como «nadie usó las apps».
     """
-    ahora = time.time()
-    if _USO_CACHE["datos"] and (ahora - _USO_CACHE["t"]) < 60:
-        return JSONResponse(_USO_CACHE["datos"], headers={"Cache-Control": "no-store"})
-    try:
-        from db import get_connection
-        conn = get_connection()
-        with conn.cursor(as_dict=True) as cur:
-            # Usuarios activos últimos 7 días.
-            # El Id 1 es la cuenta del bot (IT Support): no es una persona y
-            # contarla infla «activos» con lo que hace el propio sistema.
-            cur.execute("""
-                SELECT COUNT(DISTINCT Usuario) as activos_7d
-                FROM HUB_ApiUsage
-                WHERE Fecha >= DATEADD(day, -7, GETDATE())
-                  AND Usuario IS NOT NULL AND Usuario <> '1'
-            """)
-            activos_7d = (cur.fetchone() or {}).get("activos_7d", 0)
-
-            # Total de llamadas últimos 7 días
-            cur.execute("""
-                SELECT COUNT(*) as total_7d
-                FROM HUB_ApiUsage
-                WHERE Fecha >= DATEADD(day, -7, GETDATE())
-            """)
-            total_7d = (cur.fetchone() or {}).get("total_7d", 0)
-
-            # Llamadas por app (últimos 7 días)
-            cur.execute("""
-                SELECT App, COUNT(*) as llamadas
-                FROM HUB_ApiUsage
-                WHERE Fecha >= DATEADD(day, -7, GETDATE())
-                GROUP BY App
-            """)
-            por_app = {r["App"]: r["llamadas"] for r in (cur.fetchall() or [])}
-
-            # Uso por día (últimos 7 días)
-            cur.execute("""
-                SELECT CAST(Fecha AS DATE) as dia, COUNT(*) as llamadas,
-                       COUNT(DISTINCT Usuario) as usuarios
-                FROM HUB_ApiUsage
-                WHERE Fecha >= DATEADD(day, -7, GETDATE())
-                GROUP BY CAST(Fecha AS DATE)
-                ORDER BY dia
-            """)
-            por_dia = [{"dia": str(r["dia"]), "llamadas": r["llamadas"], "usuarios": r["usuarios"]} for r in (cur.fetchall() or [])]
-
-            # Horas pico (últimos 7 días)
-            cur.execute("""
-                SELECT DATEPART(hour, Fecha) as hora, COUNT(*) as llamadas
-                FROM HUB_ApiUsage
-                WHERE Fecha >= DATEADD(day, -7, GETDATE())
-                GROUP BY DATEPART(hour, Fecha)
-                ORDER BY hora
-            """)
-            por_hora = [{"hora": r["hora"], "llamadas": r["llamadas"]} for r in (cur.fetchall() or [])]
-
-            # Días de la semana (últimos 30 días).
-            #
-            # OJO: aquí estaba DATENAME(weekday, Fecha) y tardaba 33 s (el
-            # endpoint entero se caía con 504). DATENAME depende del idioma de
-            # la sesión y con el SQL sin memoria hace un plan malísimo.
-            # El día de la semana se saca con aritmética de fechas: 1900-01-07
-            # fue domingo, así que el módulo 7 da 0=domingo … 6=sábado, igual
-            # en cualquier idioma y sin función por fila.
-            cur.execute("""
-                SELECT (DATEDIFF(day, '19000107', CAST(Fecha AS date)) % 7) AS dow,
-                       COUNT(*) as llamadas
-                FROM HUB_ApiUsage
-                WHERE Fecha >= DATEADD(day, -30, GETDATE())
-                GROUP BY (DATEDIFF(day, '19000107', CAST(Fecha AS date)) % 7)
-                ORDER BY llamadas DESC
-            """)
-            DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
-            por_dia_semana = [
-                {"dia": DIAS[int(r["dow"]) % 7], "llamadas": r["llamadas"]}
-                for r in (cur.fetchall() or [])
-            ]
-
-            # Top 10 endpoints (últimos 7 días)
-            cur.execute("""
-                SELECT TOP 10 Endpoint, COUNT(*) as usos
-                FROM HUB_ApiUsage
-                WHERE Fecha >= DATEADD(day, -7, GETDATE())
-                GROUP BY Endpoint
-                ORDER BY usos DESC
-            """)
-            top_endpoints = [{"endpoint": r["Endpoint"], "usos": r["usos"]} for r in (cur.fetchall() or [])]
-
-            # Top 10 usuarios (últimos 7 días).
-            #
-            # `HUB_ApiUsage.Usuario` guarda el **Id** del usuario (texto), no su
-            # nombre: sin el JOIN la pantalla enseñaba «3, 7, 12». Se cruza con
-            # HUB_Users y se cae al id solo si el usuario ya no existe.
-            cur.execute("""
-                SELECT TOP 10 a.Usuario AS id,
-                       ISNULL(u.Nombre, a.Usuario) AS nombre,
-                       COUNT(*) as llamadas
-                FROM HUB_ApiUsage a
-                LEFT JOIN HUB_Users u ON CAST(u.Id AS varchar(20)) = a.Usuario
-                WHERE a.Fecha >= DATEADD(day, -7, GETDATE()) AND a.Usuario IS NOT NULL
-                  AND a.Usuario <> '1'
-                GROUP BY a.Usuario, u.Nombre
-                ORDER BY llamadas DESC
-            """)
-            top_usuarios = [
-                {"usuario": r["nombre"], "id": r["id"], "llamadas": r["llamadas"]}
-                for r in (cur.fetchall() or [])
-            ]
-
-            # Usuarios inactivos (no usaron en 7 días).
-            #
-            # Antes esto era un NOT IN con subconsulta sobre HUB_ApiUsage y
-            # tardaba 10-30 s (el endpoint entero se caía). El conjunto de
-            # activos es pequeño, así que se trae y la resta se hace aquí.
-            cur.execute("""
-                SELECT DISTINCT Usuario
-                FROM HUB_ApiUsage
-                WHERE Fecha >= DATEADD(day, -7, GETDATE()) AND Usuario IS NOT NULL
-            """)
-            activos = {str(r["Usuario"]) for r in (cur.fetchall() or [])}
-            cur.execute("SELECT Id, Nombre FROM HUB_Users WHERE Activo = 1 AND Id <> 1")
-            inactivos = [r["Nombre"] for r in (cur.fetchall() or [])
-                         if str(r["Id"]) not in activos]
-
-        conn.close()
-        payload = {
-            "activos_7d": activos_7d,
-            "total_7d": total_7d,
-            "por_app": por_app,
-            "por_dia": por_dia,
-            "por_hora": por_hora,
-            "por_dia_semana": por_dia_semana,
-            "top_endpoints": top_endpoints,
-            "top_usuarios": top_usuarios,
-            "inactivos": inactivos,
-        }
-        _USO_CACHE["datos"] = payload
-        _USO_CACHE["t"] = time.time()
+    datos = _leer_snapshot() or {}
+    uso = datos.get("uso")
+    if isinstance(uso, dict) and uso:
+        payload = dict(uso)
+        payload.setdefault("degradado", False)
+        payload.setdefault("generado_en", datos.get("generado_en"))
         return JSONResponse(payload, headers={"Cache-Control": "no-store"})
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+    vacio = {
+        "activos_7d": None, "total_7d": None,
+        "por_app": None, "por_dia": None, "por_hora": None,
+        "por_dia_semana": None, "top_endpoints": None,
+        "top_usuarios": None, "inactivos": None,
+        "degradado": True,
+        "generado_en": datos.get("generado_en"),
+    }
+    return JSONResponse(vacio, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/whatsapp/ranking")

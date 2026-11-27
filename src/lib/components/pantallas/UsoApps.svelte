@@ -1,16 +1,31 @@
 <!-- UsoApps.svelte - Estadísticas de uso de las apps Admon y Field -->
 <script lang="ts">
-	let datos = $state<any>(null);
+	/** Snapshot del kiosco: de aquí sale el resumen de uso ya calculado. */
+	interface Props {
+		datos?: any;
+	}
+	let { datos }: Props = $props();
+
+	let datosLive = $state<any>(null);
+	/** El snapshot manda; el endpoint queda de respaldo. */
+	const uso = $derived(datos?.uso ?? datosLive);
 	let wa = $state<{ posicion: number; nombre: string; mensajes: number }[]>([]);
 	let cargando = $state(true);
 
 	async function cargar() {
+		// Sin dato en el snapshot todavía: se pide al endpoint (que ahora solo
+		// lee el snapshot, así que responde al instante).
+		if (datos?.uso) {
+			datosLive = datos.uso;
+			cargando = false;
+			return;
+		}
 		try {
 			const [ru, rw] = await Promise.all([
 				fetch('/api/uso/resumen'),
 				fetch('/api/whatsapp/ranking')
 			]);
-			if (ru.ok) datos = await ru.json();
+			if (ru.ok) datosLive = await ru.json();
 			if (rw.ok) {
 				const j = await rw.json();
 				// Un `{error}` no es un ranking: se conserva la última lectura.
@@ -22,15 +37,28 @@
 
 	$effect(() => { cargar(); const t = setInterval(cargar, 60000); return () => clearInterval(t); });
 
-	const activos = $derived(datos?.activos_7d ?? 0);
-	const total = $derived(datos?.total_7d ?? 0);
-	const porApp = $derived(datos?.por_app ?? {});
-	const porDia = $derived(datos?.por_dia ?? []);
-	const porHora = $derived(datos?.por_hora ?? []);
-	const porDiaSemana = $derived(datos?.por_dia_semana ?? []);
-	const topEndpoints = $derived(datos?.top_endpoints ?? []);
-	const topUsuarios = $derived(datos?.top_usuarios ?? []);
-	const inactivos = $derived(datos?.inactivos ?? []);
+	const activos = $derived(uso?.activos_7d ?? 0);
+	const total = $derived(uso?.total_7d ?? 0);
+	const porApp = $derived(uso?.por_app ?? {});
+	const porDia = $derived(uso?.por_dia ?? []);
+	const porHora = $derived(uso?.por_hora ?? []);
+	const porDiaSemana = $derived(uso?.por_dia_semana ?? []);
+	const topEndpoints = $derived(uso?.top_endpoints ?? []);
+	const topUsuarios = $derived(uso?.top_usuarios ?? []);
+	const inactivos = $derived(uso?.inactivos ?? []);
+
+	/** Largo máximo de un mensaje: 5 líneas sin scroll. */
+	const RECORTE_VOLT = 140;
+	function recortaVolt(t: string): string {
+		const s = String(t ?? '').replace(/\s+/g, ' ').trim();
+		return s.length > RECORTE_VOLT ? s.slice(0, RECORTE_VOLT - 1).trimEnd() + '…' : s;
+	}
+	const voltMensajes = $derived(
+		(Array.isArray(datos?.volt_mensajes) ? (datos.volt_mensajes as string[]) : [])
+			.filter((m) => typeof m === 'string' && m.trim())
+			.slice(0, 5)
+			.map(recortaVolt)
+	);
 
 	const maxHora = $derived(Math.max(1, ...porHora.map((x: any) => x.llamadas)));
 	const maxDia = $derived(Math.max(1, ...porDia.map((x: any) => x.llamadas)));
@@ -46,7 +74,7 @@
 
 	{#if cargando}
 		<div class="cargando">Cargando estadísticas...</div>
-	{:else if !datos}
+	{:else if !uso}
 		<div class="vacio-grande">
 			<span class="vacio-icono">📊</span>
 			<span class="vacio-titulo">Sin datos de uso</span>
@@ -182,6 +210,21 @@
 						</div>
 					</div>
 				{/if}
+
+				<!-- Últimos mensajes sarcásticos de Volt, solo el texto tal como se
+				     envió. Sin scroll: cinco líneas cortas. -->
+				<div class="bloque volt">
+					<div class="bloque-titulo">Mensajes de Volt</div>
+					{#if voltMensajes.length}
+						<div class="volt-lista">
+							{#each voltMensajes as mensaje, n (n)}
+								<p class="volt-linea">{mensaje}</p>
+							{/each}
+						</div>
+					{:else}
+						<div class="vacio">Sin mensajes todavía</div>
+					{/if}
+				</div>
 			</div>
 		</div>
 	{/if}
@@ -244,6 +287,11 @@
 
 	.inactivos-list { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 	.inactivo-chip { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 999px; background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+	/* Mensajes de Volt: 5 líneas, sin scroll; el texto largo se recorta. */
+	.bloque.volt { flex: 1.4; }
+	.volt-lista { display: flex; flex-direction: column; justify-content: center; gap: 0.3rem; overflow: hidden; flex: 1; }
+	.volt-linea { margin: 0; font-size: 0.8rem; line-height: 1.3; color: #e2e8f0; padding-left: 0.5rem; border-left: 3px solid rgba(96, 165, 250, 0.55); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 	.vacio { color: var(--color-text-muted); font-size: 0.85rem; text-align: center; padding: 1rem; }
 	.vacio-grande { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; color: var(--color-text-muted); }
