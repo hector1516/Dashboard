@@ -59,12 +59,11 @@ jobs:
           push: true
           build-args: |
             BUILD_ID=${{ github.sha }}
-            CACHEBUST=${{ github.run_id }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=dashboard
+          cache-to: type=gha,mode=max,scope=dashboard
 
       - name: Resumen
         run: |
